@@ -1,0 +1,174 @@
+<div class="min-h-screen bg-secondary flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-md w-full space-y-8">
+    <!-- Header -->
+    <div class="text-center">
+      <div class="mx-auto w-20 h-20 bg-primary rounded-full flex items-center justify-center mb-4">
+        <span class="text-white font-bold text-2xl">CR</span>
+      </div>
+      <h2 class="text-3xl font-bold text-primary">Créer un compte</h2>
+      <p class="mt-2 text-gray-600">Rejoignez m1p13mean-candy-romance</p>
+    </div>
+
+    <!-- Formulaire -->
+    <form class="mt-8 space-y-6" (ngSubmit)="onSubmit()">
+      <div class="card">
+        <!-- Photo de profil -->
+        <div class="mb-6">
+          <label class="block text-sm font-medium text-primary mb-3">Photo de profil</label>
+          <div class="flex items-center space-x-6">
+            <!-- Aperçu de l'image -->
+            <div class="relative">
+              <div class="w-24 h-24 rounded-full overflow-hidden bg-gray-100 border-2 border-gray-300 flex items-center justify-center">
+                <img *ngIf="profileImagePreview; else defaultAvatar" 
+                     [src]="profileImagePreview" 
+                     alt="Photo de profil" 
+                     class="w-full h-full object-cover">
+                <ng-template #defaultAvatar>
+                  <svg class="w-12 h-12 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                </ng-template>
+              </div>
+              <!-- Bouton supprimer -->
+              <button *ngIf="profileImagePreview" 
+                      type="button"
+                      (click)="removeProfileImage()"
+                      class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+            
+            <!-- Upload -->
+            <div class="flex-1">
+              <input type="file" 
+                     id="profileImage" 
+                     (change)="onProfileImageChange($event)"
+                     accept="image/*"
+                     class="hidden">
+              <label for="profileImage" 
+                     class="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                </svg>
+                Choisir une photo
+              </label>
+              <p class="text-xs text-gray-500 mt-2">
+                Formats acceptés: JPG, PNG, GIF (max 5MB)
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Informations personnelles -->
+        <div class="space-y-4">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-primary mb-1">Prénom</label>
+              <input type="text" 
+                     [(ngModel)]="user.firstName" 
+                     name="firstName"
+                     class="input-field" 
+                     required>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-primary mb-1">Nom</label>
+              <input type="text" 
+                     [(ngModel)]="user.lastName" 
+                     name="lastName"
+                     class="input-field" 
+                     required>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-primary mb-1">Email</label>
+            <input type="email" 
+                   [(ngModel)]="user.email" 
+                   name="email"
+                   class="input-field" 
+                   required>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-primary mb-1">Téléphone</label>
+            <input type="tel" 
+                   [(ngModel)]="user.phone" 
+                   name="phone"
+                   class="input-field">
+          </div>
+
+          <!-- Choix du rôle -->
+          <div>
+            <label class="block text-sm font-medium text-primary mb-3">Type de compte</label>
+            <div class="space-y-3">
+              <div class="flex items-start">
+                <input type="radio" 
+                       id="client" 
+                       name="role" 
+                       value="user"
+                       [(ngModel)]="user.role"
+                       class="mt-1 mr-3"
+                       (change)="selectRole('user')">
+                <div>
+                  <label for="client" class="font-medium text-primary cursor-pointer">Client</label>
+                  <p class="text-sm text-gray-600 mt-1">Accédez aux boutiques et produits pour faire vos achats</p>
+                </div>
+              </div>
+              
+              <div class="flex items-start">
+                <input type="radio" 
+                       id="boutique" 
+                       name="role" 
+                       value="adminboutique"
+                       [(ngModel)]="user.role"
+                       class="mt-1 mr-3"
+                       (change)="selectRole('adminboutique')">
+                <div>
+                  <label for="boutique" class="font-medium text-primary cursor-pointer">Propriétaire de boutique</label>
+                  <p class="text-sm text-gray-600 mt-1">Gérez votre boutique, vos produits et vos commandes</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mot de passe -->
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-primary mb-1">Mot de passe</label>
+              <input type="password" 
+                     [(ngModel)]="user.password" 
+                     name="password"
+                     class="input-field" 
+                     required>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-primary mb-1">Confirmer le mot de passe</label>
+              <input type="password" 
+                     [(ngModel)]="user.confirmPassword" 
+                     name="confirmPassword"
+                     class="input-field" 
+                     required>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bouton d'inscription -->
+        <div class="mt-6">
+          <button type="submit" class="w-full btn-primary">
+            S'inscrire
+          </button>
+        </div>
+
+        <!-- Lien vers connexion -->
+        <div class="text-center mt-4">
+          <p class="text-gray-600">
+            Vous avez déjà un compte ? 
+            <a href="/login" class="text-primary hover:text-accent font-medium">Se connecter</a>
+          </p>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>

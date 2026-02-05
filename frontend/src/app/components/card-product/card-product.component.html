@@ -1,0 +1,60 @@
+<div class="card hover:shadow-xl transition-shadow duration-300">
+  <div class="relative">
+    <img [src]="product.image || '/assets/default-product.jpg'" 
+         [alt]="product.name" 
+         class="w-full h-48 object-cover rounded-t-xl">
+    
+    <!-- Badge de stock -->
+    <div class="absolute top-2 right-2">
+      <span class="px-2 py-1 text-xs font-semibold rounded-full"
+            [class.bg-green-100]="product.inStock"
+            [class.text-green-800]="product.inStock"
+            [class.bg-red-100]="!product.inStock"
+            [class.text-red-800]="!product.inStock">
+        {{ product.inStock ? 'En stock' : 'Rupture' }}
+      </span>
+    </div>
+  </div>
+
+  <div class="p-4">
+    <!-- Nom du produit -->
+    <h3 class="text-lg font-semibold text-primary mb-2 line-clamp-2">{{ product.name }}</h3>
+    
+    <!-- Description -->
+    <p class="text-gray-600 text-sm mb-3 line-clamp-2">{{ product.description }}</p>
+    
+    <!-- Nom de la boutique -->
+    <div class="flex items-center mb-3">
+      <svg class="w-4 h-4 text-accent mr-1" fill="currentColor" viewBox="0 0 24 24">
+        <path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+      </svg>
+      <span class="text-sm text-gray-600">{{ product.shop }}</span>
+    </div>
+    
+    <!-- Rating -->
+    <div class="flex items-center mb-3">
+      <div class="flex text-accent">
+        <ng-container *ngFor="let star of [1,2,3,4,5]">
+          <svg class="w-4 h-4" 
+               [class.text-gray-300]="star > product.rating"
+               fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+          </svg>
+        </ng-container>
+      </div>
+      <span class="text-sm text-gray-600 ml-1">({{ product.rating }})</span>
+    </div>
+    
+    <!-- Prix et bouton -->
+    <div class="flex items-center justify-between">
+      <div>
+        <span class="text-2xl font-bold text-primary">{{ product.price }}€</span>
+      </div>
+      <button class="btn-primary text-sm px-4 py-2"
+              [disabled]="!product.inStock"
+              (click)="addToCart()">
+        {{ product.inStock ? 'Ajouter' : 'Indisponible' }}
+      </button>
+    </div>
+  </div>
+</div>

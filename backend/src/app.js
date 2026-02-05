@@ -21,9 +21,13 @@ const swaggerOptions = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'API MEAN Stack',
+      title: 'API MEAN Stack - Gestion des Utilisateurs',
       version: '1.0.0',
-      description: 'API documentation for MEAN Stack application',
+      description: 'API documentation for MEAN Stack application - User Management System',
+      contact: {
+        name: 'API Support',
+        email: 'support@example.com'
+      }
     },
     servers: [
       {
@@ -31,14 +35,42 @@ const swaggerOptions = {
         description: 'Development server',
       },
     ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          description: 'JWT Token - Obtenez-le via l\'endpoint /api/auth/login'
+        }
+      }
+    },
+    security: [
+      {
+        bearerAuth: []
+      }
+    ]
   },
-  apis: ['./src/routes/*.js', './src/models/*.js'],
+  apis: ['./src/routes/*.js', './src/models/*.js', './src/dto/*.js'],
 };
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
 // Swagger UI route
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+// Import des routes
+const authRoutes = require('./routes/authRoutes');
+const userRoutes = require('./routes/userRoutes');
+const uploadRoutes = require('./routes/uploadRoutes');
+
+// Routes API
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/upload', uploadRoutes);
+
+// Servir les fichiers uploadés statiquement
+app.use('/uploads', express.static('uploads'));
 
 /**
  * @swagger
