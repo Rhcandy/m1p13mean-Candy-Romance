@@ -1,40 +1,53 @@
-// angular import
-import { ChangeDetectorRef, Component, inject, signal } from '@angular/core';
-import { RouterModule } from '@angular/router';
-
-import { email, Field, form, minLength, required } from '@angular/forms/signals';
+import { Component, inject } from '@angular/core';
+import { Router, RouterModule } from '@angular/router';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { AuthService } from '../../../../services/auth.service';
 
 @Component({
   selector: 'app-login',
-  imports: [RouterModule, Field],
+  standalone: true,
+  imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.scss']
 })
 export class LoginComponent {
-  private cd = inject(ChangeDetectorRef);
+  private authService = inject(AuthService);
+  private router = inject(Router);
 
-  submitted = signal(false);
-  error = signal('');
+  submitted = false;
+  loading = false;
+  error = '';
 
-  loginModal = signal<{ email: string; password: string }>({
-    email: 'info@coddedtheme.com',
-    password: '123456'
-  });
-
-  loginForm = form(this.loginModal, (schemaPath) => {
-    required(schemaPath.email, { message: 'Email is required' });
-    email(schemaPath.email, { message: 'Enter a valid email address' });
-    required(schemaPath.password, { message: 'Password is required' });
-    minLength(schemaPath.password, 8, { message: 'Password must be at least 8 characters' });
-  });
+  model = {
+    email: '',
+    password: ''
+  };
 
   onSubmit(event: Event) {
-    this.submitted.set(true);
-    this.error.set('');
+    event.preventDefault(); // 🔥 empêche le GET et l’URL bizarre
 
-    event.preventDefault();
-    const credentials = this.loginModal();
-    console.log('login user logged in with:', credentials);
-    this.cd.detectChanges();
+    this.submitted = true;
+    this.error = '';
+
+    if (!this.model.email || !this.model.password) {
+      this.error = 'Email et mot de passe requis';
+      return;
+    }
+
+    this.loading = true;
+
+    this.authService.login(this.model.email, this.model.password).subscribe({
+      next: () => {
+        this.router.navigate(['/default']);
+      },
+      error: () => {
+        this.error = 'Email ou mot de passe incorrect';
+        this.loading = false;
+      },
+      complete: () => {
+        this.loading = false;
+      }
+    });
   }
 }
