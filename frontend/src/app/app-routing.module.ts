@@ -1,55 +1,50 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
-import { AuthGuard } from './guards/auth.guard';
-import { AdminGuard } from './guards/auth.guard';
-import { ShopOwnerGuard } from './guards/auth.guard';
-
-// Import components (these will need to be created as standalone components)
-import { HomeComponent } from './pages/home/home.component';
-import { LoginComponent } from './pages/auth/login.component';
-import { RegisterComponent } from './pages/auth/register.component';
-import { AdminDashboardComponent } from './pages/admin/dashboard.component';
+import { AdminComponent } from './theme/layout/admin/admin.component';
+import { GuestComponent } from './theme/layout/guest/guest.component';
 
 const routes: Routes = [
-  { path: '', redirectTo: '/login', pathMatch: 'full' },
-  { path: 'home', component: HomeComponent },
-  { path: 'login', component: LoginComponent },
-  { path: 'register', component: RegisterComponent },
-  
-  // Admin routes
-  { 
-    path: 'admin', 
-    canActivate: [AdminGuard],
+  {
+    path: '',
+    component: AdminComponent,
     children: [
-      { path: 'dashboard', component: AdminDashboardComponent },
-      
+      {
+        path: '',
+        redirectTo: '/default',
+        pathMatch: 'full'
+      },
+      {
+        path: 'default',
+        loadComponent: () => import('./demo/dashboard/default/default.component').then((c) => c.DefaultComponent)
+      },
+      {
+        path: 'typography',
+        loadComponent: () => import('./demo/elements/typography/typography.component').then((c) => c.TypographyComponent)
+      },
+      {
+        path: 'color',
+        loadComponent: () => import('./demo/elements/element-color/element-color.component').then((c) => c.ElementColorComponent)
+      },
+      {
+        path: 'sample-page',
+        loadComponent: () => import('./demo/other/sample-page/sample-page.component').then((c) => c.SamplePageComponent)
+      }
     ]
   },
-  
-  // Shop owner routes
-  { 
-    path: 'shop', 
-    canActivate: [ShopOwnerGuard],
+  {
+    path: '',
+    component: GuestComponent,
     children: [
-      
+      {
+        path: 'login',
+        loadComponent: () => import('./demo/pages/authentication/login/login.component').then((c) => c.LoginComponent)
+      },
+      {
+        path: 'register',
+        loadComponent: () => import('./demo/pages/authentication/register/register.component').then((c) => c.RegisterComponent)
+      }
     ]
-  },
-  
-  // Buyer routes
-  { 
-    path: 'buyer', 
-    canActivate: [AuthGuard],
-    children: [
-
-    ]
-  },
-  
-  // Public routes
-  
-  // Unauthorized page
- 
-  // Wildcard route
-  { path: '**', redirectTo: '/home' }
+  }
 ];
 
 @NgModule({
