@@ -1,44 +1,86 @@
-// angular import
-import { ChangeDetectorRef, Component, inject, signal } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
-import { email, Field, form, minLength, required } from '@angular/forms/signals';
+import { Router, RouterModule } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import { AuthService, RegisterData } from '../../../../services/auth.service';
 
 @Component({
   selector: 'app-register',
-  imports: [CommonModule, RouterModule, Field],
+  standalone: true,
+  imports: [CommonModule, RouterModule, FormsModule],
   templateUrl: './register.component.html',
   styleUrls: ['./register.component.scss']
 })
 export class RegisterComponent {
-  private cd = inject(ChangeDetectorRef);
+  private authService = inject(AuthService);
+  private router = inject(Router);
 
-  submitted = signal(false);
-  error = signal('');
-  showPassword = signal(false);
+  submitted = false;
+  loading = false;
+  error = '';
 
-  registerModel = signal<{ email: string; password: string; firstName: string; lastName: string }>({
-    firstName: '',
-    lastName: '',
+  selectedRole: 'user' | 'admin_boutique' | null = null;
+  avatarFile: File | null = null;
+
+  model = {
+    nom: '',
     email: '',
-    password: ''
-  });
+    password: '',
+    confirmPassword: ''
+  };
 
-  registerForm = form(this.registerModel, (schemaPath) => {
-    required(schemaPath.email, { message: 'Email is required' });
-    email(schemaPath.email, { message: 'Enter a valid email address' });
-    required(schemaPath.password, { message: 'Password is required' });
-    minLength(schemaPath.password, 8, { message: 'Password must be at least 8 characters' });
-    required(schemaPath.firstName, { message: 'First Name is required' });
-    required(schemaPath.lastName, { message: 'Last Name is required' });
-  });
+  selectRole(role: 'user' | 'admin_boutique') {
+    this.selectedRole = role;
+  }
+
+  onAvatarSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      this.avatarFile = input.files[0];
+    }
+  }
 
   onSubmit(event: Event) {
-    this.submitted.set(true);
-    this.error.set('');
     event.preventDefault();
-    const credentials = this.registerModel();
-    console.log('register user logged in with:', credentials);
-    this.cd.detectChanges();
+    this.submitted = true;
+    this.error = '';
+
+    if (!this.selectedRole) {
+      this.error = 'Veuillez sélectionner un type de compte';
+      return;
+    }
+
+    if (!this.model.nom || !this.model.email || !this.model.password || !this.model.confirmPassword) {
+      this.error = 'Veuillez remplir tous les champs obligatoires';
+      return;
+    }
+
+    if (this.model.password !== this.model.confirmPassword) {
+      this.error = 'Les mots de passe ne correspondent pas';
+      return;
+    }
+
+    this.loading = true;
+
+    const registerData: RegisterData = {
+      nom: this.model.nom,
+      email: this.model.email,
+      password: this.model.password,
+      role: this.selectedRole,
+      profilePicture: this.avatarFile || undefined
+    };
+
+    this.authService.register(registerData).subscribe({
+      next: () => {
+        this.router.navigate(['/dashboard']);
+      },
+      error: () => {
+        this.error = "Erreur lors de l'inscription. Veuillez réessayer.";
+        this.loading = false;
+      },
+      complete: () => {
+        this.loading = false;
+      }
+    });
   }
 }
