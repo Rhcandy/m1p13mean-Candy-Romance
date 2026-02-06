@@ -62,15 +62,81 @@
               <input
                 type="text"
                 class="form-control"
-                id="name"
-                name="name"
-                [(ngModel)]="model.name"
-                [class.is-invalid]="submitted && !model.name"
+                id="nom"
+                name="nom"
+                [(ngModel)]="model.nom"
+                [class.is-invalid]="submitted && !model.nom"
                 placeholder="Nom complet"
               />
-              <label for="name">Nom complet</label>
+              <label for="nom">Nom complet</label>
               <div class="invalid-feedback">
                 Nom requis
+              </div>
+            </div>
+
+            <!-- SEXE -->
+            <div class="form-floating mb-3">
+              <select
+                class="form-control"
+                id="sexe"
+                name="sexe"
+                [(ngModel)]="model.sexe"
+                [class.is-invalid]="submitted && !model.sexe"
+              >
+                <option value="M">Masculin</option>
+                <option value="F">Féminin</option>
+              </select>
+              <label for="sexe">Sexe</label>
+              <div class="invalid-feedback">
+                Sexe requis
+              </div>
+            </div>
+
+            <!-- NUMTEL -->
+            <div class="mb-3">
+              <label class="form-label fw-bold">Numéros de téléphone</label>
+              <div class="form-floating mb-2">
+                <input
+                  type="tel"
+                  class="form-control"
+                  id="numtel1"
+                  name="numtel1"
+                  [(ngModel)]="model.numtel[0]"
+                  [class.is-invalid]="submitted && !model.numtel[0]"
+                  placeholder="Numéro de téléphone 1"
+                />
+                <label for="numtel1">Numéro de téléphone 1</label>
+                <div class="invalid-feedback">
+                  Numéro de téléphone requis
+                </div>
+              </div>
+              <div class="form-floating mb-2">
+                <input
+                  type="tel"
+                  class="form-control"
+                  id="numtel2"
+                  name="numtel2"
+                  [(ngModel)]="model.numtel[1]"
+                  placeholder="Numéro de téléphone 2 (optionnel)"
+                />
+                <label for="numtel2">Numéro de téléphone 2 (optionnel)</label>
+              </div>
+            </div>
+
+            <!-- DTNAISSANCE -->
+            <div class="form-floating mb-3">
+              <input
+                type="date"
+                class="form-control"
+                id="dtnaissance"
+                name="dtnaissance"
+                [(ngModel)]="model.dtnaissance"
+                [class.is-invalid]="submitted && !model.dtnaissance"
+                placeholder="Date de naissance"
+              />
+              <label for="dtnaissance">Date de naissance</label>
+              <div class="invalid-feedback">
+                Date de naissance requise
               </div>
             </div>
 
@@ -123,17 +189,6 @@
               <div class="invalid-feedback">
                 Les mots de passe ne correspondent pas
               </div>
-            </div>
-
-            <!-- AVATAR -->
-            <div class="mb-3">
-              <label class="form-label">Photo de profil (optionnelle)</label>
-              <input
-                type="file"
-                class="form-control"
-                accept="image/*"
-                (change)="onAvatarSelected($event)"
-              />
             </div>
 
             <!-- ERROR -->

@@ -26,6 +26,9 @@ export interface RegisterData {
   role: 'user' | 'admin_boutique';
   nom?: string;
   profilePicture?: File;
+  sexe?: 'M' | 'F';
+  numtel?: string[];
+  dtnaissance?: string;
 }
 
 @Injectable({
@@ -75,18 +78,17 @@ export class AuthService {
   }
 
   register(data: RegisterData): Observable<LoginResponse> {
-    const formData = new FormData();
-    formData.append('email', data.email);
-    formData.append('password', data.password);
-    formData.append('roleName', data.role);
-    if (data.nom) {
-      formData.append('nom', data.nom);
-    }
-    if (data.profilePicture) {
-      formData.append('profilePicture', data.profilePicture);
-    }
-
-    return this.http.post<LoginResponse>(`${this.API_URL}/auth/register`, formData)
+    const registerPayload = {
+      email: data.email,
+      password: data.password,
+      roleName: data.role,
+      nom: data.nom || undefined,
+      sexe: data.sexe || undefined,
+      numtel: data.numtel || undefined,
+      dtnaissance: data.dtnaissance || undefined
+    };
+    
+    return this.http.post<LoginResponse>(`${this.API_URL}/auth/register`, registerPayload)
       .pipe(
         tap(response => {
           this.setToken(response.data.token);
