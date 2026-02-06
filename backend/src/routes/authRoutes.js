@@ -26,7 +26,6 @@ const authMiddleware = require('../middlewares/authMiddleware');
  *             nom: "John Doe"
  *             email: "user@example.com"
  *             password: "password123"
- *             pdppath: "/uploads/profiles/user1.jpg"
  *             sexe: "M"
  *             numtel: ["+212600000000", "+212600000001"]
  *             dtnaissance: "2026-02-04"

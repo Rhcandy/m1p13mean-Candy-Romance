@@ -23,11 +23,6 @@
  *           minLength: 6
  *           example: "password123"
  *           description: Mot de passe (minimum 6 caractères)
- *         pdppath:
- *           type: string
- *           nullable: true
- *           example: "/uploads/profiles/user1.jpg"
- *           description: Chemin vers la photo de profil
  *         sexe:
  *           type: string
  *           nullable: true
