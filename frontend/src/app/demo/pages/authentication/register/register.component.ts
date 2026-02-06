@@ -26,7 +26,10 @@ export class RegisterComponent {
     nom: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    sexe: 'M' as 'M' | 'F',
+    numtel: ['+212600000000', '+212600000001'],
+    dtnaissance: '2026-02-04'
   };
 
   selectRole(role: 'user' | 'admin_boutique') {
@@ -50,7 +53,7 @@ export class RegisterComponent {
       return;
     }
 
-    if (!this.model.nom || !this.model.email || !this.model.password || !this.model.confirmPassword) {
+    if (!this.model.nom || !this.model.email || !this.model.password || !this.model.confirmPassword || !this.model.sexe || !this.model.numtel || !this.model.dtnaissance) {
       this.error = 'Veuillez remplir tous les champs obligatoires';
       return;
     }
@@ -67,12 +70,14 @@ export class RegisterComponent {
       email: this.model.email,
       password: this.model.password,
       role: this.selectedRole,
-      profilePicture: this.avatarFile || undefined
+      sexe: this.model.sexe,
+      numtel: this.model.numtel,
+      dtnaissance: this.model.dtnaissance
     };
-
+    
     this.authService.register(registerData).subscribe({
       next: () => {
-        this.router.navigate(['/dashboard']);
+        this.router.navigate(['/default']);
       },
       error: () => {
         this.error = "Erreur lors de l'inscription. Veuillez réessayer.";

@@ -6,7 +6,7 @@ const jwt = require('jsonwebtoken');
 class AuthService {
   async register(userData) {
     try {
-       const { nom, email, password, pdppath, sexe, numtel, dtnaissance, roleName } = userData;
+       const { nom, email, password,sexe, pdppath,numtel, dtnaissance, roleName } = userData;
 
       // Vérifier si l'email existe déjà
       const existingUser = await User.findOne({ email });
