@@ -45,6 +45,7 @@ npm install
 ```
 PORT=3000
 MONGO_URI=mongodb://localhost:27017/mean_db
+MONGO_URI=mongodb+srv://mean0_db_user:RomanceCandy@mycluster.ikiliza.mongodb.net/mean
 JWT_SECRET=votre_secret_jwt
 ```
 
