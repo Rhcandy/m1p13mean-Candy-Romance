@@ -1,7 +1,7 @@
 const User = require('../models/User');
 const Role = require('../models/Role');
 const bcrypt = require('bcryptjs');
-const fileUploadService = require('./fileUploadService');
+const { deleteImage } = require('./cloudinary');
 
 class UserService {
   async createUser(userData) {
@@ -49,7 +49,8 @@ class UserService {
 
       // Si une photo de profil est fournie, la téléverser
       if (profilePictureFile) {
-        pdppath = await fileUploadService.upload('profiles', profilePictureFile);
+        const { uploadImage } = require('./cloudinary');
+        pdppath = await uploadImage(profilePictureFile, 'profiles');
       }
 
       // Créer l'utilisateur avec le chemin de la photo de profil
@@ -58,10 +59,6 @@ class UserService {
         pdppath
       });
     } catch (error) {
-      // En cas d'erreur, nettoyer le fichier téléversé
-      if (profilePictureFile) {
-        await fileUploadService.cleanupTempFile(profilePictureFile.path);
-      }
       throw error;
     }
   }
@@ -132,12 +129,13 @@ class UserService {
 
       // Si une nouvelle photo de profil est fournie
       if (profilePictureFile) {
+        const { uploadImage } = require('./cloudinary');
         // Téléverser la nouvelle photo
-        const newPdppath = await fileUploadService.upload('profiles', profilePictureFile);
+        const newPdppath = await uploadImage(profilePictureFile, 'profiles');
         
         // Supprimer l'ancienne photo si elle existe
         if (user.pdppath) {
-          await fileUploadService.delete(user.pdppath);
+          await deleteImage(user.pdppath);
         }
         
         pdppath = newPdppath;
@@ -149,10 +147,6 @@ class UserService {
         pdppath
       });
     } catch (error) {
-      // En cas d'erreur, nettoyer le fichier téléversé
-      if (profilePictureFile) {
-        await fileUploadService.cleanupTempFile(profilePictureFile.path);
-      }
       throw error;
     }
   }
@@ -166,7 +160,7 @@ class UserService {
 
       // Supprimer la photo de profil si elle existe
       if (user.pdppath) {
-        await fileUploadService.delete(user.pdppath);
+        await deleteImage(user.pdppath);
       }
 
       await User.findByIdAndDelete(id);
@@ -203,13 +197,14 @@ class UserService {
   async updateProfilePicture(userId, profilePictureFile) {
     try {
       const user = await this.getUserById(userId);
+      const { uploadImage } = require('./cloudinary');
       
       // Téléverser la nouvelle photo
-      const newPdppath = await fileUploadService.upload('profiles', profilePictureFile);
+      const newPdppath = await uploadImage(profilePictureFile, 'profiles');
       
       // Supprimer l'ancienne photo si elle existe
       if (user.pdppath) {
-        await fileUploadService.delete(user.pdppath);
+        await deleteImage(user.pdppath);
       }
       
       // Mettre à jour l'utilisateur avec la nouvelle photo
@@ -221,10 +216,6 @@ class UserService {
 
       return updatedUser;
     } catch (error) {
-      // En cas d'erreur, nettoyer le fichier téléversé
-      if (profilePictureFile) {
-        await fileUploadService.cleanupTempFile(profilePictureFile.path);
-      }
       throw error;
     }
   }
@@ -235,7 +226,7 @@ class UserService {
       
       // Supprimer la photo de profil si elle existe
       if (user.pdppath) {
-        await fileUploadService.delete(user.pdppath);
+        await deleteImage(user.pdppath);
         
         // Mettre à jour l'utilisateur pour supprimer le chemin
         const updatedUser = await User.findByIdAndUpdate(

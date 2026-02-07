@@ -1,14 +1,23 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { BehaviorSubject, Observable, tap } from 'rxjs';
-import { environment } from '../../environments/environment';
+import { BehaviorSubject, Observable, from } from 'rxjs';
+import { map, tap } from 'rxjs/operators';
+import api from './api.service';
 
 export interface User {
   id: string;
+  nom?: string;
   email: string;
-  role: 'user' | 'admin_boutique' | 'admin_centre' | 'super_admin';
-  name?: string;
+  role: 'user' | 'admin_boutique' | 'admin_center' | 'super_admin';
+  pdppath?: string;
+  numtel?: string[];
+  dtnaissance?: string;
+  sexe?: 'M' | 'F';
+  adresse?: {
+    nomEndroit?: string;
+    latitude?: number;
+    longitude?: number;
+  };
 }
 
 export interface LoginResponse {
@@ -25,7 +34,6 @@ export interface RegisterData {
   password: string;
   role: 'user' | 'admin_boutique';
   nom?: string;
-  profilePicture?: File;
   sexe?: 'M' | 'F';
   numtel?: string[];
   dtnaissance?: string;
@@ -35,7 +43,6 @@ export interface RegisterData {
   providedIn: 'root'
 })
 export class AuthService {
-  private readonly API_URL = environment.apiUrl;
   private readonly TOKEN_KEY = 'auth_token';
   private readonly USER_KEY = 'current_user';
 
@@ -46,7 +53,6 @@ export class AuthService {
   public isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
 
   constructor(
-    private http: HttpClient,
     private router: Router
   ) {
     this.checkAuthStatus();
@@ -65,38 +71,46 @@ export class AuthService {
   }
 
   login(email: string, password: string): Observable<LoginResponse> {
-    return this.http.post<LoginResponse>(`${this.API_URL}/auth/login`, { email, password })
-      .pipe(
-        tap(response => {
-          console.log(response);
+    return from(
+      api.post<LoginResponse>('/auth/login', { email, password })
+    ).pipe(
+      map(response => response.data),
+      tap(response => {
+        if (response.success && response.data) {
           this.setToken(response.data.token);
           this.setUser(response.data.user);
           this.currentUserSubject.next(response.data.user);
           this.isAuthenticatedSubject.next(true);
-        })
-      );
+        }
+      })
+    );
   }
 
   register(data: RegisterData): Observable<LoginResponse> {
     const registerPayload = {
+      nom: data.nom,
       email: data.email,
       password: data.password,
       roleName: data.role,
-      nom: data.nom || undefined,
-      sexe: data.sexe || undefined,
-      numtel: data.numtel || undefined,
-      dtnaissance: data.dtnaissance || undefined
+      sexe: data.sexe,
+      numtel: data.numtel,
+      dtnaissance: data.dtnaissance
     };
+
     
-    return this.http.post<LoginResponse>(`${this.API_URL}/auth/register`, registerPayload)
-      .pipe(
-        tap(response => {
+    return from(
+      api.post<LoginResponse>('/auth/register', registerPayload)
+    ).pipe(
+      map(response => response.data),
+      tap(response => {
+        if (response.success && response.data) {
           this.setToken(response.data.token);
           this.setUser(response.data.user);
           this.currentUserSubject.next(response.data.user);
           this.isAuthenticatedSubject.next(true);
-        })
-      );
+        }
+      })
+    );
   }
 
   logout(): void {

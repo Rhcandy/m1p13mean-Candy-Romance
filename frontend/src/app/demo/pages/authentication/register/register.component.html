@@ -3,7 +3,7 @@
     <div class="auth-form">
       <div class="card mt-5">
         <div class="card-body">
-          <form (ngSubmit)="onSubmit($event)" novalidate>
+          <form [formGroup]="registerForm" (ngSubmit)="onSubmit($event)" novalidate>
 
             <!-- Logo -->
             <a href="javascript:" class="d-flex justify-content-center mt-3">
@@ -64,12 +64,12 @@
                 class="form-control"
                 id="nom"
                 name="nom"
-                [(ngModel)]="model.nom"
-                [class.is-invalid]="submitted && !model.nom"
+                formControlName="nom"
+                [class.is-invalid]="submitted && registerForm.get('nom')?.invalid"
                 placeholder="Nom complet"
               />
               <label for="nom">Nom complet</label>
-              <div class="invalid-feedback">
+              <div *ngIf="submitted && registerForm.get('nom')?.invalid" class="invalid-feedback">
                 Nom requis
               </div>
             </div>
@@ -80,14 +80,14 @@
                 class="form-control"
                 id="sexe"
                 name="sexe"
-                [(ngModel)]="model.sexe"
-                [class.is-invalid]="submitted && !model.sexe"
+                formControlName="sexe"
+                [class.is-invalid]="submitted && registerForm.get('sexe')?.invalid"
               >
                 <option value="M">Masculin</option>
                 <option value="F">Féminin</option>
               </select>
               <label for="sexe">Sexe</label>
-              <div class="invalid-feedback">
+              <div *ngIf="submitted && registerForm.get('sexe')?.invalid" class="invalid-feedback">
                 Sexe requis
               </div>
             </div>
@@ -95,32 +95,44 @@
             <!-- NUMTEL -->
             <div class="mb-3">
               <label class="form-label fw-bold">Numéros de téléphone</label>
-              <div class="form-floating mb-2">
-                <input
-                  type="tel"
-                  class="form-control"
-                  id="numtel1"
-                  name="numtel1"
-                  [(ngModel)]="model.numtel[0]"
-                  [class.is-invalid]="submitted && !model.numtel[0]"
-                  placeholder="Numéro de téléphone 1"
-                />
-                <label for="numtel1">Numéro de téléphone 1</label>
-                <div class="invalid-feedback">
-                  Numéro de téléphone requis
+              <div formArrayName="numtel">
+                <div *ngFor="let phone of numtelArray.controls; let i = index" class="d-flex align-items-center mb-2">
+                  <div class="form-floating flex-grow-1">
+                    <input
+                      type="tel"
+                      class="form-control"
+                      [id]="'numtel' + i"
+                      [name]="'numtel' + i"
+                      [formControlName]="i"
+                      [class.is-invalid]="submitted && i === 0 && numtelArray.at(i)?.invalid"
+                      placeholder="Numéro de téléphone {{ i + 1 }}"
+                    />
+                    <label [for]="'numtel' + i">Numéro de téléphone {{ i + 1 }} {{ i === 0 ? '(obligatoire)' : '(optionnel)' }}</label>
+                    <div *ngIf="submitted && i === 0 && numtelArray.at(i)?.invalid" class="invalid-feedback">
+                      Au moins un numéro de téléphone est requis
+                    </div>
+                  </div>
+                  
+                  <button 
+                    *ngIf="numtelArray.length > 1"
+                    type="button" 
+                    class="btn btn-outline-danger ms-2"
+                    (click)="removePhoneNumber(i)"
+                    title="Supprimer ce numéro"
+                  >
+                    <i class="bi bi-trash"></i>
+                  </button>
                 </div>
               </div>
-              <div class="form-floating mb-2">
-                <input
-                  type="tel"
-                  class="form-control"
-                  id="numtel2"
-                  name="numtel2"
-                  [(ngModel)]="model.numtel[1]"
-                  placeholder="Numéro de téléphone 2 (optionnel)"
-                />
-                <label for="numtel2">Numéro de téléphone 2 (optionnel)</label>
-              </div>
+              
+              <button 
+                type="button" 
+                class="btn btn-outline-primary btn-sm"
+                (click)="addPhoneNumber()"
+              >
+                <i class="bi bi-plus-circle me-1"></i>
+                Ajouter un numéro de téléphone
+              </button>
             </div>
 
             <!-- DTNAISSANCE -->
@@ -130,12 +142,12 @@
                 class="form-control"
                 id="dtnaissance"
                 name="dtnaissance"
-                [(ngModel)]="model.dtnaissance"
-                [class.is-invalid]="submitted && !model.dtnaissance"
+                formControlName="dtnaissance"
+                [class.is-invalid]="submitted && registerForm.get('dtnaissance')?.invalid"
                 placeholder="Date de naissance"
               />
               <label for="dtnaissance">Date de naissance</label>
-              <div class="invalid-feedback">
+              <div *ngIf="submitted && registerForm.get('dtnaissance')?.invalid" class="invalid-feedback">
                 Date de naissance requise
               </div>
             </div>
@@ -147,12 +159,12 @@
                 class="form-control"
                 id="email"
                 name="email"
-                [(ngModel)]="model.email"
-                [class.is-invalid]="submitted && !model.email"
+                formControlName="email"
+                [class.is-invalid]="submitted && registerForm.get('email')?.invalid"
                 placeholder="Email"
               />
               <label for="email">Email</label>
-              <div class="invalid-feedback">
+              <div *ngIf="submitted && registerForm.get('email')?.invalid" class="invalid-feedback">
                 Email requis
               </div>
             </div>
@@ -164,12 +176,12 @@
                 class="form-control"
                 id="password"
                 name="password"
-                [(ngModel)]="model.password"
-                [class.is-invalid]="submitted && !model.password"
+                formControlName="password"
+                [class.is-invalid]="submitted && registerForm.get('password')?.invalid"
                 placeholder="Mot de passe"
               />
               <label for="password">Mot de passe</label>
-              <div class="invalid-feedback">
+              <div *ngIf="submitted && registerForm.get('password')?.invalid" class="invalid-feedback">
                 Mot de passe requis
               </div>
             </div>
@@ -181,12 +193,12 @@
                 class="form-control"
                 id="confirmPassword"
                 name="confirmPassword"
-                [(ngModel)]="model.confirmPassword"
-                [class.is-invalid]="submitted && model.password !== model.confirmPassword"
+                formControlName="confirmPassword"
+                [class.is-invalid]="submitted && registerForm.get('confirmPassword')?.invalid || (registerForm.value.password !== registerForm.value.confirmPassword && submitted)"
                 placeholder="Confirmer mot de passe"
               />
               <label for="confirmPassword">Confirmer le mot de passe</label>
-              <div class="invalid-feedback">
+              <div *ngIf="submitted && (registerForm.get('confirmPassword')?.invalid || (registerForm.value.password !== registerForm.value.confirmPassword))" class="invalid-feedback">
                 Les mots de passe ne correspondent pas
               </div>
             </div>

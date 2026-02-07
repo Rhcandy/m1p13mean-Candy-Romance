@@ -28,6 +28,7 @@
     "@popperjs/core": "2.11.8",
     "@standard-schema/spec": "^1.0.0",
     "apexcharts": "5.3.6",
+    "axios": "^1.13.4",
     "bootstrap": "5.3.8",
     "ng-apexcharts": "2.0.4",
     "ngx-scrollbar": "18.0.0",

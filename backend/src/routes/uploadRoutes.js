@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const fileUploadService = require('../services/fileUploadService');
+const { uploadImage } = require('../services/cloudinary');
 const authMiddleware = require('../middlewares/authMiddleware');
 const { uploadProfilePicture, uploadMultipleImages, handleUploadError } = require('../middlewares/uploadMiddleware');
 
@@ -17,13 +17,13 @@ router.post('/profile',
         });
       }
 
-      const filePath = await fileUploadService.upload('profiles', req.file);
+      const imageUrl = await uploadImage(req.file, 'profiles');
 
       res.status(200).json({
         success: true,
         message: 'Photo de profil téléversée avec succès',
         data: {
-          filePath: filePath,
+          imageUrl: imageUrl,
           fileName: req.file.originalname,
           size: req.file.size,
           mimetype: req.file.mimetype
@@ -52,13 +52,13 @@ router.post('/multiple',
       }
 
       const uploadPromises = req.files.map(file => 
-        fileUploadService.upload('general', file)
+        uploadImage(file, 'general')
       );
 
-      const filePaths = await Promise.all(uploadPromises);
+      const imageUrls = await Promise.all(uploadPromises);
 
       const filesData = req.files.map((file, index) => ({
-        filePath: filePaths[index],
+        imageUrl: imageUrls[index],
         fileName: file.originalname,
         size: file.size,
         mimetype: file.mimetype
@@ -84,7 +84,7 @@ router.post('/multiple',
 router.get('/files/:filePath', async (req, res) => {
   try {
     const filePath = req.params.filePath; // Récupérer le chemin du fichier
-    await fileUploadService.show(filePath, res);
+    // await fileUploadService.show(filePath, res);
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -97,20 +97,20 @@ router.delete('/delete',
   authMiddleware, 
   async (req, res) => {
     try {
-      const { filePath } = req.body;
+      const { imageUrl } = req.body;
 
-      if (!filePath) {
+      if (!imageUrl) {
         return res.status(400).json({
           success: false,
-          message: 'Chemin du fichier requis'
+          message: 'URL de l\'image requise'
         });
       }
 
-      await fileUploadService.delete(filePath);
+      await deleteImage(imageUrl);
 
       res.status(200).json({
         success: true,
-        message: 'Fichier supprimé avec succès',
+        message: 'Image supprimée avec succès',
         data: null
       });
     } catch (error) {
