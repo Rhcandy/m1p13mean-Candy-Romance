@@ -32,7 +32,7 @@
                 <a class="list-group-item list-group-item-action">
                   <div class="d-flex">
                     <div class="flex-shrink-0">
-                      <img src="assets/images/user/avatar-2.jpg" alt="user-image" class="user-avtar" />
+                      <img src="assets/images/user/user.webp" alt="user-image" class="user-avtar" />
                     </div>
                     <div class="flex-grow-1 ms-1">
                       <span class="float-end text-muted">2 min ago</span>
@@ -75,7 +75,7 @@
                 <a class="list-group-item list-group-item-action">
                   <div class="d-flex">
                     <div class="flex-shrink-0">
-                      <img src="assets/images/user/avatar-1.jpg" alt="user-image" class="user-avtar" />
+                      <img src="assets/images/user/user.webp" alt="user-image" class="user-avtar" />
                     </div>
                     <div class="flex-grow-1 ms-1">
                       <span class="float-end text-muted">8 min ago</span>
@@ -94,7 +94,7 @@
                 <a class="list-group-item list-group-item-action">
                   <div class="d-flex">
                     <div class="flex-shrink-0">
-                      <img src="assets/images/user/avatar-3.jpg" alt="user-image" class="user-avtar" />
+                      <img src="assets/images/user/user.webp" alt="user-image" class="user-avtar" />
                     </div>
                     <div class="flex-grow-1 ms-1">
                       <span class="float-end text-muted">10 min ago</span>
@@ -122,7 +122,7 @@
           href="javascript:"
           ngbDropdownToggle
         >
-          <img src="assets/images/user/avatar-2.jpg" alt="user-image" class="user-avtar" />
+          <img [src]="userImage" [alt]="userName" class="user-avtar" />
           <span>
             <i class="ti ti-settings"></i>
           </span>
@@ -130,10 +130,10 @@
         <div class="dropdown-menu dropdown-user-profile dropdown-menu-end pc-h-dropdown" ngbDropdownMenu>
           <div class="dropdown-header">
             <h4>
-              Good Morning,
-              <span class="small text-muted">John Doe</span>
+              {{ greeting }},
+              <span class="small text-muted">{{ userName }}</span>
             </h4>
-            <p class="text-muted">Project Admin</p>
+            <p class="text-muted">{{ userRole }}</p>
             <hr />
             <ng-scrollbar style="height: calc(50vh - 140px)" visibility="hover">
               <a (click)="logout()" class="dropdown-item">

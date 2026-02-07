@@ -34,6 +34,21 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  adresse: {
+    nomEndroit: {
+      type: String,
+      trim: true,
+      default: null
+    },
+    longitude: {
+      type: Number,
+      default: null
+    },
+    latitude: {
+      type: Number,
+      default: null
+    }
+  },
   role: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Role',

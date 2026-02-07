@@ -2,11 +2,12 @@ const User = require('../models/User');
 const Role = require('../models/Role');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { uploadImage } = require('./cloudinary');
 
 class AuthService {
   async register(userData) {
     try {
-       const { nom, email, password,sexe, pdppath,numtel, dtnaissance, roleName } = userData;
+       const { nom, email, password,sexe,numtel, dtnaissance, roleName } = userData;
 
       // Vérifier si l'email existe déjà
       const existingUser = await User.findOne({ email });
@@ -29,7 +30,7 @@ class AuthService {
         nom,
         email,
         password: hashedPassword,
-        pdppath: pdppath || null,
+        pdppath: null,
         sexe,
         numtel,
         dtnaissance,
@@ -81,6 +82,7 @@ class AuthService {
           id: user._id,
           nom: user.nom,
           email: user.email,
+          pdppath: user.pdppath,
           role: user.role.nom
         },
         token
