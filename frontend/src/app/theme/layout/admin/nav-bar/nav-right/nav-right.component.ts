@@ -14,7 +14,7 @@ import { SharedModule } from 'src/app/theme/shared/shared.module';
 })
 export class NavRightComponent implements OnInit {
   currentUser: any = null;
-  userImage: string = 'assets/images/user/user.webp';
+  userImage: string = 'assets/images/user/user.png';
   greeting: string = 'Hey';
   userName: string = 'John Doe';
   userRole: string = 'Project Admin';
@@ -26,7 +26,7 @@ export class NavRightComponent implements OnInit {
       if (user) {
         this.currentUser = user;
         this.userName = user.nom || 'John Doe';
-        this.userImage = user.pdppath ? `${user.pdppath}` : 'assets/images/user/user.webp';
+        this.userImage = user.pdppath ? `${user.pdppath}` : 'assets/images/user/user.png';
         
         // Définir le rôle en fonction du roleName
         switch(user.role) {
@@ -58,7 +58,7 @@ export class NavRightComponent implements OnInit {
       } else {
         this.currentUser = null;
         this.userName = 'John Doe';
-        this.userImage = 'assets/images/user/user.webp';
+        this.userImage = 'assets/images/user/user.png';
         this.userRole = 'Project Admin';
         this.greeting = 'Hey';
       }

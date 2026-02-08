@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject,ChangeDetectorRef } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -12,8 +12,9 @@ import { AuthService } from '../../../../services/auth.service';
   styleUrls: ['./login.component.scss']
 })
 export class LoginComponent {
-  private authService = inject(AuthService);
-  private router = inject(Router);
+  private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+   private readonly cdr = inject(ChangeDetectorRef);
 
   submitted = false;
   loading = false;
@@ -44,6 +45,9 @@ export class LoginComponent {
       error: () => {
         this.error = 'Email ou mot de passe incorrect';
         this.loading = false;
+        Promise.resolve().then(() => {
+          this.cdr.detectChanges();
+        });
       },
       complete: () => {
         this.loading = false;

@@ -142,6 +142,29 @@ export class AuthService {
     return this.currentUserSubject.value;
   }
 
+  /** Met à jour l'utilisateur stocké (après édition du profil). */
+  updateStoredUser(backendUser: Partial<Omit<User, 'role'>> & { _id?: string; role?: { nom: string } | string }): void {
+    const current = this.getUser();
+    if (!current) return;
+    const roleName = typeof backendUser.role === 'string'
+      ? backendUser.role
+      : (backendUser.role as { nom: string })?.nom;
+    const updated: User = {
+      ...current,
+      id: backendUser.id ?? backendUser._id ?? current.id,
+      nom: backendUser.nom ?? current.nom,
+      email: backendUser.email ?? current.email,
+      pdppath: backendUser.pdppath !== undefined ? backendUser.pdppath : current.pdppath,
+      numtel: backendUser.numtel ?? current.numtel,
+      dtnaissance: backendUser.dtnaissance ?? current.dtnaissance,
+      sexe: backendUser.sexe ?? current.sexe,
+      adresse: backendUser.adresse ?? current.adresse,
+      role: (roleName as User['role']) ?? current.role
+    };
+    this.setUser(updated);
+    this.currentUserSubject.next(updated);
+  }
+
   get isAuthenticated(): boolean {
     return this.isAuthenticatedSubject.value;
   }

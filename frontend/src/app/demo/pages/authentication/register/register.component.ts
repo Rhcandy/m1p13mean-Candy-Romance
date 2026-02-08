@@ -1,10 +1,9 @@
-import { Component, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
-import { FormsModule } from '@angular/forms';
 import { AuthService, RegisterData } from '../../../../services/auth.service';
 import { NotificationService } from '../../../../services/notification.service';
-import { FormArray, FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { FormArray, FormBuilder, FormGroup, Validators, ReactiveFormsModule,FormsModule,} from '@angular/forms';
 
 @Component({
   selector: 'app-register',
@@ -14,10 +13,11 @@ import { FormArray, FormBuilder, FormGroup, Validators, ReactiveFormsModule } fr
   styleUrls: ['./register.component.scss']
 })
 export class RegisterComponent {
-  private authService = inject(AuthService);
-  private router = inject(Router);
-  private notificationService = inject(NotificationService);
-  private fb = inject(FormBuilder);
+  private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+  private readonly notificationService = inject(NotificationService);
+  private readonly fb = inject(FormBuilder);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   submitted = false;
   loading = false;
@@ -118,15 +118,20 @@ export class RegisterComponent {
           this.notificationService.error('Erreur', response.message || "Erreur lors de l'inscription.");
           this.error = response.message || "Erreur lors de l'inscription.";
         }
+        Promise.resolve().then(() => {
+          this.cdr.detectChanges();
+        });
       },
       error: (err: any) => {
         const errorMessage = err.response?.data?.message || err.message || "Erreur lors de l'inscription. Veuillez réessayer.";
         this.notificationService.error('Erreur d\'inscription', errorMessage);
         this.error = errorMessage;
         this.loading = false;
+        this.cdr.detectChanges();
       },
       complete: () => {
         this.loading = false;
+        this.cdr.detectChanges();
       }
     });
   }
