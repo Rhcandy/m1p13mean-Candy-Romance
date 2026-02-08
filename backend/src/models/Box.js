@@ -19,7 +19,8 @@ const boxSchema = new mongoose.Schema({
   numRef: {
     type: String,
     required: true,
-    trim: true
+    trim: true,
+    unique: true
   },
   centreId: {
     type: mongoose.Schema.Types.ObjectId,

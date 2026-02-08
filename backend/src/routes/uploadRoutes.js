@@ -81,17 +81,7 @@ router.post('/multiple',
   }
 );
 
-router.get('/files/:filePath', async (req, res) => {
-  try {
-    const filePath = req.params.filePath; // Récupérer le chemin du fichier
-    // await fileUploadService.show(filePath, res);
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Erreur lors de la récupération du fichier'
-    });
-  }
-});
+
 
 router.delete('/delete', 
   authMiddleware, 

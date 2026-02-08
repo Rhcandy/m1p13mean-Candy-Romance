@@ -51,7 +51,7 @@ const swaggerOptions = {
       }
     ]
   },
-  apis: ['./src/routes/*.js', './src/models/*.js', './src/dto/*.js'],
+  apis: ['./src/routes/*.js', './src/controllers/*.js', './src/models/*.js', './src/dto/*.js'],
 };
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
@@ -63,11 +63,17 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
+const typeBoxRoutes = require('./routes/typeBoxRoutes');
+const boxRoutes = require('./routes/boxRoutes');
+const boutiqueRoutes = require('./routes/boutiqueRoutes');
 
 // Routes API
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/typebox', typeBoxRoutes);
+app.use('/api/boxes', boxRoutes);
+app.use('/api/boutiques', boutiqueRoutes);
 
 // Servir les fichiers uploadés statiquement
 app.use('/uploads', express.static('uploads'));

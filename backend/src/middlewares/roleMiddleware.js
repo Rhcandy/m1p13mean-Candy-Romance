@@ -19,7 +19,7 @@ const roleMiddleware = (allowedRoles) => {
 };
 
 // Middleware pour vérifier si l'utilisateur est admin
-const adminOnly = roleMiddleware(['super_admin']);
+const adminOnly = roleMiddleware(['super_admin','admin_centre']);
 
 // Middleware pour vérifier si l'utilisateur est admin ou manager
 const adminOrManager = roleMiddleware(['super_admin', 'admin_boutique', 'admin_centre']);
