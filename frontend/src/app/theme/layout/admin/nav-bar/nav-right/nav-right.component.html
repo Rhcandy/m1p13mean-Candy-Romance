@@ -32,7 +32,7 @@
                 <a class="list-group-item list-group-item-action">
                   <div class="d-flex">
                     <div class="flex-shrink-0">
-                      <img src="assets/images/user/user.webp" alt="user-image" class="user-avtar" />
+                      <img src="assets/images/user/user.png" alt="user-image" class="user-avtar" />
                     </div>
                     <div class="flex-grow-1 ms-1">
                       <span class="float-end text-muted">2 min ago</span>
@@ -75,7 +75,7 @@
                 <a class="list-group-item list-group-item-action">
                   <div class="d-flex">
                     <div class="flex-shrink-0">
-                      <img src="assets/images/user/user.webp" alt="user-image" class="user-avtar" />
+                      <img src="assets/images/user/user.png" alt="user-image" class="user-avtar" />
                     </div>
                     <div class="flex-grow-1 ms-1">
                       <span class="float-end text-muted">8 min ago</span>
@@ -94,7 +94,7 @@
                 <a class="list-group-item list-group-item-action">
                   <div class="d-flex">
                     <div class="flex-shrink-0">
-                      <img src="assets/images/user/user.webp" alt="user-image" class="user-avtar" />
+                      <img src="assets/images/user/user.png" alt="user-image" class="user-avtar" />
                     </div>
                     <div class="flex-grow-1 ms-1">
                       <span class="float-end text-muted">10 min ago</span>
@@ -136,6 +136,10 @@
             <p class="text-muted">{{ userRole }}</p>
             <hr />
             <ng-scrollbar style="height: calc(50vh - 140px)" visibility="hover">
+              <a routerLink="/profile" class="dropdown-item">
+                <i class="ti ti-user"></i>
+                <span>My Profile</span>
+              </a>
               <a (click)="logout()" class="dropdown-item">
                 <i class="ti ti-logout"></i>
                 <span>Logout</span>

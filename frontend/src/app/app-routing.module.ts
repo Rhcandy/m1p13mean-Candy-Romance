@@ -19,6 +19,10 @@ const routes: Routes = [
         path: 'default',
         loadComponent: () => import('./demo/dashboard/default/default.component').then((c) => c.DefaultComponent)
       },
+      {
+        path: 'profile',
+        loadComponent: () => import('./demo/pages/profile/profile.component').then((c) => c.ProfileComponent)
+      }
     ]
   },
   {

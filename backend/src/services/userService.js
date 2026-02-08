@@ -85,7 +85,7 @@ class UserService {
 
   async updateUser(id, userData) {
     try {
-      const { nom, email, pdppath, sexe, numtel, dtnaissance, roleName } = userData;
+      const { nom, email, pdppath, sexe, numtel, dtnaissance, adresse, roleName } = userData;
 
       // Vérifier si l'utilisateur existe
       const user = await User.findById(id);
