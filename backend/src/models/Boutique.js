@@ -55,11 +55,6 @@ const boutiqueSchema = new mongoose.Schema({
     type: String,
     default: null
   },
-  typepayement: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'TypePayement',
-    required: true
-  },
   promotions: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Promotion'
