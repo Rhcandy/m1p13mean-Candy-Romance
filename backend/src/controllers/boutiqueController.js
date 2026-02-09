@@ -126,26 +126,33 @@ const boutiqueService = require('../services/boutiqueService');
  *             properties:
  *               nom:
  *                 type: string
+ *                 description: Nom de la boutique
  *                 example: "Ma Boutique"
+ *               locataire:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Liste des IDs des locataires (optionnel)
+ *                 example: ["60f1b2b3c4d5e6f7g8h9i0j3"]
  *               contratlocation:
  *                 type: object
- *                 required:
- *                   - boxes
- *                   - dateDebutLocation
- *                   - dateFinLocation
+ *                 description: Données du contrat de location
  *                 properties:
  *                   boxes:
  *                     type: array
  *                     items:
  *                       type: string
+ *                     description: Liste des IDs des boxes
  *                     example: ["60f1b2b3c4d5e6f7g8h9i0j1"]
  *                   dateDebutLocation:
  *                     type: string
  *                     format: date-time
+ *                     description: Date de début de location
  *                     example: "2024-01-01T00:00:00.000Z"
  *                   dateFinLocation:
  *                     type: string
  *                     format: date-time
+ *                     description: Date de fin de location
  *                     example: "2024-12-31T23:59:59.000Z"
  *                   jLocation:
  *                     type: object
@@ -358,10 +365,10 @@ exports.getAllBoutiques = advancedResults(Boutique);
 // @access  Privé
 exports.getBoutiquesResults = async (req, res) => {
   try {
-    // Populer les résultats
+    // Populer les résultats avec les bons chemins
     const populatedResults = await Boutique.populate(res.advancedResults.items, [
-      { path: 'boxes', select: 'Superficie etage numRef isDisponible' },
-      { path: 'proprietaire', select: 'nom email' }
+      { path: 'contratlocation.boxes', select: 'Superficie etage numRef isDisponible' },
+      { path: 'locataire', select: 'nom email' }
     ]);
 
     res.status(200).json({
@@ -414,8 +421,8 @@ exports.getBoutiquesResults = async (req, res) => {
 exports.getAllBoutiquesSimple = async (req, res) => {
   try {
     const boutiques = await Boutique.find()
-      .populate('boxes', 'Superficie etage numRef isDisponible')
-      .populate('proprietaire', 'nom email')
+      .populate('contratlocation.boxes', 'Superficie etage numRef isDisponible')
+      .populate('locataire', 'nom email')
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -424,7 +431,7 @@ exports.getAllBoutiquesSimple = async (req, res) => {
       data: boutiques
     });
   } catch (error) {
-    console.error('Erreur récupération boutiques:', error);
+    console.error('Erreur récupération boutiques simples:', error);
     res.status(500).json({
       success: false,
       message: 'Erreur serveur',
@@ -474,8 +481,8 @@ exports.getAllBoutiquesSimple = async (req, res) => {
 exports.getBoutiqueById = async (req, res) => {
   try {
     const boutique = await Boutique.findById(req.params.id)
-      .populate('boxes', 'Superficie etage numRef isDisponible typeBoxId')
-      .populate('proprietaire', 'nom email');
+      .populate('contratlocation.boxes', 'Superficie etage numRef isDisponible typeBoxId')
+      .populate('locataire', 'nom email');
 
     if (!boutique) {
       return res.status(404).json({
@@ -582,6 +589,198 @@ exports.getBoutiqueById = async (req, res) => {
  *                   example: "Boutique mise à jour avec succès"
  *                 data:
  *                   $ref: '#/components/schemas/Boutique'
+ *       400:
+ *         description: Données invalides ou boxes non disponibles
+ *       401:
+ *         description: Non authentifié
+ *       403:
+ *         description: Non autorisé
+ *       404:
+ *         description: Boutique non trouvée
+ *       500:
+ *         description: Erreur serveur
+ */
+/**
+ * @swagger
+ * /api/boutiques/{id}/logo:
+ *   post:
+ *     summary: Upload le logo d'une boutique
+ *     tags: [Boutique]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID de la boutique
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - profilePicture
+ *             properties:
+ *               profilePicture:
+ *                 type: string
+ *                 format: binary
+ *                 description: Logo de la boutique (JPEG, PNG, GIF, WebP)
+ *     responses:
+ *       200:
+ *         description: Logo uploadé avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Logo uploadé avec succès"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     boutique:
+ *                       $ref: '#/components/schemas/Boutique'
+ *                     logo:
+ *                       type: string
+ *                       example: "https://res.cloudinary.com/..."
+ *                     public_id:
+ *                       type: string
+ *                       example: "boutiques/logos/abc123"
+ *       400:
+ *         description: Fichier manquant ou invalide
+ *       401:
+ *         description: Non authentifié
+ *       403:
+ *         description: Non autorisé
+ *       404:
+ *         description: Boutique non trouvée
+ *       500:
+ *         description: Erreur serveur
+ */
+exports.uploadLogo = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'Veuillez fournir un fichier logo'
+      });
+    }
+
+    const Boutique = require('../models/Boutique');
+    const boutique = await Boutique.findById(req.params.id);
+    
+    if (!boutique) {
+      return res.status(404).json({
+        success: false,
+        message: 'Boutique non trouvée'
+      });
+    }
+
+    const { uploadImage, deleteImage } = require('../services/cloudinary');
+
+    // Supprimer l'ancien logo si existe
+    if (boutique.logo) {
+      try {
+        // Extraire le public_id de l'ancien logo
+        const oldPublicId = boutique.logo.split('/').pop().split('.')[0];
+        await deleteImage(oldPublicId);
+      } catch (deleteError) {
+        console.warn('Erreur suppression ancien logo:', deleteError.message);
+        // Continuer même si la suppression échoue
+      }
+    }
+
+    // Téléverser le nouveau logo sur Cloudinary
+    const logoUrl = await uploadImage(req.file, 'boutiques/logos');
+    
+    // Mettre à jour le logo dans la boutique
+    boutique.logo = logoUrl;
+    await boutique.save();
+
+    // Retourner la boutique avec populate
+    const updatedBoutique = await Boutique.findById(boutique._id)
+      .populate('locataire', 'nom email')
+      .populate('contratlocation.boxes', 'Superficie etage numRef isDisponible');
+
+    res.status(200).json({
+      success: true,
+      message: 'Logo uploadé avec succès',
+      data: {
+        boutique: updatedBoutique,
+        logo: boutique.logo,
+       
+      }
+    });
+  } catch (error) {
+    console.error('Erreur upload logo boutique:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * @swagger
+ * /api/boutiques/{id}:
+ *   put:
+ *     summary: Mettre à jour une boutique
+ *     tags: [Boutique]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID de la boutique
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               nom:
+ *                 type: string
+ *                 description: Nom de la boutique
+ *                 example: "Boutique Updated"
+ *               locataire:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Liste des IDs des locataires (optionnel)
+ *                 example: ["60f1b2b3c4d5e6f7g8h9i0j3"]
+ *               contratlocation:
+ *                 type: object
+ *                 description: Données du contrat de location
+ *                 properties:
+ *                   boxes:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                     description: Liste des IDs des boxes
+ *                   dateDebutLocation:
+ *                     type: string
+ *                     format: date-time
+ *                   dateFinLocation:
+ *                     type: string
+ *                     format: date-time
+ *                   jLocation:
+ *                     type: object
+ *                     description: Jours d'ouverture
+ *     responses:
+ *       200:
+ *         description: Boutique mise à jour avec succès
  *       400:
  *         description: Données invalides ou boxes non disponibles
  *       401:

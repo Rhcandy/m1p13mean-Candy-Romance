@@ -115,19 +115,18 @@ const checkBoxesAvailability = async (boxIds) => {
  */
 const validateRentalDuration = async (boxes, dateDebut, dateFin) => {
   const dureeJours = Math.ceil((dateFin - dateDebut) / (1000 * 60 * 60 * 24));
-
+  
   for (const box of boxes) {
     const typeBox = await TypeBox.findById(box.typeBoxId);
-    if (typeBox && dureeJours < typeBox.periode * 30) { // période en mois
+    if (typeBox && dureeJours < typeBox.periode) { // période en jours (pas en mois)
       return {
         isValid: false,
-        error: `La durée de location pour la box ${box.numRef} doit être d'au moins ${typeBox.periode} mois`,
+        error: `La durée de location pour la box ${box.numRef} doit être d'au moins ${typeBox.periode} jours`,
         statusCode: 400,
         data: {
           boxRef: box.numRef,
-          requiredDays: typeBox.periode * 30,
-          providedDays: dureeJours,
-          requiredMonths: typeBox.periode
+          requiredDays: typeBox.periode,
+          providedDays: dureeJours
         }
       };
     }
@@ -152,17 +151,27 @@ const updateBoxesStatus = async (boxIds, isDisponible) => {
 /**
  * Créer une nouvelle boutique
  * @param {Object} boutiqueData - Données de la boutique
- * @param {String} userId - ID de l'utilisateur propriétaire
+ * @param {String} userId - ID de l'utilisateur propriétaire (optionnel)
  * @returns {Object} - Boutique créée avec populate
  */
 const createBoutique = async (boutiqueData, userId) => {
-  const { contratlocation, nom, logoPath } = boutiqueData;
+  const { contratlocation, nom, logo, locataire } = boutiqueData;
+
+  // Validation finale des dates avant création
+  if (contratlocation && contratlocation.dateDebutLocation && contratlocation.dateFinLocation) {
+    const debut = new Date(contratlocation.dateDebutLocation);
+    const fin = new Date(contratlocation.dateFinLocation);
+    
+    if (fin <= debut) {
+      throw new Error('La date de fin de location doit être postérieure à la date de début');
+    }
+  }
 
   // Créer la boutique avec la structure correcte
   const boutique = await Boutique.create({
     nom,
-    logoPath: logoPath || null,
-    locataire: [userId], // Ajouter le propriétaire comme locataire
+    logo: logo || null,
+    locataire: locataire || [], // Locataire manuel, vide si non spécifié
     contratlocation: {
       boxes: contratlocation.boxes,
       dateDebutLocation: contratlocation.dateDebutLocation,
@@ -186,18 +195,97 @@ const createBoutique = async (boutiqueData, userId) => {
 };
 
 /**
+ * Upload et mettre à jour le logo d'une boutique
+ * @param {String} boutiqueId - ID de la boutique
+ * @param {Object} file - Fichier uploadé
+ * @returns {Object} - Boutique mise à jour avec le nouveau logo
+ */
+const uploadLogo = async (boutiqueId, file) => {
+  const { uploadImage, deleteImage } = require('../services/cloudinary');
+  
+  const boutique = await Boutique.findById(boutiqueId);
+  
+  if (!boutique) {
+    throw new Error('Boutique non trouvée');
+  }
+
+  // Supprimer l'ancien logo si existe
+  if (boutique.logo) {
+    try {
+      // Extraire le public_id de l'ancien logo
+      const oldPublicId = boutique.logo.split('/').pop().split('.')[0];
+      await deleteImage(oldPublicId);
+    } catch (deleteError) {
+      console.warn('Erreur suppression ancien logo:', deleteError.message);
+      // Continuer même si la suppression échoue
+    }
+  }
+
+  // Téléverser le nouveau logo sur Cloudinary
+  const logoUrl = await uploadImage(file, 'boutiques/logos');
+  
+  // Mettre à jour le logo dans la boutique
+  boutique.logo = logoUrl;
+  await boutique.save();
+
+  return {
+    boutique: await Boutique.findById(boutique._id)
+      .populate('locataire', 'nom email')
+      .populate('contratlocation.boxes', 'Superficie etage numRef isDisponible'),
+    logo: boutique.logo,
+    public_id: logoUrl.split('/').pop().split('.')[0],
+    url: logoUrl
+  };
+};
+
+/**
  * Mettre à jour une boutique
  * @param {String} boutiqueId - ID de la boutique
  * @param {Object} updateData - Données de mise à jour
  * @returns {Object} - Boutique mise à jour avec populate
  */
 const updateBoutique = async (boutiqueId, updateData) => {
+  // Construire l'objet de mise à jour avec seulement les champs valides du modèle
+  const updateObject = {};
+
+  // Champs valides au niveau racine : nom, locataire
+  if (updateData.nom !== undefined) {
+    updateObject.nom = updateData.nom;
+  }
+
+  if (updateData.locataire !== undefined) {
+    updateObject.locataire = Array.isArray(updateData.locataire) ? updateData.locataire : [updateData.locataire];
+  }
+
+  // Gérer la mise à jour imbriquée (contratlocation)
+  if (updateData.contratlocation) {
+    updateObject.contratlocation = {};
+    
+    // Mettre à jour les champs de contratlocation individuellement
+    if (updateData.contratlocation.boxes !== undefined) {
+      updateObject.contratlocation.boxes = updateData.contratlocation.boxes;
+    }
+    if (updateData.contratlocation.dateDebutLocation !== undefined) {
+      updateObject.contratlocation.dateDebutLocation = updateData.contratlocation.dateDebutLocation;
+    }
+    if (updateData.contratlocation.dateFinLocation !== undefined) {
+      updateObject.contratlocation.dateFinLocation = updateData.contratlocation.dateFinLocation;
+    }
+    if (updateData.contratlocation.jLocation !== undefined) {
+      updateObject.contratlocation.jLocation = updateData.contratlocation.jLocation;
+    }
+  }
+
+  // Ignorer les champs invalides au niveau racine : boxes, dateDebutLocation, dateFinLocation, statut, jLocation
+  // Ces champs doivent être dans contratlocation
+
   return await Boutique.findByIdAndUpdate(
     boutiqueId,
-    updateData,
+    updateObject,
     { new: true, runValidators: true }
-  ).populate('boxes', 'Superficie etage numRef isDisponible')
-   .populate('proprietaire', 'nom email');
+  )
+    .populate('locataire', 'nom email')
+    .populate('contratlocation.boxes', 'Superficie etage numRef isDisponible');
 };
 
 /**
@@ -226,5 +314,6 @@ module.exports = {
   updateBoxesStatus,
   createBoutique,
   updateBoutique,
-  deleteBoutique
+  deleteBoutique,
+  uploadLogo
 };
