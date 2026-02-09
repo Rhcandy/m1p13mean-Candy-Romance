@@ -69,14 +69,5 @@ const boutiqueSchema = new mongoose.Schema({
   collection: 'boutiques'
 });
 
-// Validation pour s'assurer que dateFinLocation est après dateDebutLocation
-boutiqueSchema.pre('save', function(next) {
-  if (this.contratlocation && this.contratlocation.dateFinLocation <= this.contratlocation.dateDebutLocation) {
-    next(new Error('La date de fin de location doit être postérieure à la date de début'));
-  } else {
-    next();
-  }
-});
-
 const Boutique = mongoose.model('Boutique', boutiqueSchema);
 module.exports = Boutique;
