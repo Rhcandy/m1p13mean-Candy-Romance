@@ -286,12 +286,12 @@ exports.createBoutique = async (req, res) => {
  *         schema:
  *           type: string
  *           default: "-createdAt"
- *         description: Ordre de tri (ex: -createdAt,nom)
+ *         description: "Ordre de tri (ex: -createdAt,nom)"
  *       - in: query
  *         name: fields
  *         schema:
  *           type: string
- *         description: Champs à retourner (ex: nom,statut,dateDebutLocation)
+ *         description: "Champs à retourner (ex: nom,statut,dateDebutLocation)"
  *       - in: query
  *         name: nom
  *         schema:
@@ -395,28 +395,7 @@ exports.getBoutiquesResults = async (req, res) => {
  *     tags: [Boutique]
  *     security:
  *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Boutiques récupérées avec succès
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "Boutiques récupérées avec succès"
- *                 data:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Boutique'
- *       401:
- *         description: Non authentifié
- *       500:
- *         description: Erreur serveur
+ *   
  */
 exports.getAllBoutiquesSimple = async (req, res) => {
   try {
@@ -506,6 +485,49 @@ exports.getBoutiqueById = async (req, res) => {
   }
 };
 
+exports.updateBoutique = async (req, res) => {
+  try {
+    const boutiqueId = req.params.id;
+    const boutiqueData = req.body;
+
+    // Vérifier si la boutique existe
+    const existingBoutique = await Boutique.findById(boutiqueId);
+    if (!existingBoutique) {
+      return res.status(404).json({
+        success: false,
+        message: 'Boutique non trouvée'
+      });
+    }
+
+    // Valider les données de base si un contratlocation est fourni
+    if (boutiqueData.contratlocation) {
+      const validation = await boutiqueService.validateBoutiqueData(boutiqueData);
+      if (!validation.isValid) {
+        return res.status(validation.statusCode).json({
+          success: false,
+          message: validation.error
+        });
+      }
+    }
+
+    // Mettre à jour la boutique
+    const updatedBoutique = await boutiqueService.updateBoutique(boutiqueId, boutiqueData);
+
+    res.status(200).json({
+      success: true,
+      message: 'Boutique mise à jour avec succès',
+      data: updatedBoutique
+    });
+  } catch (error) {
+    console.error('Erreur mise à jour boutique:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur',
+      error: error.message
+    });
+  }
+};
+
 /**
  * @swagger
  * /api/boutiques/{id}:
@@ -528,77 +550,62 @@ exports.getBoutiqueById = async (req, res) => {
  *           schema:
  *             type: object
  *             properties:
- *               boxes:
+ *               nom:
+ *                 type: string
+ *                 description: Nom de la boutique
+ *                 example: "Ma Boutique Updated"
+ *               locataire:
  *                 type: array
  *                 items:
  *                   type: string
- *                 example: ["60f1b2b3c4d5e6f7g8h9i0j1"]
- *               dateDebutLocation:
- *                 type: string
- *                 format: date-time
- *                 example: "2024-01-01T00:00:00.000Z"
- *               dateFinLocation:
- *                 type: string
- *                 format: date-time
- *                 example: "2024-12-31T23:59:59.000Z"
- *               nom:
- *                 type: string
- *                 example: "Boutique Updated"
- *               statut:
- *                 type: string
- *                 enum: [ouverte, fermee, en_attente]
- *                 example: "fermee"
- *               jLocation:
+ *                 description: Liste des IDs des locataires (optionnel)
+ *                 example: ["60f1b2b3c4d5e6f7g8h9i0j3"]
+ *               contratlocation:
  *                 type: object
- *                 description: Jours d'ouverture de la boutique
+ *                 description: Données du contrat de location (optionnel)
  *                 properties:
- *                   lundi:
- *                     type: boolean
- *                     example: true
- *                   mardi:
- *                     type: boolean
- *                     example: true
- *                   mercredi:
- *                     type: boolean
- *                     example: false
- *                   jeudi:
- *                     type: boolean
- *                     example: true
- *                   vendredi:
- *                     type: boolean
- *                     example: true
- *                   samedi:
- *                     type: boolean
- *                     example: false
- *                   dimanche:
- *                     type: boolean
- *                     example: false
- *     responses:
- *       200:
- *         description: Boutique mise à jour avec succès
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "Boutique mise à jour avec succès"
- *                 data:
- *                   $ref: '#/components/schemas/Boutique'
- *       400:
- *         description: Données invalides ou boxes non disponibles
- *       401:
- *         description: Non authentifié
- *       403:
- *         description: Non autorisé
- *       404:
- *         description: Boutique non trouvée
- *       500:
- *         description: Erreur serveur
+ *                   boxes:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                     description: Liste des IDs des boxes
+ *                     example: ["60f1b2b3c4d5e6f7g8h9i0j1"]
+ *                   dateDebutLocation:
+ *                     type: string
+ *                     format: date-time
+ *                     description: Date de début de location
+ *                     example: "2024-01-01T00:00:00.000Z"
+ *                   dateFinLocation:
+ *                     type: string
+ *                     format: date-time
+ *                     description: Date de fin de location
+ *                     example: "2024-12-31T23:59:59.000Z"
+ *                   jLocation:
+ *                     type: object
+ *                     description: Jours d'ouverture de la boutique
+ *                     properties:
+ *                       lundi:
+ *                         type: boolean
+ *                         example: true
+ *                       mardi:
+ *                         type: boolean
+ *                         example: true
+ *                       mercredi:
+ *                         type: boolean
+ *                         example: false
+ *                       jeudi:
+ *                         type: boolean
+ *                         example: true
+ *                       vendredi:
+ *                         type: boolean
+ *                         example: true
+ *                       samedi:
+ *                         type: boolean
+ *                         example: false
+ *                       dimanche:
+ *                         type: boolean
+ *                         example: false
+ *     
  */
 /**
  * @swagger
@@ -628,41 +635,7 @@ exports.getBoutiqueById = async (req, res) => {
  *                 type: string
  *                 format: binary
  *                 description: Logo de la boutique (JPEG, PNG, GIF, WebP)
- *     responses:
- *       200:
- *         description: Logo uploadé avec succès
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "Logo uploadé avec succès"
- *                 data:
- *                   type: object
- *                   properties:
- *                     boutique:
- *                       $ref: '#/components/schemas/Boutique'
- *                     logo:
- *                       type: string
- *                       example: "https://res.cloudinary.com/..."
- *                     public_id:
- *                       type: string
- *                       example: "boutiques/logos/abc123"
- *       400:
- *         description: Fichier manquant ou invalide
- *       401:
- *         description: Non authentifié
- *       403:
- *         description: Non autorisé
- *       404:
- *         description: Boutique non trouvée
- *       500:
- *         description: Erreur serveur
+ *     
  */
 exports.uploadLogo = async (req, res) => {
   try {
@@ -728,140 +701,7 @@ exports.uploadLogo = async (req, res) => {
   }
 };
 
-/**
- * @swagger
- * /api/boutiques/{id}:
- *   put:
- *     summary: Mettre à jour une boutique
- *     tags: [Boutique]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: ID de la boutique
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               nom:
- *                 type: string
- *                 description: Nom de la boutique
- *                 example: "Boutique Updated"
- *               locataire:
- *                 type: array
- *                 items:
- *                   type: string
- *                 description: Liste des IDs des locataires (optionnel)
- *                 example: ["60f1b2b3c4d5e6f7g8h9i0j3"]
- *               contratlocation:
- *                 type: object
- *                 description: Données du contrat de location
- *                 properties:
- *                   boxes:
- *                     type: array
- *                     items:
- *                       type: string
- *                     description: Liste des IDs des boxes
- *                   dateDebutLocation:
- *                     type: string
- *                     format: date-time
- *                   dateFinLocation:
- *                     type: string
- *                     format: date-time
- *                   jLocation:
- *                     type: object
- *                     description: Jours d'ouverture
- *     responses:
- *       200:
- *         description: Boutique mise à jour avec succès
- *       400:
- *         description: Données invalides ou boxes non disponibles
- *       401:
- *         description: Non authentifié
- *       403:
- *         description: Non autorisé
- *       404:
- *         description: Boutique non trouvée
- *       500:
- *         description: Erreur serveur
- */
-exports.updateBoutique = async (req, res) => {
-  try {
-    const updateData = req.body;
-    const boutiqueId = req.params.id;
 
-    // Vérifier que la boutique existe
-    let boutique = await Boutique.findById(boutiqueId);
-    if (!boutique) {
-      return res.status(404).json({
-        success: false,
-        message: 'Boutique non trouvée'
-      });
-    }
-
-    // Si les boxes sont modifiées, gérer la disponibilité
-    if (updateData.boxes && Array.isArray(updateData.boxes)) {
-      // Remettre les anciennes boxes comme disponibles
-      if (boutique.boxes && boutique.boxes.length > 0) {
-        await boutiqueService.updateBoxesStatus(boutique.boxes, true);
-      }
-
-      // Vérifier les nouvelles boxes
-      const availability = await boutiqueService.checkBoxesAvailability(updateData.boxes);
-      if (!availability.areAvailable) {
-        return res.status(availability.statusCode).json({
-          success: false,
-          message: availability.error,
-          data: availability.data
-        });
-      }
-
-      // Marquer les nouvelles boxes comme non disponibles
-      await boutiqueService.updateBoxesStatus(updateData.boxes, false);
-    }
-
-    // Valider la durée de location si les dates sont modifiées
-    if (updateData.dateDebutLocation && updateData.dateFinLocation) {
-      const debut = new Date(updateData.dateDebutLocation);
-      const fin = new Date(updateData.dateFinLocation);
-      const boxesToCheck = updateData.boxes || boutique.boxes;
-      
-      // Récupérer les boxes pour validation
-      const boxes = await Box.find({ _id: { $in: boxesToCheck } });
-      const durationValidation = await boutiqueService.validateRentalDuration(boxes, debut, fin);
-      if (!durationValidation.isValid) {
-        return res.status(durationValidation.statusCode).json({
-          success: false,
-          message: durationValidation.error,
-          data: durationValidation.data
-        });
-      }
-    }
-
-    // Mettre à jour la boutique
-    boutique = await boutiqueService.updateBoutique(boutiqueId, updateData);
-
-    res.status(200).json({
-      success: true,
-      message: 'Boutique mise à jour avec succès',
-      data: boutique
-    });
-  } catch (error) {
-    console.error('Erreur mise à jour boutique:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erreur serveur',
-      error: error.message
-    });
-  }
-};
 
 /**
  * @swagger

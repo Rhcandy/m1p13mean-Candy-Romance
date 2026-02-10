@@ -238,55 +238,7 @@ const uploadLogo = async (boutiqueId, file) => {
   };
 };
 
-/**
- * Mettre à jour une boutique
- * @param {String} boutiqueId - ID de la boutique
- * @param {Object} updateData - Données de mise à jour
- * @returns {Object} - Boutique mise à jour avec populate
- */
-const updateBoutique = async (boutiqueId, updateData) => {
-  // Construire l'objet de mise à jour avec seulement les champs valides du modèle
-  const updateObject = {};
 
-  // Champs valides au niveau racine : nom, locataire
-  if (updateData.nom !== undefined) {
-    updateObject.nom = updateData.nom;
-  }
-
-  if (updateData.locataire !== undefined) {
-    updateObject.locataire = Array.isArray(updateData.locataire) ? updateData.locataire : [updateData.locataire];
-  }
-
-  // Gérer la mise à jour imbriquée (contratlocation)
-  if (updateData.contratlocation) {
-    updateObject.contratlocation = {};
-    
-    // Mettre à jour les champs de contratlocation individuellement
-    if (updateData.contratlocation.boxes !== undefined) {
-      updateObject.contratlocation.boxes = updateData.contratlocation.boxes;
-    }
-    if (updateData.contratlocation.dateDebutLocation !== undefined) {
-      updateObject.contratlocation.dateDebutLocation = updateData.contratlocation.dateDebutLocation;
-    }
-    if (updateData.contratlocation.dateFinLocation !== undefined) {
-      updateObject.contratlocation.dateFinLocation = updateData.contratlocation.dateFinLocation;
-    }
-    if (updateData.contratlocation.jLocation !== undefined) {
-      updateObject.contratlocation.jLocation = updateData.contratlocation.jLocation;
-    }
-  }
-
-  // Ignorer les champs invalides au niveau racine : boxes, dateDebutLocation, dateFinLocation, statut, jLocation
-  // Ces champs doivent être dans contratlocation
-
-  return await Boutique.findByIdAndUpdate(
-    boutiqueId,
-    updateObject,
-    { new: true, runValidators: true }
-  )
-    .populate('locataire', 'nom email')
-    .populate('contratlocation.boxes', 'Superficie etage numRef isDisponible');
-};
 
 /**
  * Supprimer une boutique et libérer les boxes
@@ -305,6 +257,99 @@ const deleteBoutique = async (boutiqueId) => {
   }
 
   return await Boutique.findByIdAndDelete(boutiqueId);
+};
+
+/**
+ * Mettre à jour une boutique existante
+ * @param {String} boutiqueId - ID de la boutique à mettre à jour
+ * @param {Object} boutiqueData - Données de la boutique à mettre à jour
+ * @returns {Object} - Boutique mise à jour avec populate
+ */
+const updateBoutique = async (boutiqueId, boutiqueData) => {
+  const boutique = await Boutique.findById(boutiqueId);
+  if (!boutique) {
+    throw new Error('Boutique non trouvée');
+  }
+
+  const { contratlocation, nom, locataire } = boutiqueData;
+
+  // Si un contratlocation est fourni, valider les données
+  if (contratlocation) {
+    // Validation finale des dates avant mise à jour
+    if (contratlocation.dateDebutLocation && contratlocation.dateFinLocation) {
+      const debut = new Date(contratlocation.dateDebutLocation);
+      const fin = new Date(contratlocation.dateFinLocation);
+      
+      if (fin <= debut) {
+        throw new Error('La date de fin de location doit être postérieure à la date de début');
+      }
+    }
+
+    // Si les boxes sont modifiées, vérifier leur disponibilité
+    if (contratlocation.boxes && Array.isArray(contratlocation.boxes)) {
+      // Récupérer les anciennes boxes pour les libérer
+      const oldBoxIds = boutique.contratlocation?.boxes || [];
+      const newBoxIds = contratlocation.boxes;
+      
+      // Vérifier la disponibilité des nouvelles boxes (sauf celles déjà assignées à cette boutique)
+      const boxesToCheck = newBoxIds.filter(boxId => !oldBoxIds.includes(boxId));
+      if (boxesToCheck.length > 0) {
+        const availability = await checkBoxesAvailability(boxesToCheck);
+        if (!availability.areAvailable) {
+          throw new Error(availability.error);
+        }
+      }
+
+      // Valider la durée de location pour les nouvelles boxes
+      if (contratlocation.dateDebutLocation && contratlocation.dateFinLocation) {
+        const debut = new Date(contratlocation.dateDebutLocation);
+        const fin = new Date(contratlocation.dateFinLocation);
+        const boxes = await Box.find({ _id: { $in: newBoxIds } });
+        const durationValidation = await validateRentalDuration(boxes, debut, fin);
+        if (!durationValidation.isValid) {
+          throw new Error(durationValidation.error);
+        }
+      }
+
+      // Libérer les anciennes boxes qui ne sont plus utilisées
+      const boxesToFree = oldBoxIds.filter(boxId => !newBoxIds.includes(boxId));
+      if (boxesToFree.length > 0) {
+        await updateBoxesStatus(boxesToFree, true);
+      }
+
+      // Marquer les nouvelles boxes comme non disponibles
+      const boxesToReserve = newBoxIds.filter(boxId => !oldBoxIds.includes(boxId));
+      if (boxesToReserve.length > 0) {
+        await updateBoxesStatus(boxesToReserve, false);
+      }
+    }
+
+    // Mettre à jour le contratlocation
+    boutique.contratlocation = {
+      ...boutique.contratlocation,
+      ...contratlocation,
+      jLocation: contratlocation.jLocation || boutique.contratlocation?.jLocation || {
+        lundi: true,
+        mardi: true,
+        mercredi: true,
+        jeudi: true,
+        vendredi: true,
+        samedi: true,
+        dimanche: true
+      }
+    };
+  }
+
+  // Mettre à jour les autres champs
+  if (nom !== undefined) boutique.nom = nom;
+  if (locataire !== undefined) boutique.locataire = locataire;
+
+  await boutique.save();
+
+  // Retourner avec populate
+  return await Boutique.findById(boutique._id)
+    .populate('locataire', 'nom email')
+    .populate('contratlocation.boxes', 'Superficie etage numRef isDisponible');
 };
 
 module.exports = {

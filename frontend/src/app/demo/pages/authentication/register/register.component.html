@@ -1,219 +1,301 @@
 <div class="auth-main">
-  <div class="auth-wrapper v3">
-    <div class="auth-form">
-      <div class="card mt-5">
-        <div class="card-body">
-          <form [formGroup]="registerForm" (ngSubmit)="onSubmit($event)" novalidate>
 
-            <!-- Logo -->
+  <div class="auth-wrapper v3">
+
+    <div class="auth-form">
+
+      <div class="card mt-5">
+
+        <div class="card-body">
+
+          <form (ngSubmit)="onSubmit($event)">
+
             <a href="javascript:" class="d-flex justify-content-center mt-3">
+
               <img src="assets/images/logo-dark.svg" alt="logo" />
+
             </a>
 
-            <!-- Header -->
-            <div class="d-flex justify-content-center">
-              <div class="auth-header text-center">
-                <h2 class="text-secondary mt-5"><b>Sign up</b></h2>
-                <p class="fs-4 mt-2">Enter your credentials to continue</p>
+            <div class="row">
+
+              <div class="d-flex justify-content-center">
+
+                <div class="auth-header">
+
+                  <h2 class="text-secondary mt-5"><b>Sign up</b></h2>
+
+                  <p class="fs-4 mt-2">Enter your credentials to continue</p>
+
+                </div>
+
               </div>
+
             </div>
 
-            <!-- ROLE SELECTION -->
+            <button type="button" class="btn mt-2 btn-light-primary bg-light text-muted" style="width: 100%">
+
+              <img src="assets/images/authentication/google-icon.svg" alt="google" />
+
+              Sign Up With Google
+
+            </button>
+
+            <div class="saprator mt-3">
+
+              <span>or</span>
+
+            </div>
+
+            <h5 class="my-4 d-flex justify-content-center">Sign Up with Email address</h5>
+
+            
+
+            <!-- Role Selection -->
+
             <div class="mb-4">
-              <label class="form-label fw-bold">
-                Choisissez votre type de compte
-              </label>
+
+              <label class="form-label fw-bold">Choisissez votre type de compte:</label>
 
               <div class="row">
-                <div class="col-md-6 mb-2">
-                  <button
-                    type="button"
-                    class="btn w-100"
-                    [ngClass]="selectedRole === 'user' ? 'btn-primary' : 'btn-outline-primary'"
-                    (click)="selectRole('user')"
-                  >
-                    <i class="bi bi-person me-2"></i>
-                    Client
-                  </button>
-                  <small class="text-muted d-block mt-1">
-                    Particulier cherchant des produits et services
-                  </small>
-                </div>
 
                 <div class="col-md-6 mb-2">
-                  <button
-                    type="button"
-                    class="btn w-100"
-                    [ngClass]="selectedRole === 'admin_boutique' ? 'btn-primary' : 'btn-outline-primary'"
-                    (click)="selectRole('admin_boutique')"
-                  >
-                    <i class="bi bi-shop me-2"></i>
-                    Boutique
-                  </button>
-                  <small class="text-muted d-block mt-1">
-                    Commerçant vendant des produits ou services
-                  </small>
-                </div>
-              </div>
-            </div>
 
-            <!-- NAME -->
-            <div class="form-floating mb-3">
-              <input
-                type="text"
-                class="form-control"
-                id="nom"
-                name="nom"
-                formControlName="nom"
-                [class.is-invalid]="submitted && registerForm.get('nom')?.invalid"
-                placeholder="Nom complet"
-              />
-              <label for="nom">Nom complet</label>
-              <div *ngIf="submitted && registerForm.get('nom')?.invalid" class="invalid-feedback">
-                Nom requis
-              </div>
-            </div>
-
-            <!-- SEXE -->
-            <div class="form-floating mb-3">
-              <select
-                class="form-control"
-                id="sexe"
-                name="sexe"
-                formControlName="sexe"
-                [class.is-invalid]="submitted && registerForm.get('sexe')?.invalid"
-              >
-                <option value="M">Masculin</option>
-                <option value="F">Féminin</option>
-              </select>
-              <label for="sexe">Sexe</label>
-              <div *ngIf="submitted && registerForm.get('sexe')?.invalid" class="invalid-feedback">
-                Sexe requis
-              </div>
-            </div>
-
-            <!-- NUMTEL -->
-            <div class="mb-3">
-              <label class="form-label fw-bold">Numéros de téléphone</label>
-              <div formArrayName="numtel">
-                <div *ngFor="let phone of numtelArray.controls; let i = index" class="d-flex align-items-center mb-2">
-                  <div class="form-floating flex-grow-1">
-                    <input
-                      type="tel"
-                      class="form-control"
-                      [id]="'numtel' + i"
-                      [name]="'numtel' + i"
-                      [formControlName]="i"
-                      [class.is-invalid]="submitted && i === 0 && numtelArray.at(i)?.invalid"
-                      placeholder="Numéro de téléphone {{ i + 1 }}"
-                    />
-                    <label [for]="'numtel' + i">Numéro de téléphone {{ i + 1 }} {{ i === 0 ? '(obligatoire)' : '(optionnel)' }}</label>
-                    <div *ngIf="submitted && i === 0 && numtelArray.at(i)?.invalid" class="invalid-feedback">
-                      Au moins un numéro de téléphone est requis
-                    </div>
-                  </div>
-                  
                   <button 
-                    *ngIf="numtelArray.length > 1"
+
                     type="button" 
-                    class="btn btn-outline-danger ms-2"
-                    (click)="removePhoneNumber(i)"
-                    title="Supprimer ce numéro"
+
+                    class="btn w-100" 
+
+                    [class]="selectedRole() === 'user' ? 'btn-primary' : 'btn-outline-primary'"
+
+                    (click)="selectRole('user')"
+
                   >
-                    <i class="bi bi-trash"></i>
+
+                    <i class="bi bi-person me-2"></i>
+
+                    Client
+
                   </button>
+
+                  <small class="text-muted d-block mt-1">
+
+                    Particulier cherchant des produits et services
+
+                  </small>
+
                 </div>
+
+                <div class="col-md-6 mb-2">
+
+                  <button 
+
+                    type="button" 
+
+                    class="btn w-100" 
+
+                    [class]="selectedRole() === 'admin_boutique' ? 'btn-primary' : 'btn-outline-primary'"
+
+                    (click)="selectRole('admin_boutique')"
+
+                  >
+
+                    <i class="bi bi-shop me-2"></i>
+
+                    Boutique
+
+                  </button>
+
+                  <small class="text-muted d-block mt-1">
+
+                    Commerçant vendant des produits ou propose service
+
+                  </small>
+
+                </div>
+
               </div>
-              
-              <button 
-                type="button" 
-                class="btn btn-outline-primary btn-sm"
-                (click)="addPhoneNumber()"
-              >
-                <i class="bi bi-plus-circle me-1"></i>
-                Ajouter un numéro de téléphone
-              </button>
+
             </div>
 
-            <!-- DTNAISSANCE -->
+            <!-- Name Field -->
+
             <div class="form-floating mb-3">
+
               <input
-                type="date"
+
+                type="text"
+
                 class="form-control"
-                id="dtnaissance"
-                name="dtnaissance"
-                formControlName="dtnaissance"
-                [class.is-invalid]="submitted && registerForm.get('dtnaissance')?.invalid"
-                placeholder="Date de naissance"
+
+                id="floatingName"
+
+                placeholder="Enter Your Name"
+
+                [field]="registerForm.name"
+
+                [class.is-invalid]="submitted() && registerForm.name().errors().length > 0"
+
               />
-              <label for="dtnaissance">Date de naissance</label>
-              <div *ngIf="submitted && registerForm.get('dtnaissance')?.invalid" class="invalid-feedback">
-                Date de naissance requise
-              </div>
+
+              <label for="floatingName">Nom complet</label>
+
+              @if (submitted() && registerForm.name().errors().length > 0) {
+
+                <div class="invalid-feedback">
+
+                  @for (error of registerForm.name().errors(); track error.kind) {
+
+                    <div>{{ error.message }}</div>
+
+                  }
+
+                </div>
+
+              }
+
             </div>
 
-            <!-- EMAIL -->
             <div class="form-floating mb-3">
+
               <input
+
                 type="email"
+
                 class="form-control"
-                id="email"
-                name="email"
-                formControlName="email"
-                [class.is-invalid]="submitted && registerForm.get('email')?.invalid"
-                placeholder="Email"
+
+                id="floatingInput"
+
+                [class.is-invalid]="submitted() && registerForm.email().invalid()"
+
+                placeholder="Email Address"
+
+                [field]="registerForm.email"
+
               />
-              <label for="email">Email</label>
-              <div *ngIf="submitted && registerForm.get('email')?.invalid" class="invalid-feedback">
-                Email requis
-              </div>
+
+              <label for="floatingInput">Email address / Username</label>
+
+              @if (submitted() && registerForm.email().invalid()) {
+
+                <div class="invalid-feedback">
+
+                  @for (error of registerForm.email().errors(); track error.kind) {
+
+                    <div>{{ error.message }}</div>
+
+                  }
+
+                </div>
+
+              }
+
             </div>
 
-            <!-- PASSWORD -->
             <div class="form-floating mb-3">
+
               <input
+
                 type="password"
-                class="form-control"
+
                 id="password"
-                name="password"
-                formControlName="password"
-                [class.is-invalid]="submitted && registerForm.get('password')?.invalid"
-                placeholder="Mot de passe"
-              />
-              <label for="password">Mot de passe</label>
-              <div *ngIf="submitted && registerForm.get('password')?.invalid" class="invalid-feedback">
-                Mot de passe requis
-              </div>
-            </div>
 
-            <!-- CONFIRM PASSWORD -->
-            <div class="form-floating mb-3">
-              <input
-                type="password"
                 class="form-control"
-                id="confirmPassword"
-                name="confirmPassword"
-                formControlName="confirmPassword"
-                [class.is-invalid]="submitted && registerForm.get('confirmPassword')?.invalid || (registerForm.value.password !== registerForm.value.confirmPassword && submitted)"
-                placeholder="Confirmer mot de passe"
+
+                [field]="registerForm.password"
+
+                [class.is-invalid]="submitted() && registerForm.password().errors().length > 0"
+
+                placeholder="Password (min. 8 characters)"
+
               />
-              <label for="confirmPassword">Confirmer le mot de passe</label>
-              <div *ngIf="submitted && (registerForm.get('confirmPassword')?.invalid || (registerForm.value.password !== registerForm.value.confirmPassword))" class="invalid-feedback">
-                Les mots de passe ne correspondent pas
+
+              <label for="password">Password</label>
+
+              @if (submitted() && registerForm.password().errors().length > 0) {
+
+                <div class="invalid-feedback">
+
+                  @for (error of registerForm.password().errors(); track error.kind) {
+
+                    <div>{{ error.message }}</div>
+
+                  }
+
+                </div>
+
+              }
+
+            </div>
+
+            <!-- Avatar Upload -->
+
+            <div class="mb-3">
+
+              <label for="avatar" class="form-label">Photo de profil (optionnelle)</label>
+
+              <input 
+
+                type="file" 
+
+                class="form-control" 
+
+                id="avatar" 
+
+                accept="image/*"
+
+                (change)="onAvatarSelected($event)"
+
+              >
+
+              <small class="text-muted">Formats acceptés: JPG, PNG, GIF</small>
+
+            </div>
+
+            
+
+            <div class="form-check mt-3s">
+
+              <input class="form-check-input input-primary" type="checkbox" id="customCheckc1" checked />
+
+              <label class="form-check-label" for="customCheckc1">
+
+                <h5>
+
+                  Agree with
+
+                  <span>Terms & Condition.</span>
+
+                </h5>
+
+              </label>
+
+            </div>
+
+            @if (error()) {
+
+              <div class="alert alert-danger" role="alert">
+
+                {{ error() }}
+
               </div>
-            </div>
 
-            <!-- ERROR -->
-            <div *ngIf="error" class="alert alert-danger">
-              {{ error }}
-            </div>
+            }
 
-            <!-- SUBMIT -->
             <div class="d-grid mt-4">
-              <button type="submit" class="btn btn-secondary" [disabled]="loading">
-                <span *ngIf="loading" class="spinner-border spinner-border-sm me-2"></span>
+
+              <button type="submit" class="btn btn-secondary p-2" [disabled]="loading()">
+
+                @if (loading()) {
+
+                  <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+
+                }
+
                 Sign Up
+
               </button>
+
             </div>
 
           </form>
@@ -221,11 +303,18 @@
           <hr />
 
           <h5 class="d-flex justify-content-center">
+
             <a [routerLink]="['/login']">Already have an account?</a>
+
           </h5>
 
         </div>
+
       </div>
+
     </div>
+
   </div>
+
 </div>
+
