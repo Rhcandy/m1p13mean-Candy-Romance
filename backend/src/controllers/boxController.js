@@ -261,12 +261,12 @@ exports.createBox = [addDefaultCentre, async (req, res) => {
  *         schema:
  *           type: string
  *           default: "-createdAt"
- *         description: Ordre de tri (ex: -createdAt,etage,numRef)
+ *         description: "Ordre de tri (ex: -createdAt,etage,numRef)"
  *       - in: query
  *         name: fields
  *         schema:
  *           type: string
- *         description: Champs à retourner (ex: Superficie,etage,numRef,isDisponible)
+ *         description: "Champs à retourner (ex: Superficie,etage,numRef,isDisponible)"
  *       - in: query
  *         name: centreId
  *         schema:

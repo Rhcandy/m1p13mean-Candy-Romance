@@ -66,6 +66,10 @@ const uploadRoutes = require('./routes/uploadRoutes');
 const typeBoxRoutes = require('./routes/typeBoxRoutes');
 const boxRoutes = require('./routes/boxRoutes');
 const boutiqueRoutes = require('./routes/boutiqueRoutes');
+const categorieProduitRoutes = require('./routes/categorieProduitRoutes');
+const produitRoutes = require('./routes/produitRoutes');
+const panierRoutes = require('./routes/panierRoutes');
+const avisRoutes = require('./routes/avisRoutes');
 
 // Routes API
 app.use('/api/auth', authRoutes);
@@ -74,6 +78,10 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/typebox', typeBoxRoutes);
 app.use('/api/boxes', boxRoutes);
 app.use('/api/boutiques', boutiqueRoutes);
+app.use('/api/categories-produit', categorieProduitRoutes);
+app.use('/api/produits', produitRoutes);
+app.use('/api/paniers', panierRoutes);
+app.use('/api/avis', avisRoutes);
 
 // Servir les fichiers uploadés statiquement
 app.use('/uploads', express.static('uploads'));

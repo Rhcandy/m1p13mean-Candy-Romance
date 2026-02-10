@@ -165,12 +165,12 @@ exports.createTypeBox = async (req, res) => {
  *         schema:
  *           type: string
  *           default: "-createdAt"
- *         description: Ordre de tri (ex: -createdAt,nom)
+ *         description: "Ordre de tri (ex: -createdAt,nom)"
  *       - in: query
  *         name: fields
  *         schema:
  *           type: string
- *         description: Champs à retourner (ex: nom,periode,remuneration)
+ *         description: "Champs à retourner (ex: nom,periode,remuneration)"
  *       - in: query
  *         name: nom
  *         schema:

@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Role = require('../models/Role');
 const Centre = require('../models/Centre');
 const User = require('../models/User');
+const CategorieProduit = require('../models/CategorieProduit');
 const bcrypt = require('bcryptjs');
 require('dotenv').config();
 
@@ -76,6 +77,32 @@ async function initializeRoles() {
       }
     } else {
       console.log('Utilisateur "admincenter" existe déjà');
+    }
+
+    // Initialiser les catégories de produits
+    const categories = [
+      { nom: 'Mode & Accessoires', description: 'Vêtements, chaussures, sacs et accessoires de mode' },
+      { nom: 'Beauté & Bien-être', description: 'Produits cosmétiques, parfums, soins du corps et bien-être' },
+      { nom: 'Électronique & High-Tech', description: 'Appareils électroniques, gadgets, ordinateurs et téléphones' },
+      { nom: 'Alimentation & Restauration', description: 'Produits alimentaires, boissons, restaurants et services de restauration' },
+      { nom: 'Maison & Décoration', description: 'Meubles, articles de décoration, électroménager et jardinage' },
+      { nom: 'Enfants & Loisirs', description: 'Jouets, vêtements enfants, livres et activités ludiques' },
+      { nom: 'Sport & Fitness', description: 'Équipements sportifs, vêtements de sport, accessoires fitness' },
+      { nom: 'Santé & Services', description: 'Produits médicaux, services de santé, pharmacie et paramédical' },
+      { nom: 'Voyage & Services', description: 'Agences de voyage, billets, hébergement et services touristiques' },
+      { nom: 'Autre', description: 'Catégorie pour tous les autres produits et services' }
+    ];
+
+    // Créer les catégories si elles n'existent pas
+    for (const categorieData of categories) {
+      const existingCategorie = await CategorieProduit.findOne({ nom: categorieData.nom });
+      if (!existingCategorie) {
+        const categorie = new CategorieProduit(categorieData);
+        await categorie.save();
+        console.log(`Catégorie "${categorieData.nom}" créée avec succès`);
+      } else {
+        console.log(`Catégorie "${categorieData.nom}" existe déjà`);
+      }
     }
 
     console.log('Initialisation terminée');
