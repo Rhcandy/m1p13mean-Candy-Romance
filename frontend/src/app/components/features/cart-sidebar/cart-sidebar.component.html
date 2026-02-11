@@ -1,0 +1,109 @@
+<!-- Overlay -->
+<div class="cart-overlay" *ngIf="isCartOpen" (click)="closeCart()"></div>
+
+<!-- Sidebar -->
+<div class="cart-sidebar" [class]="{ 'open': isCartOpen }">
+  <div class="cart-header">
+    <h5 class="mb-0">Mon Panier</h5>
+    <button type="button" class="btn-close" (click)="closeCart()">
+      <i class="fas fa-times"></i>
+    </button>
+  </div>
+
+  <div class="cart-body">
+    <!-- Loading -->
+    <div *ngIf="isLoading" class="text-center py-4">
+      <div class="spinner-border" role="status">
+        <span class="sr-only">Chargement...</span>
+      </div>
+    </div>
+
+    <!-- Panier vide -->
+    <div *ngIf="!isLoading && (!panier || !panier.produitsachete || panier.produitsachete.length === 0)" 
+         class="text-center py-4">
+      <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
+      <p class="text-muted">Votre panier est vide</p>
+    </div>
+
+    <!-- Articles du panier -->
+    <div *ngIf="!isLoading && panier && panier.produitsachete && panier.produitsachete.length > 0">
+      <div class="cart-items">
+        <div *ngFor="let item of panier.produitsachete" class="cart-item">
+          <div class="item-image">
+            <img [src]="item.produit.photo || 'https://via.placeholder.com/50x50'" 
+                 [alt]="item.produit.nom" 
+                 class="img-fluid">
+          </div>
+          
+          <div class="item-details">
+            <h6 class="item-name">{{ item.produit.nom }}</h6>
+            <small class="text-muted">
+              {{ item.produit.prix && item.produit.prix.length > 0 ? (item.produit.prix[0].prixUnitaire | currency:'EUR') : '0 €' }}
+            </small>
+          </div>
+          
+          <div class="item-quantity">
+            <div class="input-group input-group-sm">
+              <button type="button" 
+                      class="btn btn-outline-secondary" 
+                      (click)="updateQuantite(item._id, item.qtt - 1)">
+                <i class="fas fa-minus"></i>
+              </button>
+              <input type="number" 
+                     class="form-control text-center" 
+                     [value]="item.qtt" 
+                     (change)="updateQuantite(item._id, $event.target.value)"
+                     min="1" 
+                     max="99">
+              <button type="button" 
+                      class="btn btn-outline-secondary" 
+                      (click)="updateQuantite(item._id, item.qtt + 1)">
+                <i class="fas fa-plus"></i>
+              </button>
+            </div>
+          </div>
+          
+          <div class="item-total">
+            <strong>
+              {{ item.produit.prix && item.produit.prix.length > 0 ? (item.produit.prix[0].prixUnitaire * item.qtt | currency:'EUR') : '0 €' }}
+            </strong>
+          </div>
+          
+          <div class="item-remove">
+            <button type="button" 
+                    class="btn btn-sm btn-outline-danger" 
+                    (click)="supprimerArticle(item._id)">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions et total -->
+      <div class="cart-actions">
+        <div class="cart-total">
+          <div class="d-flex justify-content-between mb-3">
+            <span><strong>Total:</strong></span>
+            <span class="h4 text-primary">{{ getTotal() | currency:'EUR' }}</span>
+          </div>
+          <div class="d-flex justify-content-between mb-3">
+            <span>Articles:</span>
+            <span>{{ getNombreArticles() }}</span>
+          </div>
+        </div>
+        
+        <div class="cart-buttons">
+          <button type="button" 
+                  class="btn btn-outline-secondary btn-sm w-100 mb-2" 
+                  (click)="viderPanier()">
+            <i class="fas fa-trash"></i> Vider le panier
+          </button>
+          <button type="button" 
+                  class="btn btn-success w-100">
+            <i class="fas fa-credit-card"></i> Commander
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

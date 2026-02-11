@@ -1,0 +1,130 @@
+<div class="container-fluid py-4">
+  <!-- Header avec filtres -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <h2 class="mb-4">Nos Produits</h2>
+      
+      <!-- Filtres -->
+      <div class="row mb-3">
+        <div class="col-md-6">
+          <div class="form-group">
+            <label for="filtreNom" class="form-label">Rechercher par nom</label>
+            <input 
+              type="text" 
+              id="filtreNom" 
+              class="form-control" 
+              placeholder="Rechercher un produit..." 
+              [(ngModel)]="filtreNom"
+              (ngModelChange)="onFiltreNomChange($event)">
+          </div>
+        </div>
+        
+        <div class="col-md-6">
+          <div class="form-group">
+            <label for="filtreNote" class="form-label">Filtrer par note</label>
+            <select id="filtreNote" class="form-control" [(ngModel)]="filtreNote" (ngModelChange)="onFiltreNoteChange($event)">
+              <option value="">Toutes les notes</option>
+              <option value="5">5 étoiles</option>
+              <option value="4">4 étoiles</option>
+              <option value="3">3 étoiles</option>
+              <option value="2">2 étoiles</option>
+              <option value="1">1 étoile</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading spinner -->
+  <div *ngIf="isLoading" class="text-center my-5">
+    <div class="spinner-border" role="status">
+      <span class="sr-only">Chargement...</span>
+      <div class="spinner-grow spinner-grow" role="status"></div>
+    </div>
+  </div>
+
+  <!-- Produits grid -->
+  <div class="row" *ngIf="!isLoading">
+    <div class="col-12">
+      <div class="row">
+        <div 
+             *ngFor="let produit of produitsFiltres" 
+             class="col-lg-2 col-md-4 col-sm-6 mb-4"
+             [ngClass]="getProduitColorClass(produit)">
+          
+          <div class="card h-100 border-0 shadow-sm">
+            <!-- Image du produit -->
+            <div class="card-img-top" *ngIf="produit.photo">
+              <img [src]="produit.photo" [alt]="produit.nom" class="card-img-top" style="max-height: 200px; object-fit: cover;">
+            </div>
+            
+            <!-- Corps de la carte -->
+            <div class="card-body">
+              <h5 class="card-title">{{ produit.nom }}</h5>
+              
+              <!-- Note moyenne avec étoiles -->
+              <div class="mb-2" *ngIf="produit.averageRating > 0">
+                <small class="text-muted">Note moyenne:</small>
+                <div class="text-warning">
+                  <span *ngFor="let star of [].constructor(produit.averageRating)">
+                    <i class="fas fa-star"></i>
+                  </span>
+                  <span *ngFor="let star of [].constructor(5 - produit.averageRating)">
+                    <i class="far fa-star"></i>
+                  </span>
+                </div>
+              </div>
+              
+              <!-- Prix -->
+              <div class="mb-2" *ngIf="produit.prix && produit.prix.length > 0">
+                <small class="text-muted">Prix:</small>
+                <div class="h5 text-primary">
+                  {{ produit.prix[0].prixUnitaire | currency:'EUR' }}
+                </div>
+              </div>
+              
+              <!-- Bouton d'action -->
+              <div class="d-grid gap-2">
+                <button 
+                      class="btn btn-primary btn-sm" 
+                      (click)="voirDetailsProduit(produit._id)">
+                  <i class="fas fa-eye"></i> Voir détails
+                </button>
+                
+                <button 
+                      class="btn btn-success btn-sm" 
+                      (click)="ajouterAuPanier(produit)">
+                  <i class="fas fa-shopping-cart"></i> Ajouter au panier
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    <div class="row mt-4" *ngIf="totalPages > 1">
+      <div class="col-12">
+        <nav aria-label="Pagination des produits">
+          <ul class="pagination justify-content-center">
+            <li class="page-item" [class]="{ 'disabled': currentPage === 1 }">
+              <a class="page-link" href="#" (click)="onPageChange(1)">Précédent</a>
+            </li>
+            
+            <li *ngFor="let page of [].constructor(totalPages).slice(1, -1)" 
+                class="page-item" 
+                [class]="{ 'active': page === currentPage }">
+              <a class="page-link" href="#" (click)="onPageChange(page)">{{ page }}</a>
+            </li>
+            
+            <li class="page-item" [class]="{ 'disabled': currentPage === totalPages }">
+              <a class="page-link" href="#" (click)="onPageChange(totalPages)">Suivant</a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </div>
+</div>

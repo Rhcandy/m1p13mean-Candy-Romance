@@ -72,6 +72,15 @@ const createProduit = async (produitData, file = null) => {
     produitData.photo = photoUrl;
   }
 
+  // Initialiser les prix avec les dates
+  if (produitData.prix && Array.isArray(produitData.prix)) {
+    produitData.prix = produitData.prix.map(prix => ({
+      ...prix,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }));
+  }
+
   // Créer le produit
   const produit = await Produit.create(produitData);
 
@@ -111,6 +120,23 @@ const updateProduit = async (produitId, updateData, file = null) => {
     // Téléverser la nouvelle photo
     const photoUrl = await uploadImage(file, 'produits/photos');
     updateData.photo = photoUrl;
+  }
+
+  // Gérer la mise à jour des prix
+  if (updateData.prix && Array.isArray(updateData.prix)) {
+    const nouveauxPrix = updateData.prix;
+    const prixActuels = produit.prix || [];
+    
+    nouveauxPrix.forEach(nouveauPrix => {
+      // Ajouter un nouveau prix avec timestamps
+      prixActuels.push({
+        prixUnitaire: nouveauPrix.prixUnitaire,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+    });
+    
+    updateData.prix = prixActuels;
   }
 
   // Mettre à jour le produit
