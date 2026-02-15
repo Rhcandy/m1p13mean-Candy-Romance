@@ -82,7 +82,6 @@ app.use('/api/categories-produit', categorieProduitRoutes);
 app.use('/api/produits', produitRoutes);
 app.use('/api/paniers', panierRoutes);
 app.use('/api/avis', avisRoutes);
-app.use('/api/avis', avisRoutes);
 
 // Servir les fichiers uploadés statiquement
 app.use('/uploads', express.static('uploads'));

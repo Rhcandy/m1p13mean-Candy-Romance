@@ -18,11 +18,28 @@ const variantSchema  = new mongoose.Schema({
   timestamps: true 
 });
 
+const stockSchema = new mongoose.Schema({
+  qtt: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  created: {
+    type: Date,
+    default: Date.now
+  }
+}, { _id: false });
+
 const prixProduitSchema = new mongoose.Schema({
   prixUnitaire: {
     type: Number,
     required: true,
     min: 1
+  },
+  devise: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Devise',
+    required: true
   }
 }, { 
   _id: false,
@@ -54,17 +71,8 @@ const produitSchema = new mongoose.Schema({
     trim: true
   },
   variant: [variantSchema],
-  prix: [prixProduitSchema],
-  averageRating: {
-    type: Number,
-    default: 0,
-    min: 0,
-    max: 5
-  },
-  avis: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Avis'
-  }]
+  Stock: [stockSchema],
+  prix: [prixProduitSchema]
 }, {
   timestamps: true,
   collection: 'produits'
