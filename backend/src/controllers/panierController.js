@@ -111,7 +111,7 @@ const Produit = require('../models/Produit');
  *       500:
  *         description: Erreur serveur
  */
-exports.createOrUpdatePanier = async (req, res) => {
+exports.addToPanier = async (req, res) => {
   try {
     const { userId, produitsachete } = req.body;
 
@@ -235,7 +235,7 @@ exports.createOrUpdatePanier = async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-exports.getPanierByUser = async (req, res) => {
+exports.getPanier = async (req, res) => {
   try {
     const panier = await Panier.findOne({ userId: req.params.userId })
       .populate('produitsachete.produit', 'nom photo prix');
@@ -317,7 +317,7 @@ exports.getPanierByUser = async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-exports.updatePanierStatus = async (req, res) => {
+exports.updatePanierItem = async (req, res) => {
   try {
     const panier = await Panier.findById(req.params.id);
     if (!panier) {
@@ -386,7 +386,7 @@ exports.updatePanierStatus = async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-exports.deletePanier = async (req, res) => {
+exports.removeFromPanier = async (req, res) => {
   try {
     const panier = await Panier.findById(req.params.id);
     if (!panier) {

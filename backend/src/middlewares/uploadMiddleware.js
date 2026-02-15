@@ -4,7 +4,7 @@ const { generateSignature } = require('../services/cloudinary');
 /**
  * Middleware pour le téléversement de photos de profil
  */
-const uploadProfilePicture = multer({
+const uploadPicture = multer({
   storage: multer.memoryStorage(),
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB
@@ -73,7 +73,7 @@ const handleUploadError = (err, req, res, next) => {
 };
 
 module.exports = {
-  uploadProfilePicture,
+  uploadPicture,
   uploadMultipleImages,
   handleUploadError
 };

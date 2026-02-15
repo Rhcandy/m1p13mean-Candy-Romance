@@ -6,9 +6,9 @@ const authMiddleware = require('../middlewares/authMiddleware');
 router.use(authMiddleware);
 
 // Routes pour Panier
-router.post('/', panierController.createOrUpdatePanier);
-router.get('/user/:userId', panierController.getPanierByUser);
-router.put('/:id', panierController.updatePanierStatus);
-router.delete('/:id', panierController.deletePanier);
+router.post('/', panierController.addToPanier);
+router.get('/', panierController.getPanier);
+router.put('/:itemId', panierController.updatePanierItem);
+router.delete('/:itemId', panierController.removeFromPanier);
 
 module.exports = router;

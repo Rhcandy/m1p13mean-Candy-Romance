@@ -162,11 +162,9 @@ export class RegisterComponent {
 
       password: credentials.password,
 
-      name: credentials.name,
+      nom: credentials.name,
 
-      role: this.selectedRole()!,
-
-      avatar: this.avatarFile || undefined
+      role: this.selectedRole()!
 
     };
 
