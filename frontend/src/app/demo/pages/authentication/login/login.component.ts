@@ -40,7 +40,12 @@ export class LoginComponent {
 
     this.authService.login(this.model.email, this.model.password).subscribe({
       next: () => {
-        this.router.navigate(['/default']);
+
+        if (this.authService.hasRole('user')) {
+          this.router.navigate(['/produits']);
+        } else {
+          this.router.navigate(['/default']);
+        }
       },
       error: () => {
         this.error = 'Email ou mot de passe incorrect';

@@ -1,7 +1,6 @@
 import { Injectable } from '@angular/core';
-import { Observable, from } from 'rxjs';
-import { map } from 'rxjs/operators';
-import api from './api.service';
+import { Observable } from 'rxjs';
+import { ApiService } from './api.service';
 
 export interface Shop {
   id: string;
@@ -33,19 +32,16 @@ export interface CreateShopData {
   providedIn: 'root'
 })
 export class ShopService {
+  constructor(private readonly api: ApiService) {}
 
   // Récupérer tous les shops
   getAllShops(): Observable<Shop[]> {
-    return from(api.get<Shop[]>('/shops')).pipe(
-      map(response => response.data)
-    );
+    return this.api.get<Shop[]>('/shops');
   }
 
   // Récupérer un shop par ID
   getShopById(id: string): Observable<Shop> {
-    return from(api.get<Shop>(`/shops/${id}`)).pipe(
-      map(response => response.data)
-    );
+    return this.api.get<Shop>(`/shops/${id}`);
   }
 
   // Créer un nouveau shop
@@ -58,13 +54,7 @@ export class ShopService {
       formData.append('image', data.image);
     }
 
-    return from(api.post<Shop>('/shops', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    })).pipe(
-      map(response => response.data)
-    );
+    return this.api.postFile<Shop>('/shops', formData);
   }
 
   // Mettre à jour un shop
@@ -75,31 +65,19 @@ export class ShopService {
       formData.append('description', data.description || '');
       formData.append('image', data.image);
 
-      return from(api.put<Shop>(`/shops/${id}`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      })).pipe(
-        map(response => response.data)
-      );
+      return this.api.putFile<Shop>(`/shops/${id}`, formData);
     } else {
-      return from(api.put<Shop>(`/shops/${id}`, data)).pipe(
-        map(response => response.data)
-      );
+      return this.api.put<Shop>(`/shops/${id}`, data);
     }
   }
 
   // Supprimer un shop
   deleteShop(id: string): Observable<void> {
-    return from(api.delete<void>(`/shops/${id}`)).pipe(
-      map(response => response.data)
-    );
+    return this.api.delete<void>(`/shops/${id}`);
   }
 
   // Récupérer les produits d'un shop
   getShopProducts(shopId: string): Observable<Product[]> {
-    return from(api.get<Product[]>(`/shops/${shopId}/products`)).pipe(
-      map(response => response.data)
-    );
+    return this.api.get<Product[]>(`/shops/${shopId}/products`);
   }
 }

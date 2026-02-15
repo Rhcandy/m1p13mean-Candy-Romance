@@ -7,7 +7,7 @@ import { RouterModule } from '@angular/router';
 import { environment } from 'src/environments/environment';
 
 // project import
-import { NavigationItem, NavigationItems } from '../navigation';
+import { NavigationItem, getNavigationItems } from '../navigation';
 
 import { NavCollapseComponent } from './nav-collapse/nav-collapse.component';
 import { NavGroupComponent } from './nav-group/nav-group.component';
@@ -23,7 +23,7 @@ import { SharedModule } from 'src/app/theme/shared/shared.module';
   styleUrl: './nav-content.component.scss'
 })
 export class NavContentComponent implements OnInit {
-  private location = inject(Location);
+  private readonly location = inject(Location);
 
   // public props
   NavCollapsedMob = output();
@@ -38,7 +38,7 @@ export class NavContentComponent implements OnInit {
 
   // Constructor
   constructor() {
-    this.navigations = NavigationItems;
+    this.navigations = getNavigationItems();
     this.windowWidth = window.innerWidth;
   }
 
@@ -46,7 +46,7 @@ export class NavContentComponent implements OnInit {
   ngOnInit() {
     if (this.windowWidth < 1025) {
       setTimeout(() => {
-        (document.querySelector('.coded-navbar') as HTMLDivElement).classList.add('menupos-static');
+        (document.querySelector('.coded-navbar') as HTMLElement).classList.add('menupos-static');
       }, 500);
     }
   }
@@ -67,14 +67,11 @@ export class NavContentComponent implements OnInit {
       const up_parent = parent?.parentElement?.parentElement;
       const last_parent = up_parent?.parentElement;
       if (parent?.classList.contains('coded-hasmenu')) {
-        parent.classList.add('coded-trigger');
-        parent.classList.add('active');
+        parent.classList.add('coded-trigger', 'active');
       } else if (up_parent?.classList.contains('coded-hasmenu')) {
-        up_parent.classList.add('coded-trigger');
-        up_parent.classList.add('active');
+        up_parent.classList.add('coded-trigger', 'active');
       } else if (last_parent?.classList.contains('coded-hasmenu')) {
-        last_parent.classList.add('coded-trigger');
-        last_parent.classList.add('active');
+        last_parent.classList.add('coded-trigger', 'active');
       }
     }
   }

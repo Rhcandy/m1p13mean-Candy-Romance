@@ -10,6 +10,7 @@ import { NavBarComponent } from './nav-bar/nav-bar.component';
 import { NavigationComponent } from './navigation/navigation.component';
 import { BreadcrumbComponent } from '../../shared/components/breadcrumbs/breadcrumbs.component';
 import { LayoutStateService } from '../../shared/service/layout-state.service';
+import { AuthService } from '../../../services/auth.service';
 
 @Component({
   selector: 'app-admin',
@@ -22,6 +23,7 @@ export class AdminComponent implements AfterViewInit {
   private locationStrategy = inject(LocationStrategy);
   cdr = inject(ChangeDetectorRef);
   private layoutState = inject(LayoutStateService);
+  private authService = inject(AuthService);
 
   // public props
   currentLayout!: string;
@@ -65,5 +67,9 @@ export class AdminComponent implements AfterViewInit {
 
   closeMenu() {
     this.layoutState.toggleNavCollapsedMob();
+  }
+
+  get isUserRole(): boolean {
+    return this.authService.hasRole('user');
   }
 }

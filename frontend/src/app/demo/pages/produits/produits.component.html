@@ -1,0 +1,38 @@
+<div class="container-fluid">
+  <div class="row">
+    @for (product of produits; track product._id) {
+      <div class="col-xl-4 col-md-6 mb-4">
+        <app-product-display [product]="product"></app-product-display>
+      </div>
+    }
+  </div>
+
+  <!-- Pagination -->
+  @if (pagination && pagination.totalPages > 1) {
+    <div class="row">
+      <div class="col-12">
+        <nav aria-label="Pagination des produits">
+          <ul class="pagination justify-content-center">
+            <li class="page-item" [class.disabled]="pagination.page <= 1">
+              <a class="page-link" href="#" (click)="changePage(pagination.page - 1); $event.preventDefault()" aria-label="Page précédente">
+                <i class="ti ti-chevron-left"></i>
+              </a>
+            </li>
+
+            @for (page of getPagesArray(); track page) {
+              <li class="page-item" [class.active]="page === pagination.page">
+                <a class="page-link" href="#" (click)="changePage(page); $event.preventDefault()" aria-label="Page {{ page }}">{{ page }}</a>
+              </li>
+            }
+
+            <li class="page-item" [class.disabled]="pagination.page >= pagination.totalPages">
+              <a class="page-link" href="#" (click)="changePage(pagination.page + 1); $event.preventDefault()" aria-label="Page suivante">
+                <i class="ti ti-chevron-right"></i>
+              </a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+  }
+</div>

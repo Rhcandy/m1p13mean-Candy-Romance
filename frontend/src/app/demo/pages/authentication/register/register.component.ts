@@ -9,6 +9,7 @@ import { RouterModule, Router } from '@angular/router';
 import { email, Field, form, minLength, required } from '@angular/forms/signals';
 
 import { AuthService, RegisterData } from '../../../../services/auth.service';
+import { NotificationService } from 'src/app/services/notification.service';
 
 
 
@@ -25,12 +26,12 @@ import { AuthService, RegisterData } from '../../../../services/auth.service';
 })
 
 export class RegisterComponent {
+ private readonly notificationService = inject(NotificationService);
+  private readonly cd = inject(ChangeDetectorRef);
 
-  private cd = inject(ChangeDetectorRef);
+  private readonly authService = inject(AuthService);
 
-  private authService = inject(AuthService);
-
-  private router = inject(Router);
+  private readonly router = inject(Router);
 
 
 
@@ -152,8 +153,6 @@ export class RegisterComponent {
 
     event.preventDefault();
 
-    const credentials = this.registerModel();
-
 
 
     const registerData: RegisterData = {
@@ -172,11 +171,14 @@ export class RegisterComponent {
 
     this.authService.register(registerData).subscribe({
 
-      next: (response) => {
+      next: () => {
 
-        console.log('Registration successful:', response);
-
-        this.router.navigate(['/dashboard']);
+        if (this.authService.hasRole('user')) {
+          this.router.navigate(['/produits']);
+        } else {
+          this.router.navigate(['/default']);
+        }
+        this.notificationService.success('Profil', 'Compte créé avec succès.');
 
       },
 

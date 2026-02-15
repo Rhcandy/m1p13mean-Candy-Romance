@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
-import { Observable, from } from 'rxjs';
-import { map } from 'rxjs/operators';
-import api from './api.service';
+import { Observable } from 'rxjs';
+import { ApiService } from './api.service';
+
 
 export interface OrderItem {
   product: string;
@@ -35,60 +35,45 @@ export interface UpdateOrderStatusData {
   providedIn: 'root'
 })
 export class OrderService {
+  constructor(private readonly api: ApiService) {}
 
   // Récupérer toutes les commandes de l'utilisateur
   getUserOrders(): Observable<Order[]> {
-    return from(api.get<Order[]>('/orders/user')).pipe(
-      map(response => response.data)
-    );
+    return this.api.get<Order[]>('/orders/user');
   }
 
   // Récupérer les commandes d'un shop
   getShopOrders(shopId: string): Observable<Order[]> {
-    return from(api.get<Order[]>(`/shops/${shopId}/orders`)).pipe(
-      map(response => response.data)
-    );
+    return this.api.get<Order[]>(`/shops/${shopId}/orders`);
   }
 
   // Récupérer une commande par ID
   getOrderById(id: string): Observable<Order> {
-    return from(api.get<Order>(`/orders/${id}`)).pipe(
-      map(response => response.data)
-    );
+    return this.api.get<Order>(`/orders/${id}`);
   }
 
   // Créer une nouvelle commande
   createOrder(data: CreateOrderData): Observable<Order> {
-    return from(api.post<Order>('/orders', data)).pipe(
-      map(response => response.data)
-    );
+    return this.api.post<Order>('/orders', data);
   }
 
   // Mettre à jour le statut d'une commande
   updateOrderStatus(id: string, data: UpdateOrderStatusData): Observable<Order> {
-    return from(api.patch<Order>(`/orders/${id}/status`, data)).pipe(
-      map(response => response.data)
-    );
+    return this.api.put<Order>(`/orders/${id}/status`, data);
   }
 
   // Annuler une commande
   cancelOrder(id: string): Observable<Order> {
-    return from(api.patch<Order>(`/orders/${id}/cancel`, {})).pipe(
-      map(response => response.data)
-    );
+    return this.api.put<Order>(`/orders/${id}/cancel`, {});
   }
 
   // Récupérer toutes les commandes (admin)
   getAllOrders(): Observable<Order[]> {
-    return from(api.get<Order[]>('/admin/orders')).pipe(
-      map(response => response.data)
-    );
+    return this.api.get<Order[]>('/admin/orders');
   }
 
   // Récupérer les statistiques des commandes pour un shop
   getShopOrderStats(shopId: string): Observable<any> {
-    return from(api.get<any>(`/shops/${shopId}/orders/stats`)).pipe(
-      map(response => response.data)
-    );
+    return this.api.get<any>(`/shops/${shopId}/orders/stats`);
   }
 }

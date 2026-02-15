@@ -1,38 +1,42 @@
 import { Injectable } from '@angular/core';
-import { Observable, from } from 'rxjs';
+import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import api from './api.service';
+import { ApiService } from './api.service';
 
 export interface Product {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  image: string;
-  shop: string;
-  inStock: boolean;
-  category?: string;
-  tags?: string[];
+  averageRating: number;
+  avis: any[];
+  _id: string;
+  boutiqueId: { _id: string; nom: string };
+  categorieId: { _id: string; nom: string };
+  nom: string;
+  photo: string;
+  variant: any[];
+  prix: any[];
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
+  deliveryDate?: string;
 }
 
 export interface CreateProductData {
-  name: string;
-  description: string;
-  price: number;
-  shop: string;
-  category?: string;
-  tags?: string[];
-  image?: File;
+  nom: string;
+  description?: string;
+  boutiqueId: string;
+  categorieId: string;
+  photo?: File;
+  variant?: any[];
+  prix?: any[];
 }
 
 export interface UpdateProductData {
-  name?: string;
+  nom?: string;
   description?: string;
-  price?: number;
-  inStock?: boolean;
-  category?: string;
-  tags?: string[];
-  image?: File;
+  boutiqueId?: string;
+  categorieId?: string;
+  photo?: File;
+  variant?: any[];
+  prix?: any[];
 }
 
 @Injectable({
@@ -40,110 +44,76 @@ export interface UpdateProductData {
 })
 export class ProductService {
 
+  constructor(private readonly api: ApiService) {}
+
   // Récupérer tous les produits
-  getAllProducts(): Observable<Product[]> {
-    return from(api.get<Product[]>('/products')).pipe(
-      map(response => response.data)
+  getAllProducts(params?: any): Observable<{items: Product[], pagination: any}> {
+    return this.api.get<{items: Product[], pagination: any}>('/produits', { params }).pipe(
+      map(response => response)
     );
   }
 
   // Récupérer un produit par ID
   getProductById(id: string): Observable<Product> {
-    return from(api.get<Product>(`/products/${id}`)).pipe(
-      map(response => response.data)
+    return this.api.get<Product>(`/produits/${id}`).pipe(
+      map(response => response)
     );
   }
 
   // Créer un nouveau produit
   createProduct(data: CreateProductData): Observable<Product> {
     const formData = new FormData();
-    formData.append('name', data.name);
-    formData.append('description', data.description);
-    formData.append('price', data.price.toString());
-    formData.append('shop', data.shop);
+    formData.append('nom', data.nom);
     
-    if (data.category) {
-      formData.append('category', data.category);
+    if (data.description) {
+      formData.append('description', data.description);
     }
     
-    if (data.tags && data.tags.length > 0) {
-      data.tags.forEach((tag, index) => {
-        formData.append(`tags[${index}]`, tag);
-      });
-    }
+    formData.append('boutiqueId', data.boutiqueId);
+    formData.append('categorieId', data.categorieId);
     
-    if (data.image) {
-      formData.append('image', data.image);
+    if (data.photo) {
+      formData.append('photo', data.photo);
     }
 
-    return from(api.post<Product>('/products', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    })).pipe(
-      map(response => response.data)
-    );
+    return this.api.postFile<Product>('/produits', formData);
   }
 
   // Mettre à jour un produit
   updateProduct(id: string, data: UpdateProductData): Observable<Product> {
-    if (data.image) {
+    if (data.photo) {
       const formData = new FormData();
-      formData.append('name', data.name || '');
-      formData.append('description', data.description || '');
-      if (data.price !== undefined) {
-        formData.append('price', data.price.toString());
+      formData.append('nom', data.nom || '');
+      
+      if (data.description) {
+        formData.append('description', data.description);
       }
-      if (data.inStock !== undefined) {
-        formData.append('inStock', data.inStock.toString());
+      
+      if (data.boutiqueId) {
+        formData.append('boutiqueId', data.boutiqueId);
       }
-      if (data.category) {
-        formData.append('category', data.category);
+      
+      if (data.categorieId) {
+        formData.append('categorieId', data.categorieId);
       }
-      if (data.tags && data.tags.length > 0) {
-        data.tags.forEach((tag, index) => {
-          formData.append(`tags[${index}]`, tag);
-        });
-      }
-      formData.append('image', data.image);
+      
+      formData.append('photo', data.photo);
 
-      return from(api.put<Product>(`/products/${id}`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      })).pipe(
-        map(response => response.data)
-      );
+      return this.api.putFile<Product>(`/produits/${id}`, formData);
     } else {
-      return from(api.put<Product>(`/products/${id}`, data)).pipe(
-        map(response => response.data)
-      );
+      return this.api.put<Product>(`/produits/${id}`, data);
     }
   }
 
   // Supprimer un produit
   deleteProduct(id: string): Observable<void> {
-    return from(api.delete<void>(`/products/${id}`)).pipe(
-      map(response => response.data)
-    );
-  }
-
-  // Rechercher des produits
-  searchProducts(query: string, category?: string): Observable<Product[]> {
-    const params: any = { q: query };
-    if (category) {
-      params.category = category;
-    }
-
-    return from(api.get<Product[]>('/products/search', { params })).pipe(
-      map(response => response.data)
-    );
+    return this.api.delete<void>(`/produits/${id}`);
   }
 
   // Récupérer les produits par shop
   getProductsByShop(shopId: string): Observable<Product[]> {
-    return from(api.get<Product[]>(`/shops/${shopId}/products`)).pipe(
-      map(response => response.data)
+    return this.api.get<Product[]>(`/produits?boutiqueId=${shopId}`).pipe(
+      map(response => response)
     );
   }
 }
