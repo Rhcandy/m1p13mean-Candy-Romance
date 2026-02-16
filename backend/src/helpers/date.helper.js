@@ -1,11 +1,10 @@
 // helpers/date.helper.js
 
 function getMonthStartEnd(periode) {
-    // periode format: "2026-01"
-    const [year, month] = periode.split("-");
-    const start = new Date(year, month - 1, 1);
-    const end = new Date(year, month, 0); // dernier jour du mois
-    return { start, end };
+    const [year, month] = periode.split("-").map(Number);
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0);
+    return { startDate, endDate }; // ⚡️ renommer ici
 }
 
 function countSelectedDays(jlocation, startDate, endDate) {

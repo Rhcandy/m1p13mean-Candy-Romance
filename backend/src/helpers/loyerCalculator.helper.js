@@ -13,6 +13,9 @@ function getLatestPriceByType(typeboxId, histoPrixList) {
 }
 
 function calculateBaseLoyer(surface, prixM2, nbJours) {
+    console.log('Surface:', surface);
+    console.log('Prix/m2:', prixM2);
+    console.log('Nombre de jours:', nbJours);
     return surface * prixM2 * nbJours;
 }
 
