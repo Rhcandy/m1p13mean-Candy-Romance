@@ -127,7 +127,7 @@ export class ProductDisplayComponent implements OnInit {
     this.panierService.ajouterProduit(this.product._id, 1).subscribe({
       next: (panier) => {
         console.log('Produit ajouté au panier:', this.product.nom);
-         this.notificationService.success('Erreur', `"${this.product.nom}" a été ajouté à votre panier !`);
+         this.notificationService.success('Success', `"${this.product.nom}" a été ajouté à votre panier !`);
       },
       error: (error) => {
         console.error('Erreur lors de l\'ajout au panier:', error);

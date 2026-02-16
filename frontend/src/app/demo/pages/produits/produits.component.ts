@@ -137,6 +137,7 @@ export class ProduitsComponent implements OnInit {
     // Filtre par nom (recherche texte)
     if (formValues.nom?.trim()) {
       params['nom[regex]'] = formValues.nom.trim();
+      params['nom[options]'] = 'i';
     }
 
     // Filtre par catégorie
@@ -163,7 +164,7 @@ export class ProduitsComponent implements OnInit {
       const sortOrder = formValues.sortOrder === 'desc' ? '-' : '';
       params.sort = `${sortOrder}${formValues.sortBy}`;
     }
-
+     console.log(params);
     return params;
   }
 

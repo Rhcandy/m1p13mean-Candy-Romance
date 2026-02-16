@@ -49,6 +49,16 @@ export function getNavigationItems(): NavigationItem[] {
       url: '/produits',
       breadcrumbs: true
     },
+    {
+      id: 'Panier',
+      title: 'Panier',
+      type: 'item',
+      hidden: true,
+      icon: 'ti ti-shopping-cart',
+      classes: 'nav-item',
+      url: '/panier',
+      breadcrumbs: true
+    },
     
     
     

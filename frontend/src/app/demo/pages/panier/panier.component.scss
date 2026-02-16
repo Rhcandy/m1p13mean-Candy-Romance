@@ -1,6 +1,93 @@
-// panier.component.scss - Version Table
+// panier.component.scss - Version Table avec countdown
 .panier-wrapper {
-  min-height: 200px;
+  padding: 2rem 0;
+  min-height: 70vh;
+}
+
+// Countdown timer
+.countdown-timer {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 1px solid #fbbf24;
+  border-radius: 8px;
+  padding: 1rem 1.5rem;
+  margin-bottom: 2rem;
+  text-align: center;
+  
+  &.expired {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    border-color: #ef4444;
+  }
+  
+  .countdown-label {
+    font-size: 0.875rem;
+    color: #92400e;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+  }
+  
+  .countdown-time {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #78350f;
+    font-family: 'Monaco', 'Menlo', monospace;
+    
+    &.expired {
+      color: #991b1b;
+    }
+  }
+  
+  .countdown-warning {
+    font-size: 0.875rem;
+    color: #92400e;
+    margin-top: 0.5rem;
+  }
+}
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  
+  .spinner-border {
+    width: 3rem;
+    height: 3rem;
+    margin-bottom: 1rem;
+  }
+  
+  p {
+    color: #6b7280;
+    font-size: 1.125rem;
+  }
+}
+
+.empty-cart-mini {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: #f9fafb;
+  border-radius: 12px;
+  border: 2px dashed #e5e7eb;
+  
+  i {
+    font-size: 4rem;
+    color: #cbd5e1;
+    margin-bottom: 1rem;
+  }
+  
+  p {
+    color: #6b7280;
+    font-size: 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .btn {
+    padding: 0.75rem 2rem;
+    border-radius: 8px;
+    font-weight: 600;
+  }
 }
 
 // Version table responsive
@@ -8,6 +95,10 @@
   max-height: 500px;
   overflow-y: auto;
   overflow-x: auto;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
   border-radius: 8px;
   
   &::-webkit-scrollbar {

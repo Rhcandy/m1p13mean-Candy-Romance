@@ -1,10 +1,10 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { PanierService, Panier, ProduitAchete } from '../../services/panier.service';
-import { AuthService } from '../../services/auth.service';
-import { NotificationService } from '../../services/notification.service';
+import { PanierService, Panier, ProduitAchete } from '../../../services/panier.service';
+import { AuthService } from '../../../services/auth.service';
+import { NotificationService } from '../../../services/notification.service';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { NavigationEnd } from '@angular/router';
@@ -34,22 +34,37 @@ export class PanierComponent implements OnInit, OnDestroy {
   loading = false;
   private readonly destroy$ = new Subject<void>();
   private isLoading = false;
+  timeRemaining: string = '';
+  isExpired = false;
+  private countdownInterval: any;
 
   constructor(
     private readonly router: Router,
     private readonly panierService: PanierService,
     private readonly authService: AuthService,
-    private readonly notificationService: NotificationService
+    private readonly notificationService: NotificationService,
+    private readonly cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
     this.authService.ensureUserExists();
     this.loadPanier();
+    this.startCountdown();
+    
+    // Écouter les mises à jour du panier
+    this.panierService.onPanierUpdated()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.refreshPanier();
+      });
   }
 
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+    if (this.countdownInterval) {
+      clearInterval(this.countdownInterval);
+    }
   }
 
   /**
@@ -70,7 +85,9 @@ export class PanierComponent implements OnInit, OnDestroy {
           this.panier = response.data;
           this.loading = false;
           this.isLoading = false;
+          this.updateTimeRemaining();
           console.log('Panier chargé:', this.panier);
+          this.cdr.detectChanges();
         });
       },
       error: (error) => {
@@ -81,6 +98,7 @@ export class PanierComponent implements OnInit, OnDestroy {
           this.isLoading = false;
           this.panier = null;
           this.notificationService.error('Erreur lors du chargement du panier');
+          this.cdr.detectChanges();
         });
       }
     });
@@ -92,6 +110,71 @@ export class PanierComponent implements OnInit, OnDestroy {
   refreshPanier(): void {
     this.isLoading = false;
     this.loadPanier();
+  }
+
+  /**
+   * Démarrer le compte à rebours
+   */
+  startCountdown(): void {
+    this.countdownInterval = setInterval(() => {
+      this.updateTimeRemaining();
+    }, 1000);
+  }
+
+  /**
+   * Mettre à jour le temps restant
+   */
+  updateTimeRemaining(): void {
+    if (!this.panier?.expiresAt) {
+      // Calculer l'expiration par défaut (2h après la création)
+      if (this.panier?.createdAt) {
+        const createdTime = new Date(this.panier.createdAt).getTime();
+        const expiryTime = createdTime + (2 * 60 * 60 * 1000); // 2 heures
+        const now = new Date().getTime();
+        const difference = expiryTime - now;
+
+        if (difference <= 0) {
+          this.timeRemaining = 'Expiré';
+          this.isExpired = true;
+          if (this.countdownInterval) {
+            clearInterval(this.countdownInterval);
+          }
+          this.notificationService.error('Votre panier a expiré. Veuillez le recréer.');
+          return;
+        }
+
+        const hours = Math.floor(difference / (1000 * 60 * 60));
+        const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+
+        this.timeRemaining = `${hours}h ${minutes}m ${seconds}s`;
+        this.isExpired = false;
+      } else {
+        this.timeRemaining = 'Non défini';
+      }
+      return;
+    }
+
+    const now = new Date().getTime();
+    const expiryTime = new Date(this.panier.expiresAt).getTime();
+    const difference = expiryTime - now;
+
+    if (difference <= 0) {
+      this.timeRemaining = 'Expiré';
+      this.isExpired = true;
+      if (this.countdownInterval) {
+        clearInterval(this.countdownInterval);
+      }
+      this.notificationService.error('Votre panier a expiré. Veuillez le recréer.');
+      return;
+    }
+
+    const hours = Math.floor(difference / (1000 * 60 * 60));
+    const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+
+    this.timeRemaining = `${hours}h ${minutes}m ${seconds}s`;
+    this.isExpired = false;
   }
 
   /**
@@ -109,9 +192,25 @@ export class PanierComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Obtenir le stock disponible d'un produit (stock total - réservations)
+   * Obtenir le stock total d'un produit (pour affichage dans le panier)
    */
   getProductStock(produit: ProduitAchete['produit']): number {
+    const variant = produit.variant?.[0];
+    if (!variant) return 0;
+    
+    const totalStock = variant.qtt || 0;
+    
+    console.log(`Stock total pour ${produit.nom}:`, {
+      total: totalStock
+    });
+    
+    return Math.max(0, totalStock);
+  }
+
+  /**
+   * Obtenir le stock disponible d'un produit (stock total - réservations)
+   */
+  getAvailableStock(produit: ProduitAchete['produit']): number {
     const variant = produit.variant?.[0];
     if (!variant) return 0;
     
@@ -119,7 +218,7 @@ export class PanierComponent implements OnInit, OnDestroy {
     const reservedStock = variant.reserved || 0;
     const availableStock = totalStock - reservedStock;
     
-    console.log(`Stock pour ${produit.nom}:`, {
+    console.log(`Stock disponible pour ${produit.nom}:`, {
       total: totalStock,
       reserved: reservedStock,
       available: availableStock
@@ -132,7 +231,7 @@ export class PanierComponent implements OnInit, OnDestroy {
    * Mettre à jour la quantité d'un article
    */
   updateQuantity(item: ProduitAchete, quantity: number): void {
-    const maxStock = this.getProductStock(item.produit);
+    const maxStock = this.getAvailableStock(item.produit);
     
     if (quantity < 1) {
       quantity = 1;
@@ -148,7 +247,9 @@ export class PanierComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response) => {
           this.panier = response.data;
+          this.updateTimeRemaining();
           this.notificationService.success('Quantité mise à jour');
+          this.cdr.detectChanges();
         },
         error: (error) => {
           console.error('Erreur lors de la mise à jour de la quantité:', error);
@@ -161,7 +262,17 @@ export class PanierComponent implements OnInit, OnDestroy {
    * Augmenter la quantité d'un article
    */
   increaseQuantity(item: ProduitAchete): void {
-    this.updateQuantity(item, item.qtt + 1);
+    const maxStock = this.getAvailableStock(item.produit);
+    
+    if (item.qtt >= maxStock) {
+      this.notificationService.warning(
+        `Stock maximum atteint: ${maxStock} articles disponibles`
+      );
+      return;
+    }
+    
+    const newQuantity = item.qtt + 1;
+    this.updateQuantity(item, newQuantity);
   }
 
   /**
@@ -181,7 +292,9 @@ export class PanierComponent implements OnInit, OnDestroy {
         .subscribe({
           next: (response) => {
             this.panier = response.data;
+            this.updateTimeRemaining();
             this.notificationService.success('Article supprimé du panier');
+            this.cdr.detectChanges();
           },
           error: (error) => {
             console.error('Erreur lors de la suppression du produit:', error);
@@ -227,10 +340,15 @@ export class PanierComponent implements OnInit, OnDestroy {
       return;
     }
 
+    if (this.isExpired) {
+      this.notificationService.error('Votre panier a expiré. Veuillez le recréer.');
+      return;
+    }
+
     // Vérifier le stock avant validation
     const outOfStockItems = this.panier.produitsachete.filter(item => {
-      const stock = this.getProductStock(item.produit);
-      return item.qtt > stock;
+      const availableStock = this.getAvailableStock(item.produit);
+      return item.qtt > availableStock;
     });
 
     if (outOfStockItems.length > 0) {

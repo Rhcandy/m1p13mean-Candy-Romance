@@ -30,6 +30,10 @@ const routes: Routes = [
       {
         path: 'product/:id',
         loadComponent: () => import('./demo/pages/product-detail/product-detail-page.component').then((c) => c.ProductDetailPageComponent)
+      },
+      {
+        path: 'panier',
+        loadComponent: () => import('./demo/pages/panier/panier.component').then((c) => c.PanierComponent)
       }
     ]
   },

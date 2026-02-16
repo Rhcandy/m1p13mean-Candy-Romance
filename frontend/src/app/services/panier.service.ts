@@ -38,6 +38,7 @@ export interface Panier {
   statut: 'panier' | 'en_attente' | 'confirmee' | 'preparation' | 'expedie' | 'livre' | 'annule';
   isPaye: boolean;
   islivre: boolean;
+  expiresAt?: string; // Date d'expiration du panier
   datePaiement?: Date;
   dateLivraison?: Date;
   dateAnnulation?: Date;
