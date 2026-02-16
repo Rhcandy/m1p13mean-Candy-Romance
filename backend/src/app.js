@@ -67,6 +67,7 @@ const typeBoxRoutes = require('./routes/typeBoxRoutes');
 const boxRoutes = require('./routes/boxRoutes');
 const boutiqueRoutes = require('./routes/boutiqueRoutes');
 const loyers =require('./routes/loyer.routes');
+const histoPrixRoutes = require('./routes/histoPrixCateg.routes');
 
 // Routes API
 app.use('/api/auth', authRoutes);
@@ -76,6 +77,7 @@ app.use('/api/typebox', typeBoxRoutes);
 app.use('/api/boxes', boxRoutes);
 app.use('/api/boutiques', boutiqueRoutes);
 app.use('/api/loyers', loyers);
+app.use('/api/histo-prix', histoPrixRoutes);
 
 // Servir les fichiers uploadés statiquement
 app.use('/uploads', express.static('uploads'));
