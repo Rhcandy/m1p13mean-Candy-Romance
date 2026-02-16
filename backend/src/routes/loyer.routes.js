@@ -20,4 +20,8 @@ router.post('/generate-monthly', authMiddleware, adminOnly, loyerController.gene
 // Vérification des loyers en retard (admin)
 router.post('/check-late', authMiddleware, adminOnly, loyerController.checkLate);
 
+// Liste des loyers (admin ou utilisateur selon ton besoin)
+router.get('/', authMiddleware, allRoles, loyerController.listLoyers);
+
+
 module.exports = router;
