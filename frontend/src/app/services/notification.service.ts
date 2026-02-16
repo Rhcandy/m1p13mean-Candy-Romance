@@ -33,36 +33,36 @@ export class NotificationService {
     }, fullNotification.duration);
   }
 
-  success(title: string, message: string): void {
+  success(title: string, message?: string): void {
     this.show({
       type: 'success',
       title,
-      message
+      message: message || title
     });
   }
 
-  error(title: string, message: string): void {
+  error(title: string, message?: string): void {
     this.show({
       type: 'error',
       title,
-      message,
+      message: message || title,
       duration: 8000 // Longer for errors
     });
   }
 
-  warning(title: string, message: string): void {
+  warning(title: string, message?: string): void {
     this.show({
       type: 'warning',
       title,
-      message
+      message: message || title
     });
   }
 
-  info(title: string, message: string): void {
+  info(title: string, message?: string): void {
     this.show({
       type: 'info',
       title,
-      message
+      message: message || title
     });
   }
 

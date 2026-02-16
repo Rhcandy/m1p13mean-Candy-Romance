@@ -4,10 +4,11 @@ import { Component, inject, OnInit, Renderer2 } from '@angular/core';
 
 // project import
 import { BerryConfig } from 'src/app/app-config';
+import { PanierComponent } from 'src/app/components/panier/panier.component';
 
 @Component({
   selector: 'app-configuration',
-  imports: [CommonModule],
+  imports: [CommonModule, PanierComponent],
   templateUrl: './configuration.component.html',
   styleUrls: ['./configuration.component.scss']
 })

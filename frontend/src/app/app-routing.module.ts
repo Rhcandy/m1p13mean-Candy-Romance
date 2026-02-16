@@ -26,6 +26,10 @@ const routes: Routes = [
       {
         path: 'produits',
         loadComponent: () => import('./demo/pages/produits/produits.component').then((c) => c.ProduitsComponent)
+      },
+      {
+        path: 'product/:id',
+        loadComponent: () => import('./demo/pages/product-detail/product-detail-page.component').then((c) => c.ProductDetailPageComponent)
       }
     ]
   },

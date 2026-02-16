@@ -55,8 +55,8 @@ export class ProductService {
 
   // Récupérer un produit par ID
   getProductById(id: string): Observable<Product> {
-    return this.api.get<Product>(`/produits/${id}`).pipe(
-      map(response => response)
+    return this.api.get<{data: Product}>(`/produits/${id}`).pipe(
+      map(response => response.data)
     );
   }
 
@@ -73,7 +73,7 @@ export class ProductService {
     formData.append('categorieId', data.categorieId);
     
     if (data.photo) {
-      formData.append('photo', data.photo);
+      formData.append('profilePicture', data.photo);
     }
 
     return this.api.postFile<Product>('/produits', formData);
@@ -97,7 +97,7 @@ export class ProductService {
         formData.append('categorieId', data.categorieId);
       }
       
-      formData.append('photo', data.photo);
+      formData.append('profilePicture', data.photo);
 
       return this.api.putFile<Product>(`/produits/${id}`, formData);
     } else {

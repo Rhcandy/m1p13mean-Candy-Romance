@@ -11,7 +11,12 @@ const variantSchema  = new mongoose.Schema({
   qtt: {
     type: Number,
     required: true,
-    min: 1
+    min: 0  // Permettre stock = 0 (rupture de stock)
+  },
+  reserved: {
+    type: Number,
+    default: 0,
+    min: 0
   }
 }, { 
   _id: false,

@@ -165,6 +165,44 @@ export class AuthService {
     return this.isAuthenticatedSubject.value;
   }
 
+  /**
+   * Créer un utilisateur de test pour les démonstrations
+   */
+  createTestUser(): User {
+    const testUser: User = {
+      id: '507f1f77bcf86cd799439011', // ObjectId MongoDB valide
+      nom: 'Test User',
+      email: 'test@example.com',
+      role: 'user'
+    };
+
+    this.setUser(testUser);
+    this.setToken('test-token-123');
+    this.currentUserSubject.next(testUser);
+    this.isAuthenticatedSubject.next(true);
+
+    return testUser;
+  }
+
+  /**
+   * S'assurer qu'un utilisateur est défini (pour les tests)
+   */
+  ensureUserExists(): User {
+    let user = this.getUser();
+    if (!user) {
+      user = this.createTestUser();
+    }
+    return user;
+  }
+
+  /**
+   * Obtenir l'ID de l'utilisateur actuel (compatible MongoDB)
+   */
+  getUserId(): string {
+    const user = this.ensureUserExists();
+    return user.id;
+  }
+
   hasRole(role: 'user' | 'admin_boutique' | 'admin_center' | 'super_admin'): boolean {
     return this.currentUser?.role === role;
   }
