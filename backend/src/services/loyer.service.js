@@ -1,5 +1,7 @@
 const Loyer = require('../models/Loyer');
 const Boutique = require('../models/Boutique');
+require('../models/Promotion');
+const HistoPrixCateg = require('../models/HistoPrixCateg');
 
 const { 
   getMonthStartEnd, 
@@ -9,7 +11,6 @@ const {
 
 const { 
   calculateSurfaceTotal,
-  getLatestPriceByType,
   calculateBaseLoyer,
   applyMinimumPeriod
 } = require('../helpers/loyerCalculator.helper');
@@ -36,21 +37,34 @@ const calculateLoyer = async (boutiqueId, periode) => {
     startDate,
     endDate
   );
+  console.log("Jours de location:", boutique.contratlocation.jLocation);
+  console.log('startDate:', startDate, 'endDate:', endDate);
+  console.log('Nombre de jours loués:', nbJours);
 
   const surface = calculateSurfaceTotal(
     boutique.contratlocation.boxes
   );
+  console.log('Surface totale:', surface);
 
+  // On récupère la première box pour le calcul
   const firstBox = boutique.contratlocation.boxes[0];
-  const typeboxId = firstBox?.typebox;
-  const histoPrixList = firstBox?.histoPrix || [];
+  if (!firstBox) throw new Error('Aucune box trouvée pour cette boutique');
 
-  const prixM2 = getLatestPriceByType(typeboxId, histoPrixList);
+  console.log('TypeBoxId de la box:', firstBox.typeBoxId);
+
+  // On cherche le prix correspondant au typeBoxId dans HistoPrixCateg
+  const histoPrix = await HistoPrixCateg.findOne({ typeboxId: firstBox.typeBoxId })
+    .sort({ createdAt: -1 });
+  
+  if (!histoPrix) {
+    throw new Error('Aucun prix trouvé pour ce type de box');
+  }
+
+  const prixM2 = histoPrix.prixParM2;
+  console.log('Prix/m²:', prixM2);
 
   let total = calculateBaseLoyer(surface, prixM2, nbJours);
-
   total = applyMinimumPeriod(nbJours, total);
-
   total = applyPromotion(total, boutique.promotions, new Date());
 
   return {
@@ -122,7 +136,6 @@ const generateMonthlyLoyers = async () => {
 // 4️⃣ PAY LOYER
 // ======================================================
 const payLoyer = async (loyerId, paiementData) => {
-
   const loyer = await Loyer.findById(loyerId);
 
   if (!loyer) throw new Error('Loyer introuvable');
@@ -130,17 +143,47 @@ const payLoyer = async (loyerId, paiementData) => {
   if (loyer.statut === 'PAYE')
     throw new Error('Ce loyer est déjà payé');
 
+  // ✅ Vérifier que les champs obligatoires du paiement sont présents
+  if (!paiementData.title) {
+    throw new Error('Le champ "title" est requis pour le paiement');
+  }
+
+  if (!paiementData.montant || paiementData.montant <= 0) {
+    throw new Error('Le montant du paiement doit être supérieur à 0');
+  }
+
+  // ✅ Ajouter la date de paiement si non fournie
+  if (!paiementData.datePaiement) {
+    paiementData.datePaiement = new Date();
+  }
+
+  // Ajouter le paiement
   loyer.paiements.push(paiementData);
 
-  const reste = calculateReste(loyer.total, loyer.paiements);
+  // ✅ Calcul du reste en s'assurant que total est défini
+  const total = loyer.total || 0;
+  const sommePaiements = loyer.paiements.reduce(
+    (acc, p) => acc + (p.montant || 0),
+    0
+  );
+
+  const reste = total - sommePaiements;
   loyer.reste = reste;
 
-  loyer.statut = determineStatus(loyer.total, reste);
+  // ✅ Déterminer le statut du loyer
+  if (reste <= 0) {
+    loyer.statut = 'PAYE';
+    loyer.reste = 0;
+  } else if (reste < total) {
+    loyer.statut = 'PARTIEL';
+  } else {
+    loyer.statut = 'IMPAYE';
+  }
 
   await loyer.save();
-
   return loyer;
 };
+
 
 
 // ======================================================
