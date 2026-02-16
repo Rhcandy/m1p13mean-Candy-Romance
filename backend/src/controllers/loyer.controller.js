@@ -5,7 +5,7 @@ const {
   payLoyer,
   checkLateLoyers
 } = require('../services/loyer.service');
-
+const Loyer = require('../models/Loyer');
 /**
  * @swagger
  * tags:
@@ -137,23 +137,53 @@ const generate = async (req, res) => {
  *             properties:
  *               montant:
  *                 type: number
+ *                 example: 100000
  *               modePaiement:
  *                 type: string
  *                 example: "Virement"
+ *               title:
+ *                 type: string
+ *                 example: "Paiement février"
+ *               datePaiement:
+ *                 type: string
+ *                 format: date
+ *                 example: "2026-02-16"
  *     responses:
  *       200:
- *         description: Paiement effectué
+ *         description: Paiement effectué avec succès
  */
 const pay = async (req, res) => {
   try {
     const { loyerId } = req.params;
-    const paiementData = req.body;
+    let { montant, modePaiement, title, datePaiement } = req.body;
+
+    if (!montant) {
+      throw new Error('Le montant du paiement est requis');
+    }
+
+    // Générer un title si non fourni
+    if (!title) {
+      const today = new Date();
+      title = `Paiement ${today.toLocaleDateString()}`;
+    }
+
+    // Mettre la date du paiement à aujourd'hui si non fournie
+    if (!datePaiement) {
+      datePaiement = new Date();
+    } else {
+      datePaiement = new Date(datePaiement);
+    }
+
+    const paiementData = { montant, modePaiement, title, datePaiement };
+
     const loyer = await payLoyer(loyerId, paiementData);
+
     return res.status(200).json({
       success: true,
       message: 'Paiement enregistré avec succès',
       data: loyer
     });
+
   } catch (error) {
     return res.status(400).json({
       success: false,
@@ -161,6 +191,49 @@ const pay = async (req, res) => {
     });
   }
 };
+
+
+/**
+ * @swagger
+ * /api/loyers:
+ *   get:
+ *     summary: Récupérer la liste des loyers
+ *     tags: [Loyers]
+ *     parameters:
+ *       - in: query
+ *         name: boutiqueId
+ *         schema:
+ *           type: string
+ *         required: false
+ *         description: Filtrer les loyers par boutique
+ *     responses:
+ *       200:
+ *         description: Liste des loyers
+ */
+const listLoyers = async (req, res) => {
+  try {
+    const { boutiqueId } = req.query;
+
+    const filter = boutiqueId ? { boutiqueId } : {};
+
+    // populate pour récupérer les infos de la boutique
+    const loyers = await Loyer.find(filter)
+      .populate('boutiqueId', 'nom adresse')
+      .sort({ periode: -1 });
+
+    return res.status(200).json({
+      success: true,
+      data: loyers
+    });
+
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
 
 // ==========================================
 // 4️⃣ GENERATE MONTHLY (manual trigger)
@@ -223,5 +296,6 @@ module.exports = {
   generate,
   pay,
   generateMonthly,
-  checkLate
+  checkLate,
+  listLoyers
 };
