@@ -68,6 +68,7 @@ const boxRoutes = require('./routes/boxRoutes');
 const boutiqueRoutes = require('./routes/boutiqueRoutes');
 const loyers =require('./routes/loyer.routes');
 const histoPrixRoutes = require('./routes/histoPrixCateg.routes');
+const adminStatsRoutes = require("./routes/adminStats.routes");
 
 // Routes API
 app.use('/api/auth', authRoutes);
@@ -78,6 +79,7 @@ app.use('/api/boxes', boxRoutes);
 app.use('/api/boutiques', boutiqueRoutes);
 app.use('/api/loyers', loyers);
 app.use('/api/histo-prix', histoPrixRoutes);
+app.use("/api/admin/stats", adminStatsRoutes);
 
 // Servir les fichiers uploadés statiquement
 app.use('/uploads', express.static('uploads'));
