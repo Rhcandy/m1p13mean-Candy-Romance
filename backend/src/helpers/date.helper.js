@@ -38,8 +38,49 @@ function isLate(currentDate, endDate) {
     return currentDate > endDate;
 }
 
+function getYearStartEnd(year) {
+    const start = new Date(year, 0, 1, 0, 0, 0);
+    const end = new Date(year, 11, 31, 23, 59, 59);
+
+    return { start, end };
+}
+
+function getMonthNumber(date) {
+    return new Date(date).getMonth() + 1; // 1-12
+}
+
+function formatMonthLabel(monthNumber) {
+    const months = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec"
+    ];
+
+    return months[monthNumber - 1];
+}
+
+function isCurrentYear(date, year) {
+    return new Date(date).getFullYear() === Number(year);
+}
+
 module.exports = {
+    // Loyer
     getMonthStartEnd,
     countSelectedDays,
-    isLate
+    isLate,
+
+    // Stats
+    getYearStartEnd,
+    getMonthNumber,
+    formatMonthLabel,
+    isCurrentYear
 };
