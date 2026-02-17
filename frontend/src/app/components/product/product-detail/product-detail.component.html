@@ -29,7 +29,7 @@
             <div class="stock-badge" [class.in-stock]="hasStock()" [class.out-of-stock]="!hasStock()">
               @if (hasStock()) {
                 <i class="ti ti-check"></i>
-                En stock ({{ getStockQuantity() }} disponibles)
+                En stock ({{ getAvailableStock() }} disponibles)
               } @else {
                 <i class="ti ti-x"></i>
                 Rupture de stock

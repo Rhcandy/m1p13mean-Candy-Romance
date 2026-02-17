@@ -71,6 +71,7 @@ export interface AddToPanierRequest {
   productId: string;
   quantity?: number;
   userId?: string;
+  attributes?: { [key: string]: string }; // Attributs de la variante
 }
 
 export interface UpdateQuantiteRequest {

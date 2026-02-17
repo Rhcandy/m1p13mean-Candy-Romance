@@ -67,7 +67,7 @@ exports.addToPanier = async (req, res) => {
   session.startTransaction();
 
   try {
-    const { productId, quantity = 1, userId, attributes } = req.body;
+    const { productId, quantity = 1, userId } = req.body;
 
     // Validation
     if (!productId || !userId) {

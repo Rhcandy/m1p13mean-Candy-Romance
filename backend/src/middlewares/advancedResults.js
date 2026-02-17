@@ -1,6 +1,5 @@
 const advancedResults = (model) => async (req, res, next) => {
     let queryObj = { ...req.query }; // copie des query params
-    console.log(queryObj);
     // Coerce booleans in query object ("true"/"false" -> true/false), recursively
     const coerceBooleans = (val) => {
         if (Array.isArray(val)) {

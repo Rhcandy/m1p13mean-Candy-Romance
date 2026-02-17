@@ -314,7 +314,7 @@ panierSchema.statics.getPanierActif = function(userId) {
     statut: 'panier',
     isPaye: false 
   })
-    .populate('produitsachete.produit', 'nom photo prix')
+    .populate('produitsachete.produit', 'nom photo prix variant')
     .populate('userId', 'nom email');
 };
 
