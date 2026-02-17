@@ -1,36 +1,44 @@
-import axios from "axios";
+import { Injectable } from '@angular/core';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from '../../environments/environment';
+import { Observable } from 'rxjs';
 
-const api = axios.create({
-  baseURL: environment.apiUrl,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
+@Injectable({
+  providedIn: 'root'
+})
+export class ApiService {
 
-// Intercepteur pour ajouter le token d'authentification
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("auth_token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  private baseUrl = environment.apiUrl;
+
+  constructor(private http: HttpClient) {}
+
+  get<T>(endpoint: string, options?: any): Observable<T> {
+    return this.http.get<T>(`${this.baseUrl}${endpoint}`, options) as Observable<T>;
   }
-  return config;
-});
 
-// Intercepteur pour gérer les erreurs globalement
-api.interceptors.response.use(
-  (response) => {
-    return response;
-  },
-  (error) => {
-    // Gérer les erreurs 401 (non autorisé)
-    if (error.response?.status === 401) {
-      localStorage.removeItem("auth_token");
-      localStorage.removeItem("current_user");
-      window.location.href = "/login";
-    }
-    return Promise.reject(error);
+  post<T>(endpoint: string, body: any, options?: any): Observable<T> {
+    return this.http.post<T>(`${this.baseUrl}${endpoint}`, body, options) as Observable<T>;
   }
-);
 
-export default api;
+  put<T>(endpoint: string, body: any, options?: any): Observable<T> {
+    return this.http.put<T>(`${this.baseUrl}${endpoint}`, body, options) as Observable<T>;
+  }
+
+  delete<T>(endpoint: string, body?: any, options?: any): Observable<T> {
+    const httpOptions = body ? { body, ...options } : options;
+    return this.http.delete(`${this.baseUrl}${endpoint}`, httpOptions) as Observable<T>;
+  }
+
+  // Méthode spécifique pour l'envoi de fichiers
+  postFile<T>(endpoint: string, formData: FormData): Observable<T> {
+    const headers = new HttpHeaders();
+    // Ne pas définir Content-Type pour FormData, le navigateur le fera automatiquement avec boundary
+    return this.http.post<T>(`${this.baseUrl}${endpoint}`, formData, { headers });
+  }
+
+  putFile<T>(endpoint: string, formData: FormData): Observable<T> {
+    const headers = new HttpHeaders();
+    // Ne pas définir Content-Type pour FormData, le navigateur le fera automatiquement avec boundary
+    return this.http.put<T>(`${this.baseUrl}${endpoint}`, formData, { headers });
+  }
+}

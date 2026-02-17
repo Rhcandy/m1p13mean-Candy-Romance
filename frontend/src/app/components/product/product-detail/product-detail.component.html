@@ -1,0 +1,209 @@
+<div class="product-detail-container">
+  <!-- Header avec bouton retour -->
+  <div class="header-section">
+    <button type="button" class="back-button" (click)="onBack()">
+      <i class="ti ti-arrow-left"></i>
+      Retour aux produits
+    </button>
+  </div>
+
+  <!-- État de chargement -->
+  @if (isLoading) {
+    <div class="loading-container">
+      <div class="spinner-border text-primary" role="status" aria-live="polite">
+        <span class="visually-hidden">Chargement...</span>
+      </div>
+      <output class="mt-3">Chargement du produit...</output>
+    </div>
+  } @else if (product) {
+    <div class="product-detail-content">
+      <div class="row g-4">
+        <!-- Section gauche : Image -->
+        <div class="col-lg-6">
+          <div class="image-section">
+            <div class="main-image-container">
+              <img [src]="product.photo || 'https://via.placeholder.com/400x400'" alt="{{ product.nom }}" class="main-image">
+            </div>
+
+            <!-- Badge de stock -->
+            <div class="stock-badge" [class.in-stock]="hasStock()" [class.out-of-stock]="!hasStock()">
+              @if (hasStock()) {
+                <i class="ti ti-check"></i>
+                En stock ({{ getAvailableStock() }} disponibles)
+              } @else {
+                <i class="ti ti-x"></i>
+                Rupture de stock
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- Section droite : Informations -->
+        <div class="col-lg-6">
+          <div class="info-section">
+            <!-- En-tête produit -->
+            <div class="product-header">
+              <h1 class="product-title">{{ product.nom }}</h1>
+
+              <!-- Rating -->
+              @if (hasRating()) {
+                <div class="rating-container">
+                  @for (star of getStars(); track $index) {
+                    <i
+                      class="ti star-icon"
+                      [class.star-filled]="star === 1"
+                      [class.star-half]="star === 0.5"
+                      [class.star-empty]="star === 0">
+                    </i>
+                  }
+                  <span class="rating-text">{{ product.averageRating.toFixed(1) }}/5</span>
+                </div>
+              }
+
+              <!-- Tags -->
+              <div class="tags-container">
+                <span class="tag tag-category">{{ product.categorieId.nom }}</span>
+                <span class="tag tag-boutique">{{ product.boutiqueId.nom }}</span>
+              </div>
+            </div>
+
+            <!-- Prix -->
+            <div class="price-section">
+              <div class="current-price">
+                {{ formatPrice(product.prix[0].prixUnitaire) }}
+              </div>
+              @if (product.deliveryDate) {
+                <div class="delivery-info">
+                  <i class="ti ti-truck-delivery"></i>
+                  Livraison gratuite avant le {{ product.deliveryDate }}
+                </div>
+              }
+            </div>
+
+            <!-- Description -->
+            @if (product.description) {
+              <div class="description-section">
+                <h3>Description</h3>
+                <p class="product-description">{{ product.description }}</p>
+              </div>
+            }
+
+            <!-- Attributs du variant -->
+            @if (getVariantAttributes().length > 0) {
+              <div class="attributes-section">
+                <h3>Caractéristiques</h3>
+                <div class="attributes-list">
+                  @for (attribute of getVariantAttributes(); track $index) {
+                    <div class="attribute-item">
+                      {{ attribute }}
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- Formulaire d'ajout au panier -->
+            <div class="add-to-cart-section">
+              <form [formGroup]="addToCartForm" (ngSubmit)="onAddToCart()">
+                <!-- Sélection de la quantité -->
+                <div class="quantity-selector">
+                  <label for="quantity" class="quantity-label">
+                    <i class="ti ti-package"></i>
+                    Quantité
+                  </label>
+                  <div class="quantity-controls">
+                    <button
+                      type="button"
+                      class="quantity-btn qty-btn-minus"
+                      (click)="decrementQuantity()"
+                      [disabled]="addToCartForm.get('quantity')?.value <= 1"
+                      aria-label="Réduire la quantité"
+                      title="Réduire">
+                      <i class="ti ti-minus"></i>
+                    </button>
+                    <input
+                      type="number"
+                      id="quantity"
+                      class="quantity-input"
+                      formControlName="quantity"
+                      min="1"
+                      [max]="getAvailableStock()"
+                      (change)="onQuantityChange()"
+                      readonly>
+                    <button
+                      type="button"
+                      class="quantity-btn qty-btn-plus"
+                      (click)="incrementQuantity()"
+                      [disabled]="addToCartForm.get('quantity')?.value >= getAvailableStock()"
+                      aria-label="Augmenter la quantité"
+                      title="Augmenter">
+                      <i class="ti ti-plus"></i>
+                    </button>
+                  </div>
+                  <small class="stock-info">
+                    <i class="ti ti-package-check"></i>
+                    {{ getAvailableStock() }} articles en stock
+                  </small>
+                </div>
+
+                <!-- Boutons d'action -->
+                <div class="action-buttons">
+                  <button
+                    type="submit"
+                    class="btn btn-success add-to-cart-btn"
+                    [disabled]="!hasStock() || addToCartForm.invalid || isAddingToCart"
+                    [class.loading]="isAddingToCart">
+                    <span class="btn-icon">
+                      <i class="ti" 
+                        [class.ti-shopping-cart-plus]="!isAddingToCart"
+                        [class.ti-loader-3]="isAddingToCart"
+                        [class.spinner]="isAddingToCart">
+                      </i>
+                    </span>
+                    <span class="btn-text">
+                      {{ isAddingToCart ? 'Ajout en cours...' : 'Ajouter au panier' }}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="btn btn-outline-danger wishlist-btn"
+                    title="Ajouter à la wishlist"
+                    aria-label="Ajouter à la wishlist">
+                    <i class="ti ti-heart"></i>
+                    <span class="mobile-hidden">Favoris</span>
+                  </button>
+                </div>
+
+                <!-- Message de statut du stock -->
+                @if (!hasStock()) {
+                  <div class="alert alert-danger mt-3">
+                    <i class="ti ti-alert-triangle"></i>
+                    Ce produit est actuellement en rupture de stock
+                  </div>
+                }
+              </form>
+            </div>
+          </div>
+        </div>
+        <!-- Section Avis en pleine largeur -->
+        <div class="avis-section mt-5 col-12">
+          <app-avis 
+            [avis]="productAvis" 
+            [produitId]="product?._id"
+            [currentUserId]="''">
+          </app-avis>
+        </div>
+      </div>
+    </div>
+  } @else {
+    <div class="error-container">
+      <i class="ti ti-error-404"></i>
+      <h3>Produit non trouvé</h3>
+      <p>Le produit que vous recherchez n'existe pas ou a été supprimé.</p>
+      <button type="button" class="btn btn-primary" (click)="onBack()">
+        Retour aux produits
+      </button>
+    </div>
+  }
+</div>

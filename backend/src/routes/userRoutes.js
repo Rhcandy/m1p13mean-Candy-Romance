@@ -3,7 +3,7 @@ const router = express.Router();
 const userController = require('../controllers/userController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const { adminOnly, adminOrManager,allRoles } = require('../middlewares/roleMiddleware');
-const { uploadProfilePicture, handleUploadError } = require('../middlewares/uploadMiddleware');
+const { uploadProfilPicture, handleUploadError } = require('../middlewares/uploadMiddleware');
 
 /**
  * @swagger
@@ -120,7 +120,7 @@ router.post('/', userController.createUser);
  */
 router.post('/with-profile', 
   authMiddleware, 
-  uploadProfilePicture, 
+  uploadProfilPicture, 
   handleUploadError, 
   userController.createUserWithProfilePicture
 );
@@ -220,7 +220,7 @@ router.put('/profile', userController.updateProfile);
  *         description: Erreur lors de la mise à jour
  */
 router.put('/profile/with-profile',
-  uploadProfilePicture,
+  uploadProfilPicture,
   handleUploadError,
   userController.updateProfileWithPicture
 );
@@ -262,7 +262,7 @@ router.put('/profile/with-profile',
  *         description: Erreur lors de la mise à jour
  */
 router.put('/profile-picture', 
-  uploadProfilePicture, 
+  uploadProfilPicture, 
   handleUploadError, 
   userController.updateProfilePicture
 );
@@ -495,7 +495,7 @@ router.put('/:id', allRoles, userController.updateUser);
  */
 router.put('/:id/with-profile', 
   allRoles, 
-  uploadProfilePicture, 
+  uploadProfilPicture, 
   handleUploadError, 
   userController.updateUserWithProfilePicture
 );

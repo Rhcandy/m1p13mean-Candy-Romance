@@ -8,7 +8,6 @@ router.use(authMiddleware);
 // Routes pour Avis
 router.post('/', avisController.createAvis);
 router.get('/produit/:produitId', avisController.getAvisByProduit);
-router.get('/user/:userId', avisController.getAvisByUser);
 router.put('/:id', avisController.updateAvis);
 router.delete('/:id', avisController.deleteAvis);
 

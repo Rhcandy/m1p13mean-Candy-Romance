@@ -58,18 +58,6 @@ const advancedResults = require('../middlewares/advancedResults');
  *               updatedAt:
  *                 type: string
  *                 format: date-time
- *         Stock:
- *           type: array
- *           items:
- *             type: object
- *             properties:
- *               qtt:
- *                 type: number
- *                 description: Quantité en stock
- *                 example: 50
- *               created:
- *                 type: string
- *                 format: date-time
  *         prix:
  *           type: array
  *           items:
@@ -79,10 +67,6 @@ const advancedResults = require('../middlewares/advancedResults');
  *                 type: number
  *                 description: Prix unitaire
  *                 example: 25.99
- *               devise:
- *                 type: string
- *                 description: ID de la devise
- *                 example: "60f1b2b3c4d5e6f7g8h9i0j3"
  *               createdAt:
  *                 type: string
  *                 format: date-time
@@ -110,7 +94,7 @@ const advancedResults = require('../middlewares/advancedResults');
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             required:
@@ -129,38 +113,19 @@ const advancedResults = require('../middlewares/advancedResults');
  *                 description: Nom du produit
  *               photo:
  *                 type: string
- *                 description: URL de la photo (optionnel)
- *               description:
+ *                 format: binary
+ *                 description: Photo du produit (optionnel)
+ *               descriptionProduit:
  *                 type: string
  *                 description: Description du produit (optionnel)
  *               variant:
- *                 type: array
- *                 items:
- *                   type: object
- *                   properties:
- *                     attributes:
- *                       type: object
- *                     qtt:
- *                       type: number
- *               description: Variantes du produit (optionnel)
- *               Stock:
- *                 type: array
- *                 items:
- *                   type: object
- *                   properties:
- *                     qtt:
- *                       type: number
- *                 description: Stock initial (optionnel)
+ *                 type: string
+ *                 description: Variantes du produit en format JSON (optionnel)
+ *                 example: '[{"attributes":{"Sexe":"M","couleur":"Marron"},"qtt":2}]'
  *               prix:
- *                 type: array
- *                 items:
- *                   type: object
- *                   properties:
- *                     prixUnitaire:
- *                       type: number
- *                     devise:
- *                       type: string
- *                 description: Prix du produit (optionnel)
+ *                 type: string
+ *                 description: Prix du produit en format JSON (optionnel)
+ *                 example: '[{"prixUnitaire":25.99}]'
  *     responses:
  *       201:
  *         description: Produit créé avec succès
@@ -188,10 +153,32 @@ const advancedResults = require('../middlewares/advancedResults');
  */
 exports.createProduit = async (req, res) => {
   try {
-    const produitData = req.body;
+    let produitData = req.body;
     const file = req.file;
+    // Parser les champs JSON si ils sont envoyés comme strings
+    if (produitData.variant && typeof produitData.variant === 'string') {
+      try {
+        produitData.variant = JSON.parse(produitData.variant);
+      } catch (e) {
+        return res.status(400).json({
+          success: false,
+          message: 'Format invalide pour le champ variant'
+        });
+      }
+    }
 
-    // Créer le produit avec le service
+    if (produitData.prix && typeof produitData.prix === 'string') {
+      try {
+        produitData.prix = JSON.parse(produitData.prix);
+      } catch (e) {
+        return res.status(400).json({
+          success: false,
+          message: 'Format invalide pour le champ prix'
+        });
+      }
+    }
+
+  
     const produit = await produitService.createProduit(produitData, file);
 
     res.status(201).json({
@@ -256,6 +243,13 @@ exports.createProduit = async (req, res) => {
  *         schema:
  *           type: string
  *         description: Filtrer par nom
+ *       - in: query
+ *         name: averageRating
+ *         schema:
+ *           type: number
+ *           minimum: 0
+ *           maximum: 5
+ *         description: Filtrer par note moyenne
  *  
  */
 exports.getAllProduits = advancedResults(Produit);
@@ -269,7 +263,6 @@ exports.getProduitsResults = async (req, res) => {
     const populatedResults = await Produit.populate(res.advancedResults.items, [
       { path: 'boutiqueId', select: 'nom' },
       { path: 'categorieId', select: ' nom' },
-      { path: 'prix.devise', select: 'nom symbole' }
     ]);
 
     res.status(200).json({
@@ -310,7 +303,15 @@ exports.getProduitById = async (req, res) => {
     const produit = await Produit.findById(req.params.id)
       .populate('boutiqueId', 'nom')
       .populate('categorieId', 'nom')
-      .populate('prix.devise', 'nom symbole');
+      .populate('avis')
+      .populate({
+        path: 'prix',
+        populate: {
+          path: 'devise',
+          select: 'nom symbole'
+        }
+      });
+
 
     if (!produit) {
       return res.status(404).json({
@@ -352,7 +353,7 @@ exports.getProduitById = async (req, res) => {
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             properties:
@@ -361,40 +362,53 @@ exports.getProduitById = async (req, res) => {
  *                 description: Nom du produit
  *               photo:
  *                 type: string
- *                 description: URL de la photo
- *               description:
+ *                 format: binary
+ *                 description: Photo du produit (optionnel)
+ *               descriptionProduit:
  *                 type: string
  *                 description: Description du produit
  *               variant:
- *                 type: array
- *                 items:
- *                   type: object
- *                 description: Variantes du produit
- *               Stock:
- *                 type: array
- *                 items:
- *                   type: object
- *                 description: Stock du produit
+ *                 type: string
+ *                 description: Variantes du produit en format JSON
+ *                 example: '[{"attributes":{"Sexe":"M","couleur":"Marron"},"qtt":2}]'
  *               prix:
- *                 type: array
- *                 items:
- *                   type: object
- *                 description: Prix du produit
+ *                 type: string
+ *                 description: Prix du produit en format JSON
+ *                 example: '[{"prixUnitaire":25.99}]'
  *    
  */
 exports.updateProduit = async (req, res) => {
   try {
-    const produit = await Produit.findById(req.params.id);
-    if (!produit) {
-      return res.status(404).json({
-        success: false,
-        message: 'Produit non trouvé'
-      });
+    let updateData = req.body;
+    const file = req.file;
+    const produitId = req.params.id;
+
+    // Parser les champs JSON si ils sont envoyés comme strings
+    if (updateData.variant && typeof updateData.variant === 'string') {
+      try {
+        updateData.variant = JSON.parse(updateData.variant);
+      } catch (e) {
+        return res.status(400).json({
+          success: false,
+          message: 'Format invalide pour le champ variant'
+        });
+      }
     }
 
+    if (updateData.prix && typeof updateData.prix === 'string') {
+      try {
+        updateData.prix = JSON.parse(updateData.prix);
+      } catch (e) {
+        return res.status(400).json({
+          success: false,
+          message: 'Format invalide pour le champ prix'
+        });
+      }
+    }
+    
     // Vérifier si la catégorie existe si fournie
-    if (req.body.categorieId) {
-      const categorie = await CategorieProduit.findById(req.body.categorieId);
+    if (updateData.categorieId) {
+      const categorie = await CategorieProduit.findById(updateData.categorieId);
       if (!categorie) {
         return res.status(400).json({
           success: false,
@@ -403,13 +417,8 @@ exports.updateProduit = async (req, res) => {
       }
     }
 
-    const updatedProduit = await Produit.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    ).populate('boutiqueId', 'nom')
-     .populate('categorieId', 'nom')
-     .populate('prix.devise', 'nom symbole');
+     // Utiliser le service pour la mise à jour
+    const updatedProduit = await produitService.updateProduit(produitId, updateData, file);
 
     res.status(200).json({
       success: true,

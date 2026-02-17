@@ -1,0 +1,104 @@
+<div class="avis-container">
+  <!-- Corps des avis -->
+  <div class="avis-body">
+    @if (loading) {
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>Chargement des avis...</p>
+      </div>
+    } @else if (!avis || avis.length === 0) {
+      <div class="empty-state">
+        <div class="empty-icon">
+          <i class="ti ti-message-off"></i>
+        </div>
+        <h3>Aucun avis pour le moment</h3>
+        <p>Soyez le premier à partager votre expérience avec ce produit</p>
+        <button class="btn-write-review-large" (click)="openReviewForm()">
+          <i class="ti ti-pencil"></i>
+          <span>Écrire un avis</span>
+        </button>
+      </div>
+    } @else {
+      <div class="avis-list">
+        @for (review of filteredAvis; track review._id) {
+          <div class="avis-card" [@itemAnimation]>
+            <!-- Card Header -->
+            <div class="review-header">
+              <div class="user-info">
+                <div class="user-avatar">
+                  <div class="avatar-placeholder">
+                    {{ getInitials(getUserName(review.userId)) }}
+                  </div>
+                </div>
+                
+                <div class="user-details">
+                  <h4 class="user-name">{{ getUserName(review.userId) }}</h4>
+                  <div class="review-meta">
+                    <div class="rating-display">
+                      @for (star of [1,2,3,4,5]; track star) {
+                        <i class="ti" 
+                          [class.ti-star-filled]="star <= review.note"
+                          [class.ti-star]="star > review.note">
+                        </i>
+                      }
+                    </div>
+                    <span class="review-date">
+                      <i class="ti ti-calendar"></i>
+                      {{ formatDate(review.createdAt) }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card Content -->
+            <div class="review-content">
+              <p class="review-text">{{ review.commentaire }}</p>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Pagination -->
+      @if (totalPages > 1) {
+        <div class="pagination-container">
+          <div class="pagination">
+            <button 
+              class="page-btn" 
+              [disabled]="currentPage === 1"
+              (click)="changePage(currentPage - 1)"
+              title="Page précédente">
+              <i class="ti ti-chevron-left"></i>
+            </button>
+            
+            @for (page of getPagesArray(); track page) {
+              <button 
+                class="page-btn" 
+                [class.active]="page === currentPage"
+                (click)="changePage(page)"
+                [title]="'Aller à la page ' + page">
+                {{ page }}
+              </button>
+            }
+            
+            <button 
+              class="page-btn" 
+              [disabled]="currentPage === totalPages"
+              (click)="changePage(currentPage + 1)"
+              title="Page suivante">
+              <i class="ti ti-chevron-right"></i>
+            </button>
+          </div>
+        </div>
+      }
+
+      <!-- CTA pour écrire un avis -->
+      <div class="write-review-section">
+        <button class="btn-write-review" (click)="openReviewForm()">
+          <i class="ti ti-pencil"></i>
+          <span>Ajouter un avis</span>
+        </button>
+      </div>
+    }
+  </div>
+</div>

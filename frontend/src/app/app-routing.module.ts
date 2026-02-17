@@ -12,7 +12,7 @@ const routes: Routes = [
     children: [
       {
         path: '',
-        redirectTo: '/default',
+        redirectTo: '/produits',
         pathMatch: 'full'
       },
       {
@@ -22,6 +22,18 @@ const routes: Routes = [
       {
         path: 'profile',
         loadComponent: () => import('./demo/pages/profile/profile.component').then((c) => c.ProfileComponent)
+      },
+      {
+        path: 'produits',
+        loadComponent: () => import('./demo/pages/produits/produits.component').then((c) => c.ProduitsComponent)
+      },
+      {
+        path: 'product/:id',
+        loadComponent: () => import('./demo/pages/product-detail/product-detail-page.component').then((c) => c.ProductDetailPageComponent)
+      },
+      {
+        path: 'panier',
+        loadComponent: () => import('./demo/pages/panier/panier.component').then((c) => c.PanierComponent)
       }
     ]
   },

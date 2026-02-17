@@ -1,8 +1,9 @@
 import { Injectable } from '@angular/core';
 import { Router } from '@angular/router';
-import { BehaviorSubject, Observable, from } from 'rxjs';
-import { map, tap } from 'rxjs/operators';
-import api from './api.service';
+import { BehaviorSubject, Observable } from 'rxjs';
+import { tap } from 'rxjs/operators';
+import { ApiService } from './api.service';
+
 
 export interface User {
   id: string;
@@ -46,16 +47,18 @@ export class AuthService {
   private readonly TOKEN_KEY = 'auth_token';
   private readonly USER_KEY = 'current_user';
 
-  private currentUserSubject = new BehaviorSubject<User | null>(null);
-  public currentUser$ = this.currentUserSubject.asObservable();
+  private readonly currentUserSubject = new BehaviorSubject<User | null>(null);
+  public readonly currentUser$ = this.currentUserSubject.asObservable();
 
-  private isAuthenticatedSubject = new BehaviorSubject<boolean>(false);
-  public isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
+  private readonly isAuthenticatedSubject = new BehaviorSubject<boolean>(false);
+  public readonly isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
 
   constructor(
-    private router: Router
+    private readonly router: Router,
+    private readonly api: ApiService
   ) {
     this.checkAuthStatus();
+    
   }
 
   private checkAuthStatus(): void {
@@ -71,10 +74,7 @@ export class AuthService {
   }
 
   login(email: string, password: string): Observable<LoginResponse> {
-    return from(
-      api.post<LoginResponse>('/auth/login', { email, password })
-    ).pipe(
-      map(response => response.data),
+    return this.api.post<LoginResponse>('/auth/login', { email, password }).pipe(   
       tap(response => {
         if (response.success && response.data) {
           this.setToken(response.data.token);
@@ -97,11 +97,7 @@ export class AuthService {
       dtnaissance: data.dtnaissance
     };
 
-    
-    return from(
-      api.post<LoginResponse>('/auth/register', registerPayload)
-    ).pipe(
-      map(response => response.data),
+    return this.api.post<LoginResponse>('/auth/register', registerPayload).pipe(
       tap(response => {
         if (response.success && response.data) {
           this.setToken(response.data.token);
@@ -169,7 +165,45 @@ export class AuthService {
     return this.isAuthenticatedSubject.value;
   }
 
-  hasRole(role: 'user' | 'admin_boutique'): boolean {
+  /**
+   * Créer un utilisateur de test pour les démonstrations
+   */
+  createTestUser(): User {
+    const testUser: User = {
+      id: '507f1f77bcf86cd799439011', // ObjectId MongoDB valide
+      nom: 'Test User',
+      email: 'test@example.com',
+      role: 'user'
+    };
+
+    this.setUser(testUser);
+    this.setToken('test-token-123');
+    this.currentUserSubject.next(testUser);
+    this.isAuthenticatedSubject.next(true);
+
+    return testUser;
+  }
+
+  /**
+   * S'assurer qu'un utilisateur est défini (pour les tests)
+   */
+  ensureUserExists(): User {
+    let user = this.getUser();
+    if (!user) {
+      user = this.createTestUser();
+    }
+    return user;
+  }
+
+  /**
+   * Obtenir l'ID de l'utilisateur actuel (compatible MongoDB)
+   */
+  getUserId(): string {
+    const user = this.ensureUserExists();
+    return user.id;
+  }
+
+  hasRole(role: 'user' | 'admin_boutique' | 'admin_center' | 'super_admin'): boolean {
     return this.currentUser?.role === role;
   }
 }

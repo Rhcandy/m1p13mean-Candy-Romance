@@ -3,7 +3,7 @@ const router = express.Router();
 const boutiqueController = require('../controllers/boutiqueController');
 const { adminOrManager } = require('../middlewares/roleMiddleware');
 const authMiddleware = require('../middlewares/authMiddleware');
-const { uploadProfilePicture } = require('../middlewares/uploadMiddleware');
+const { uploadPicture } = require('../middlewares/uploadMiddleware');
 const { uploadImage, deleteImage } = require('../services/cloudinary');
 
 router.use(authMiddleware);
@@ -17,6 +17,6 @@ router.put('/:id', adminOrManager, boutiqueController.updateBoutique);
 router.delete('/:id', adminOrManager, boutiqueController.deleteBoutique);
 
 // Upload logo pour une boutique (remplace l'ancien logo si existe)
-router.post('/:id/logo', adminOrManager, uploadProfilePicture, boutiqueController.uploadLogo);
+router.post('/:id/logo', adminOrManager, uploadPicture, boutiqueController.uploadLogo);
 
 module.exports = router;

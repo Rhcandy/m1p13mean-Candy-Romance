@@ -1,250 +1,45 @@
+const mongoose = require('mongoose');
 const Panier = require('../models/Panier');
-const Produit = require('../models/Produit');
+const Product = require('../models/Produit');
 
 /**
- * @swagger
- * components:
- *   schemas:
- *     Panier:
- *       type: object
- *       required:
- *         - userId
- *       properties:
- *         _id:
- *           type: string
- *           description: L'ID auto-généré du panier
- *         userId:
- *           type: string
- *           description: ID de l'utilisateur
- *           example: "60f1b2b3c4d5e6f7g8h9i0j1"
- *         produitsachete:
- *           type: array
- *           items:
- *             type: object
- *             properties:
- *               produit:
- *                 type: string
- *                 description: ID du produit
- *                 example: "60f1b2b3c4d5e6f7g8h9i0j2"
- *               qtt:
- *                 type: number
- *                 description: Quantité
- *                 example: 2
- *         qtt:
- *           type: number
- *           description: Quantité totale d'articles
- *           example: 5
- *         total:
- *           type: number
- *           description: Montant total du panier
- *           example: 129.99
- *         isPaye:
- *           type: boolean
- *           description: Panier payé ou non
- *           example: false
- *         islivre:
- *           type: boolean
- *           description: Panier livré ou non
- *           example: false
- *         createdAt:
- *           type: string
- *           format: date-time
- *           description: Date de création
- *         updatedAt:
- *           type: string
- *           format: date-time
- *           description: Date de mise à jour
+ * GET - Récupérer le panier actif de l'utilisateur
+ * Le panier actif est celui à l'état "panier" ET qui n'a pas été payé
  */
-
-/**
- * @swagger
- * /api/paniers:
- *   post:
- *     summary: Créer ou ajouter au panier
- *     tags: [Panier]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - userId
- *             properties:
- *               userId:
- *                 type: string
- *                 description: ID de l'utilisateur
- *               produitsachete:
- *                 type: array
- *                 items:
- *                   type: object
- *                   properties:
- *                     produit:
- *                       type: string
- *                       description: ID du produit
- *                     qtt:
- *                       type: number
- *                       description: Quantité
- *                 description: Produits à ajouter au panier
- *     responses:
- *       201:
- *         description: Panier créé ou mis à jour avec succès
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "Panier créé avec succès"
- *                 data:
- *                   $ref: '#/components/schemas/Panier'
- *       400:
- *         description: Données invalides
- *       401:
- *         description: Non authentifié
- *       500:
- *         description: Erreur serveur
- */
-exports.createOrUpdatePanier = async (req, res) => {
+exports.getPanier = async (req, res) => {
   try {
-    const { userId, produitsachete } = req.body;
+    const userId = req.headers['x-user-id'] || req.body.userId || req.user?.id;
 
-    // Vérifier si l'utilisateur a déjà un panier
-    let panier = await Panier.findOne({ userId });
-
-    if (panier) {
-      // Mettre à jour le panier existant
-      const nouveauxProduits = [...panier.produitsachete];
-      
-      // Ajouter ou mettre à jour les produits
-      produitsachete.forEach(nouveauProduit => {
-        const indexProduit = nouveauxProduits.findIndex(
-          p => p.produit.toString() === nouveauProduit.produit
-        );
-        
-        if (indexProduit !== -1) {
-          // Mettre à jour la quantité
-          nouveauxProduits[indexProduit].qtt += nouveauProduit.qtt;
-        } else {
-          // Ajouter nouveau produit
-          nouveauxProduits.push(nouveauProduit);
-        }
-      });
-
-      panier.produitsachete = nouveauxProduits;
-      
-      // Calculer le total
-      let total = 0;
-      for (const item of panier.produitsachete) {
-        const produit = await Produit.findById(item.produit);
-        if (produit && produit.prix && produit.prix.length > 0) {
-          total += produit.prix[0].prixUnitaire * item.qtt;
-        }
-      }
-      
-      panier.total = total;
-      panier.qtt = panier.produitsachete.length;
-      
-      await panier.save();
-      
-      const panierPopulate = await Panier.findById(panier._id)
-        .populate('produitsachete.produit', 'nom photo');
-        
-      res.status(200).json({
-        success: true,
-        message: 'Panier mis à jour avec succès',
-        data: panierPopulate
-      });
-    } else {
-      // Créer nouveau panier
-      let total = 0;
-      for (const item of produitsachete) {
-        const produit = await Produit.findById(item.produit);
-        if (produit && produit.prix && produit.prix.length > 0) {
-          total += produit.prix[0].prixUnitaire * item.qtt;
-        }
-      }
-
-      panier = await Panier.create({
-        userId,
-        produitsachete,
-        qtt: produitsachete.length,
-        total
-      });
-
-      const panierPopulate = await Panier.findById(panier._id)
-        .populate('produitsachete.produit', 'nom photo');
-        
-      res.status(201).json({
-        success: true,
-        message: 'Panier créé avec succès',
-        data: panierPopulate
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID utilisateur requis'
       });
     }
-  } catch (error) {
-    console.error('Erreur création/mise à jour panier:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erreur serveur',
-      error: error.message
-    });
-  }
-};
 
-/**
- * @swagger
- * /api/paniers/user/{userId}:
- *   get:
- *     summary: Récupérer le panier d'un utilisateur
- *     tags: [Panier]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: userId
- *         required: true
- *         schema:
- *           type: string
- *         description: ID de l'utilisateur
- *     responses:
- *       200:
- *         description: Panier récupéré avec succès
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "Panier récupéré avec succès"
- *                 data:
- *                   $ref: '#/components/schemas/Panier'
- *       401:
- *         description: Non authentifié
- *       404:
- *         description: Panier non trouvé
- *       500:
- *         description: Erreur serveur
- */
-exports.getPanierByUser = async (req, res) => {
-  try {
-    const panier = await Panier.findOne({ userId: req.params.userId })
-      .populate('produitsachete.produit', 'nom photo prix');
+    // Chercher le panier actif (non validé, non payé)
+    let panier = await Panier.findOne({
+      userId,
+      statut: 'panier',
+      isActive: true
+    }).populate('produitsachete.produit', 'nom photo prix');
 
+    // Si aucun panier, retourner un panier virtuel vide
     if (!panier) {
-      return res.status(404).json({
-        success: false,
-        message: 'Panier non trouvé'
-      });
+      panier = {
+        _id: null,
+        userId,
+        numeroCommande: null,
+        produitsachete: [],
+        qtt: 0,
+        sousTotal: 0,
+        fraisLivraison: 0,
+        total: 0,
+        statut: 'panier',
+        isPaye: false,
+        islivre: false,
+        isActive: true
+      };
     }
 
     res.status(200).json({
@@ -253,160 +48,486 @@ exports.getPanierByUser = async (req, res) => {
       data: panier
     });
   } catch (error) {
-    console.error('Erreur récupération panier:', error);
+    console.error('Erreur getPanier:', error);
     res.status(500).json({
       success: false,
-      message: 'Erreur serveur',
+      message: 'Erreur lors de la récupération du panier',
       error: error.message
     });
   }
 };
 
 /**
- * @swagger
- * /api/paniers/{id}:
- *   put:
- *     summary: Mettre à jour le statut d'un panier
- *     tags: [Panier]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: ID du panier
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               isPaye:
- *                 type: boolean
- *                 description: Statut de paiement
- *               islivre:
- *                 type: boolean
- *                 description: Statut de livraison
- *     responses:
- *       200:
- *         description: Panier mis à jour avec succès
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "Panier mis à jour avec succès"
- *                 data:
- *                   $ref: '#/components/schemas/Panier'
- *       400:
- *         description: Données invalides
- *       401:
- *         description: Non authentifié
- *       403:
- *         description: Non autorisé
- *       404:
- *         description: Panier non trouvé
- *       500:
- *         description: Erreur serveur
+ * POST - Ajouter un produit au panier (ou à un panier existant)
+ * Si un panier actif existe déjà, on ajoute le produit dedans
+ * Si le produit existe déjà dans le panier, on augmente la quantité
  */
-exports.updatePanierStatus = async (req, res) => {
+exports.addToPanier = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
-    const panier = await Panier.findById(req.params.id);
-    if (!panier) {
-      return res.status(404).json({
+    const { productId, quantity = 1, userId } = req.body;
+
+    // Validation
+    if (!productId || !userId) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({
         success: false,
-        message: 'Panier non trouvé'
+        message: 'productId et userId sont requis'
       });
     }
 
-    const updatedPanier = await Panier.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    ).populate('produitsachete.produit', 'nom photo');
+    if (quantity < 1) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({
+        success: false,
+        message: 'La quantité doit être au moins 1'
+      });
+    }
+
+    // Récupérer le produit
+    const produit = await Product.findById(productId).session(session);
+    if (!produit) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({
+        success: false,
+        message: 'Produit introuvable'
+      });
+    }
+
+    // Trouver la variante appropriée
+    let variant = produit.variant && produit.variant.length > 0 ? produit.variant[0] : null;
+    
+    if (!variant) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({
+        success: false,
+        message: 'Aucune variante disponible pour ce produit'
+      });
+    }
+
+    // Vérifier le stock disponible
+    const availableStock = (variant.qtt || 0) - (variant.reserved || 0);
+    if (availableStock < quantity) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({
+        success: false,
+        message: `Stock insuffisant. Disponible: ${availableStock}, Demandé: ${quantity}`
+      });
+    }
+
+    // Réserver le stock
+    variant.reserved = (variant.reserved || 0) + quantity;
+    await produit.save({ session });
+
+    // Chercher le panier actif de l'utilisateur
+    // IMPORTANT : statut 'panier' ET isActive: true pour récupérer le bon panier
+    let panier = await Panier.findOne({
+      userId,
+      statut: 'panier',
+      isActive: true,
+      isPaye: false
+    }).session(session);
+
+    // Récupérer le prix du produit
+    const prixUnitaire = produit.prix && produit.prix.length > 0 
+      ? produit.prix[produit.prix.length - 1].prixUnitaire 
+      : 0;
+
+    if (!panier) {
+      // Créer un nouveau panier avec numéro de commande
+      const count = await Panier.countDocuments().session(session);
+      const numeroCommande = `CMD-${Date.now()}-${String(count + 1).padStart(4, '0')}`;
+      
+      panier = new Panier({
+        userId,
+        numeroCommande,
+        statut: 'panier',
+        isActive: true,
+        isPaye: false,
+        islivre: false,
+        produitsachete: [],
+        expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000) // 2h
+      });
+    }
+
+    // Vérifier si le produit existe déjà dans le panier
+    const existingItemIndex = panier.produitsachete.findIndex(
+      item => item.produit.toString() === productId
+    );
+
+    if (existingItemIndex !== -1) {
+      // Produit existe : augmenter la quantité
+      const oldQuantity = panier.produitsachete[existingItemIndex].qtt;
+      panier.produitsachete[existingItemIndex].qtt = oldQuantity + quantity;
+      panier.produitsachete[existingItemIndex].sousTotal = 
+        panier.produitsachete[existingItemIndex].qtt * prixUnitaire;
+    } else {
+      // Produit n'existe pas : l'ajouter
+      panier.produitsachete.push({
+        produit: productId,
+        qtt: quantity,
+        prixUnitaire: prixUnitaire,
+        sousTotal: quantity * prixUnitaire
+      });
+    }
+
+    // Recalculer les totaux
+    panier.sousTotal = panier.produitsachete.reduce((total, item) => {
+      return total + (item.sousTotal || 0);
+    }, 0);
+    
+    panier.total = panier.sousTotal + (panier.fraisLivraison || 0);
+    
+    panier.qtt = panier.produitsachete.reduce((total, item) => {
+      return total + item.qtt;
+    }, 0);
+
+    await panier.save({ session });
+    await session.commitTransaction();
+    session.endSession();
+
+    // Repeupler les produits pour la réponse
+    await panier.populate('produitsachete.produit', 'nom photo prix');
 
     res.status(200).json({
       success: true,
-      message: 'Panier mis à jour avec succès',
-      data: updatedPanier
+      message: `Produit ajouté au panier avec succès (quantité: ${quantity})`,
+      data: panier
     });
+
   } catch (error) {
-    console.error('Erreur mise à jour panier:', error);
+    await session.abortTransaction();
+    session.endSession();
+    console.error('Erreur addToPanier:', error);
     res.status(500).json({
       success: false,
-      message: 'Erreur serveur',
+      message: 'Erreur lors de l\'ajout au panier',
       error: error.message
     });
   }
 };
 
 /**
- * @swagger
- * /api/paniers/{id}:
- *   delete:
- *     summary: Vider ou supprimer un panier
- *     tags: [Panier]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: ID du panier
- *     responses:
- *       200:
- *         description: Panier supprimé avec succès
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "Panier supprimé avec succès"
- *       401:
- *         description: Non authentifié
- *       403:
- *         description: Non autorisé
- *       404:
- *         description: Panier non trouvé
- *       500:
- *         description: Erreur serveur
+ * PUT - Mettre à jour la quantité d'un produit dans le panier
  */
-exports.deletePanier = async (req, res) => {
+exports.updateQuantite = async (req, res) => {
   try {
-    const panier = await Panier.findById(req.params.id);
+    const userId = req.body.userId || req.user?.id;
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID utilisateur requis'
+      });
+    }
+
+    const { productId } = req.params;
+    const { quantity } = req.body;
+    
+    if (!quantity || quantity < 1) {
+      return res.status(400).json({
+        success: false,
+        message: 'Quantité invalide (minimum 1)'
+      });
+    }
+    
+    // Récupérer le panier actif
+    const panier = await Panier.findOne({
+      userId,
+      statut: 'panier',
+      isActive: true
+    });
+    
     if (!panier) {
       return res.status(404).json({
         success: false,
         message: 'Panier non trouvé'
       });
     }
-
-    await Panier.findByIdAndDelete(req.params.id);
-
+    
+    // Chercher le produit dans le panier
+    const itemIndex = panier.produitsachete.findIndex(
+      item => item.produit.toString() === productId
+    );
+    
+    if (itemIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'Produit non trouvé dans le panier'
+      });
+    }
+    
+    // Vérifier le stock disponible pour la nouvelle quantité
+    const currentQuantity = panier.produitsachete[itemIndex].qtt;
+    const quantityDifference = quantity - currentQuantity;
+    
+    if (quantityDifference > 0) {
+      // On augmente : vérifier le stock disponible
+      const produit = await Product.findById(productId);
+      if (produit && produit.variant && produit.variant.length > 0) {
+        const variant = produit.variant[0];
+        const availableStock = (variant.qtt || 0) - (variant.reserved || 0);
+        
+        if (availableStock < quantityDifference) {
+          return res.status(400).json({
+            success: false,
+            message: `Stock insuffisant. Seulement ${availableStock} articles supplémentaires disponibles`
+          });
+        }
+        
+        // Ajuster la réservation
+        variant.reserved = (variant.reserved || 0) + quantityDifference;
+        await produit.save();
+      }
+    } else if (quantityDifference < 0) {
+      // On diminue : libérer la réservation
+      const produit = await Product.findById(productId);
+      if (produit && produit.variant && produit.variant.length > 0) {
+        const variant = produit.variant[0];
+        variant.reserved = Math.max(0, (variant.reserved || 0) + quantityDifference);
+        await produit.save();
+      }
+    }
+    
+    // Mettre à jour la quantité et le sous-total
+    panier.produitsachete[itemIndex].qtt = quantity;
+    panier.produitsachete[itemIndex].sousTotal = 
+      quantity * panier.produitsachete[itemIndex].prixUnitaire;
+    
+    // Recalculer les totaux
+    panier.sousTotal = panier.produitsachete.reduce((total, item) => {
+      return total + (item.sousTotal || 0);
+    }, 0);
+    
+    panier.total = panier.sousTotal + (panier.fraisLivraison || 0);
+    
+    panier.qtt = panier.produitsachete.reduce((total, item) => {
+      return total + item.qtt;
+    }, 0);
+    
+    await panier.save();
+    await panier.populate('produitsachete.produit', 'nom photo prix');
+    
     res.status(200).json({
       success: true,
-      message: 'Panier supprimé avec succès'
+      message: 'Quantité mise à jour avec succès',
+      data: panier
     });
   } catch (error) {
-    console.error('Erreur suppression panier:', error);
+    console.error('Erreur updateQuantite:', error);
     res.status(500).json({
       success: false,
-      message: 'Erreur serveur',
+      message: 'Erreur lors de la mise à jour de la quantité',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * DELETE - Supprimer un produit du panier
+ */
+exports.removeFromPanier = async (req, res) => {
+  try {
+    const userId = req.body.userId || req.user?.id;
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID utilisateur requis'
+      });
+    }
+
+    const { productId } = req.params;
+    
+    // Récupérer le panier actif
+    const panier = await Panier.findOne({
+      userId,
+      statut: 'panier',
+      isActive: true
+    });
+    
+    if (!panier) {
+      return res.status(404).json({
+        success: false,
+        message: 'Panier non trouvé'
+      });
+    }
+    
+    // Chercher le produit à supprimer pour libérer la réservation
+    const itemToRemove = panier.produitsachete.find(
+      item => item.produit.toString() === productId
+    );
+    
+    if (!itemToRemove) {
+      return res.status(404).json({
+        success: false,
+        message: 'Produit non trouvé dans le panier'
+      });
+    }
+    
+    // Libérer la réservation du stock
+    const produit = await Product.findById(productId);
+    if (produit && produit.variant && produit.variant.length > 0) {
+      const variant = produit.variant[0];
+      variant.reserved = Math.max(0, (variant.reserved || 0) - itemToRemove.qtt);
+      await produit.save();
+    }
+    
+    // Supprimer le produit du panier
+    panier.produitsachete = panier.produitsachete.filter(
+      item => item.produit.toString() !== productId
+    );
+    
+    // Recalculer les totaux
+    panier.sousTotal = panier.produitsachete.reduce((total, item) => {
+      return total + (item.sousTotal || 0);
+    }, 0);
+    
+    panier.total = panier.sousTotal + (panier.fraisLivraison || 0);
+    
+    panier.qtt = panier.produitsachete.reduce((total, item) => {
+      return total + item.qtt;
+    }, 0);
+    
+    // Si panier vide, le supprimer
+    if (panier.produitsachete.length === 0) {
+      await Panier.findByIdAndDelete(panier._id);
+      return res.status(200).json({
+        success: true,
+        message: 'Produit supprimé et panier vidé',
+        data: null
+      });
+    }
+    
+    await panier.save();
+    await panier.populate('produitsachete.produit', 'nom photo prix');
+    
+    res.status(200).json({
+      success: true,
+      message: 'Produit supprimé du panier avec succès',
+      data: panier
+    });
+  } catch (error) {
+    console.error('Erreur removeFromPanier:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la suppression du produit',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * DELETE - Vider complètement le panier
+ */
+exports.viderPanier = async (req, res) => {
+  try {
+    const userId = req.body.userId || req.user?.id;
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID utilisateur requis'
+      });
+    }
+
+    // Récupérer le panier actif
+    const panier = await Panier.findOne({
+      userId,
+      statut: 'panier',
+      isActive: true
+    });
+    
+    if (!panier) {
+      return res.status(404).json({
+        success: false,
+        message: 'Panier non trouvé'
+      });
+    }
+    
+    // Libérer le stock pour tous les produits
+    for (const item of panier.produitsachete) {
+      const produit = await Product.findById(item.produit);
+      if (produit && produit.variant && produit.variant.length > 0) {
+        const variant = produit.variant[0];
+        variant.reserved = Math.max(0, (variant.reserved || 0) - item.qtt);
+        await produit.save();
+      }
+    }
+    
+    // Supprimer le panier
+    await Panier.findByIdAndDelete(panier._id);
+    
+    res.status(200).json({
+      success: true,
+      message: 'Panier vidé et supprimé avec succès',
+      data: null
+    });
+  } catch (error) {
+    console.error('Erreur viderPanier:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors du vidage du panier',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * POST - Valider/Confirmer la commande (passer de "panier" à "en_attente")
+ */
+exports.validerPanier = async (req, res) => {
+  try {
+    const userId = req.body.userId || req.user?.id;
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID utilisateur requis'
+      });
+    }
+
+    // Récupérer le panier actif
+    const panier = await Panier.findOne({
+      userId,
+      statut: 'panier',
+      isActive: true
+    });
+    
+    if (!panier) {
+      return res.status(404).json({
+        success: false,
+        message: 'Panier non trouvé ou vide'
+      });
+    }
+
+    if (panier.produitsachete.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Impossible de valider un panier vide'
+      });
+    }
+    
+    // Changer le statut à "en_attente" (commande confirmée, en attente de paiement)
+    panier.statut = 'en_attente';
+    panier.isActive = false; // Marquer le panier comme non-actif (fin de l'édition)
+    
+    await panier.save();
+    await panier.populate('produitsachete.produit', 'nom photo prix');
+    
+    res.status(200).json({
+      success: true,
+      message: 'Commande validée avec succès. En attente de paiement.',
+      data: panier
+    });
+  } catch (error) {
+    console.error('Erreur validerPanier:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la validation de la commande',
       error: error.message
     });
   }
