@@ -4,10 +4,13 @@ const panierController = require('../controllers/panierController');
 const authMiddleware = require('../middlewares/authMiddleware');
 
 // Routes CRUD pour le panier
-// router.use(authMiddleware); // Temporairement désactivé pour tests
+router.use(authMiddleware); // Temporairement désactivé pour tests
 
 // GET - Récupérer le panier de l'utilisateur
 router.get('/', panierController.getPanier);
+
+// GET - Récupérer le panier de l'utilisateur
+router.get('/commande', panierController.getCommande);
 
 // POST - Ajouter un produit au panier
 router.post('/ajouter', panierController.addToPanier);
@@ -15,11 +18,12 @@ router.post('/ajouter', panierController.addToPanier);
 // PUT - Mettre à jour la quantité d'un produit
 router.put('/:productId/quantite', panierController.updateQuantite);
 
+// DELETE - Vider tout le panier
+router.delete('/vider', panierController.viderPanier);
+
 // DELETE - Supprimer un produit du panier
 router.delete('/:productId', panierController.removeFromPanier);
 
-// DELETE - Vider tout le panier
-router.delete('/vider', panierController.viderPanier);
 
 // POST - Valider la commande
 router.post('/valider', panierController.validerPanier);

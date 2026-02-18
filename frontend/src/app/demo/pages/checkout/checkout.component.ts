@@ -17,6 +17,17 @@ interface Adresse {
   telephone?: string;
 }
 
+interface AdresseLivraison {
+  nomEndroit?: string;
+  longitude?: number;
+  latitude?: number;
+  rue: string;
+  ville: string;
+  codePostal: string;
+  pays: string;
+  telephone: string;
+}
+
 interface Panier {
   _id?: string; // Rendre optionnel explicitement
   numeroCommande: string;
@@ -27,7 +38,7 @@ interface Panier {
   total: number;
   statut: string;
   methodePaiement?: string; // Rendre optionnel
-  adresseLivraison?: Adresse;
+  adresseLivraison?: AdresseLivraison;
 }
 
 @Component({
@@ -48,6 +59,11 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   checkoutForm: FormGroup;
   fraisLivraison = 0;
   dateLivraisonEstimee: Date | null = null;
+  
+  // Nouvelles propriétés pour la gestion de la livraison
+  modeLivraison: 'retrait' | 'livraison' = 'retrait';
+  currentUser: any = null;
+  userTelephone: string = '';
 
   constructor(
     private readonly router: Router,
@@ -60,12 +76,15 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     private readonly cdr: ChangeDetectorRef
   ) {
     this.checkoutForm = this.fb.group({
-      // Adresse de livraison
-      rue: ['', Validators.required],
-      ville: ['', Validators.required],
-      codePostal: ['', [Validators.required, Validators.pattern('^[0-9]{5}$')]],
-      pays: ['France', Validators.required],
-      telephone: ['', Validators.pattern('^[0-9]{10}$')],
+      // Mode de livraison
+      modeLivraison: ['retrait', Validators.required],
+      
+      // Adresse de livraison (uniquement si livraison)
+      rue: [''],
+      ville: [''],
+      codePostal: [''],
+      pays: ['France'],
+      telephone: [''],
       
       // Méthode de paiement
       methodePaiement: ['carte', Validators.required],
@@ -80,6 +99,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.authService.ensureUserExists();
+    this.loadUser();
     this.loadPanier();
     this.loadUserAddress();
   }
@@ -89,17 +109,22 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
+  loadUser(): void {
+    this.currentUser = this.authService.getUser();
+    this.userTelephone = this.currentUser?.numtel?.[0] || '';
+  }
+
   loadPanier(): void {
     this.loading = true;
     
-    this.panierService.getPanier().pipe(takeUntil(this.destroy$)).subscribe({
+    this.panierService.getCommande().pipe(takeUntil(this.destroy$)).subscribe({
       next: (response) => {
         this.panier = response.data;
-        
+        console.log('Commande  chargé:', this.panier);
         // Permettre l'accès si le panier est en statut "en_attente" (vient d'être validé)
         if (!this.panier || (this.panier.produitsachete.length === 0 && this.panier.statut !== 'en_attente')) {
           this.notificationService.warning('Votre panier est vide');
-          this.router.navigate(['/panier']);
+         
           return;
         }
         
@@ -129,7 +154,12 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         ville: adresse.ville || '',
         codePostal: adresse.codePostal || '',
         pays: adresse.pays || 'France',
-        telephone: adresse.telephone || ''
+        telephone: this.userTelephone || adresse.telephone || ''
+      });
+    } else {
+      // Pré-remplir avec le téléphone de l'utilisateur
+      this.checkoutForm.patchValue({
+        telephone: this.userTelephone
       });
     }
   }
@@ -152,16 +182,27 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   calculerFraisLivraison(): void {
     if (!this.panier) return;
 
-    const adresse: AdresseLivraison = {
-      rue: this.checkoutForm.get('rue')?.value,
-      ville: this.checkoutForm.get('ville')?.value,
-      codePostal: this.checkoutForm.get('codePostal')?.value,
-      pays: this.checkoutForm.get('pays')?.value || 'France',
-      telephone: this.checkoutForm.get('telephone')?.value
-    };
+    // Ne calculer les frais de livraison que si mode livraison et adresse complète
+    if (this.modeLivraison === 'livraison') {
+      const formValues = this.checkoutForm.value;
+      
+      // Vérifier que tous les champs d'adresse sont remplis
+      if (!formValues.rue || !formValues.ville || !formValues.codePostal || !formValues.telephone) {
+        this.fraisLivraison = 0;
+        this.updateTotal();
+        return;
+      }
 
-    // Utiliser l'API de calcul des frais de livraison
-    this.livraisonService.calculerFraisLivraison(adresse).pipe(takeUntil(this.destroy$)).subscribe({
+      const adresse: AdresseLivraison = {
+        rue: formValues.rue,
+        ville: formValues.ville,
+        codePostal: formValues.codePostal,
+        pays: formValues.pays || 'France',
+        telephone: formValues.telephone
+      };
+
+      // Utiliser l'API de calcul des frais de livraison
+      this.livraisonService.calculerFraisLivraison(adresse).pipe(takeUntil(this.destroy$)).subscribe({
       next: (response) => {
         this.fraisLivraison = response.fraisLivraison;
         this.dateLivraisonEstimee = new Date(response.dateLivraison);
@@ -172,7 +213,14 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         this.calculerFraisLivraisonSimulation();
       }
     });
+  } else {
+    // Mode retrait : pas de frais de livraison
+    this.fraisLivraison = 0;
+    this.dateLivraisonEstimee = null;
   }
+  
+  this.updateTotal();
+}
 
   // Méthode de secours pour le calcul des frais
   private calculerFraisLivraisonSimulation(): void {
@@ -180,7 +228,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     const codePostal = this.checkoutForm.get('codePostal')?.value || '75001';
     const distance = this.simulerDistance(codePostal);
     const coutParKm = 2;
-    const kmGratuits = 5;
+    const kmGratuits = 3; // Changé à 3 comme demandé
     
     this.fraisLivraison = baseFrais;
     if (distance > kmGratuits) {
@@ -190,6 +238,48 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     // Calculer la date de livraison (1 jour après paiement)
     this.dateLivraisonEstimee = new Date();
     this.dateLivraisonEstimee.setDate(this.dateLivraisonEstimee.getDate() + 1);
+  }
+
+  updateTotal(): void {
+    if (!this.panier) return;
+    
+    // Mettre à jour le total avec les frais de livraison actuels
+    this.panier.fraisLivraison = this.fraisLivraison;
+    this.panier.total = this.panier.sousTotal + this.fraisLivraison;
+  }
+
+  // Gérer le changement de mode de livraison
+  onModeLivraisonChange(): void {
+    this.modeLivraison = this.checkoutForm.get('modeLivraison')?.value || 'retrait';
+    
+    // Mettre à jour les validateurs selon le mode
+    const rueControl = this.checkoutForm.get('rue');
+    const villeControl = this.checkoutForm.get('ville');
+    const codePostalControl = this.checkoutForm.get('codePostal');
+    const telephoneControl = this.checkoutForm.get('telephone');
+    
+    if (this.modeLivraison === 'livraison') {
+      // Rendre les champs d'adresse obligatoires pour la livraison
+      rueControl?.setValidators([Validators.required]);
+      villeControl?.setValidators([Validators.required]);
+      codePostalControl?.setValidators([Validators.required, Validators.pattern('^[0-9]{5}$')]);
+      telephoneControl?.setValidators([Validators.required, Validators.pattern('^[0-9]{10}$')]);
+    } else {
+      // Rendre les champs d'adresse optionnels pour le retrait
+      rueControl?.clearValidators();
+      villeControl?.clearValidators();
+      codePostalControl?.clearValidators();
+      telephoneControl?.setValidators([Validators.pattern('^[0-9]{10}$')]); // Téléphone toujours requis
+    }
+    
+    // Mettre à jour les validateurs
+    rueControl?.updateValueAndValidity();
+    villeControl?.updateValueAndValidity();
+    codePostalControl?.updateValueAndValidity();
+    telephoneControl?.updateValueAndValidity();
+    
+    // Recalculer les frais de livraison
+    this.calculerFraisLivraison();
   }
 
   simulerDistance(codePostal: string): number {
@@ -218,7 +308,19 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   }
 
   checkAddressForm(): boolean {
-    const adresseFields = ['rue', 'ville', 'codePostal', 'pays'];
+    // Pour le mode retrait, seul le téléphone est obligatoire
+    if (this.modeLivraison === 'retrait') {
+      const telephoneControl = this.checkoutForm.get('telephone');
+      if (telephoneControl?.invalid) {
+        telephoneControl.markAsTouched();
+        this.notificationService.warning('Veuillez renseigner votre numéro de téléphone');
+        return false;
+      }
+      return true;
+    }
+    
+    // Pour le mode livraison, tous les champs sont obligatoires
+    const adresseFields = ['rue', 'ville', 'codePostal', 'pays', 'telephone'];
     let isValid = true;
 
     for (const field of adresseFields) {
@@ -263,13 +365,20 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   updateCommandeAdresse(): void {
     if (!this.panier) return;
 
-    const adresseLivraison = {
-      rue: this.checkoutForm.get('rue')?.value,
-      ville: this.checkoutForm.get('ville')?.value,
-      codePostal: this.checkoutForm.get('codePostal')?.value,
-      pays: this.checkoutForm.get('pays')?.value || 'France',
-      telephone: this.checkoutForm.get('telephone')?.value
-    };
+    let adresseLivraison: any = null;
+    
+    if (this.modeLivraison === 'livraison') {
+      adresseLivraison = {
+        rue: this.checkoutForm.get('rue')?.value,
+        ville: this.checkoutForm.get('ville')?.value,
+        codePostal: this.checkoutForm.get('codePostal')?.value,
+        pays: this.checkoutForm.get('pays')?.value || 'France',
+        telephone: this.checkoutForm.get('telephone')?.value
+      };
+    } else {
+      // Mode retrait : pas d'adresse de livraison
+      adresseLivraison = null;
+    }
 
     this.panierService.mettreAJourCommande({
       adresseLivraison,

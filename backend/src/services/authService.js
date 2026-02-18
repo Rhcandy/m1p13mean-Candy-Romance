@@ -114,6 +114,24 @@ class AuthService {
     }
   }
 
+  /**
+   * Extraire l'utilisateur à partir du token JWT
+   * @param {string} token - Token JWT
+   * @returns {Promise<Object>} - Utilisateur avec ses informations complètes
+   */
+  async getUserIdByToken(req) {
+    try {
+    
+      const token = req.headers.authorization.substring(7);
+      // Vérifier et décoder le token
+      const decoded = this.verifyToken(token);
+      
+      return decoded.userId;
+    } catch (error) {
+      throw new Error(`Erreur lors de la récupération de l'utilisateur: ${error.message}`);
+    }
+  }
+
   async refreshToken(token) {
     try {
       const decoded = this.verifyToken(token);

@@ -68,8 +68,6 @@ exports.calculerFraisLivraison = async (req, res) => {
       });
     }
 
-    // Récupérer le centre de distribution le plus proche
-    // Pour simplifier, on prend le premier centre trouvé
     const centre = await Centre.findOne();
     
     if (!centre) {

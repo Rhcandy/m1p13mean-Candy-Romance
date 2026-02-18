@@ -1,14 +1,14 @@
 const mongoose = require('mongoose');
 const Panier = require('../models/Panier');
 const Product = require('../models/Produit');
-
+const authService = require('../services/authService');
 /**
  * GET - Récupérer le panier actif de l'utilisateur
  * Le panier actif est celui à l'état "panier" ET qui n'a pas été payé
  */
 exports.getPanier = async (req, res) => {
   try {
-    const userId = req.headers['x-user-id'] || req.body.userId || req.user?.id;
+    const userId =await authService.getUserIdByToken(req);
 
     if (!userId) {
       return res.status(400).json({
@@ -52,6 +52,39 @@ exports.getPanier = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération du panier',
+      error: error.message
+    });
+  }
+};
+
+exports.getCommande = async (req, res) => {
+  try {
+    const userId =await authService.getUserIdByToken(req);
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID utilisateur requis'
+      });
+    }
+
+    // Chercher le panier actif (non validé, non payé)
+    let panier = await Panier.findOne({
+      userId,
+      statut: 'en_attente',
+      isActive: false
+    }).populate('produitsachete.produit', 'nom photo prix');
+    console.log(panier);
+    res.status(200).json({
+      success: true,
+      message: 'Commande récupéré avec succès',
+      data: panier
+    });
+  } catch (error) {
+    console.error('Erreur getPanier:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération du commande',
       error: error.message
     });
   }
@@ -259,7 +292,7 @@ exports.updateQuantite = async (req, res) => {
     if (itemIndex === -1) {
       return res.status(404).json({
         success: false,
-        message: 'Produit non trouvé dans le panier'
+        message: 'Produit non trouvé dans le panier 1'
       });
     }
     
@@ -334,7 +367,7 @@ exports.updateQuantite = async (req, res) => {
  */
 exports.removeFromPanier = async (req, res) => {
   try {
-    const userId = req.body.userId || req.user?.id;
+    const userId = req.query.userId || req.user?.id;
     if (!userId) {
       return res.status(400).json({
         success: false,
@@ -366,7 +399,7 @@ exports.removeFromPanier = async (req, res) => {
     if (!itemToRemove) {
       return res.status(404).json({
         success: false,
-        message: 'Produit non trouvé dans le panier'
+        message: 'Produit non trouvé dans le panier2'
       });
     }
     
@@ -396,7 +429,7 @@ exports.removeFromPanier = async (req, res) => {
     
     // Si panier vide, le supprimer
     if (panier.produitsachete.length === 0) {
-      await Panier.findByIdAndDelete(panier._id);
+      await Panier.deleteOne({ _id: panier._id });
       return res.status(200).json({
         success: true,
         message: 'Produit supprimé et panier vidé',
@@ -427,7 +460,7 @@ exports.removeFromPanier = async (req, res) => {
  */
 exports.viderPanier = async (req, res) => {
   try {
-    const userId = req.body.userId || req.user?.id;
+    const userId = req.query.userId || req.user?.id;
     if (!userId) {
       return res.status(400).json({
         success: false,
@@ -447,7 +480,7 @@ exports.viderPanier = async (req, res) => {
         success: false,
         message: 'Panier non trouvé'
       });
-    }
+    } 
     
     // Libérer le stock pour tous les produits
     for (const item of panier.produitsachete) {
@@ -460,7 +493,7 @@ exports.viderPanier = async (req, res) => {
     }
     
     // Supprimer le panier
-    await Panier.findByIdAndDelete(panier._id);
+    await Panier.deleteOne({ _id: panier._id });
     
     res.status(200).json({
       success: true,
@@ -482,7 +515,7 @@ exports.viderPanier = async (req, res) => {
  */
 exports.validerPanier = async (req, res) => {
   try {
-    const userId = req.body.userId || req.user?.id;
+    const userId = req.query.userId || req.body.userId || req.user?.id;
     if (!userId) {
       return res.status(400).json({
         success: false,

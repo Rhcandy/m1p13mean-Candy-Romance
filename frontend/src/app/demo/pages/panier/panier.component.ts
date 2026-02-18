@@ -373,8 +373,6 @@ export class PanierComponent implements OnInit, OnDestroy {
         next: (response) => {
           this.panier = response.data;
           this.notificationService.success('Commande validée avec succès !');
-          console.log('Redirection vers checkout...');
-          // Rediriger immédiatement vers la page de checkout
           this.router.navigate(['/checkout']);
         },
         error: (error) => {
@@ -418,7 +416,5 @@ export class PanierComponent implements OnInit, OnDestroy {
     return this.panier ? this.panierService.getTotal(this.panier) : 0;
   }
 
-  getFraisLivraison(): number {
-    return this.panier ? this.panierService.getFraisLivraison(this.panier) : 0;
-  }
+  
 }

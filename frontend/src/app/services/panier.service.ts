@@ -119,6 +119,14 @@ export class PanierService {
     const headers = { 'X-User-Id': userId };
     return this.apiService.get<ApiResponse<Panier>>(this.endpoint, { headers });
   }
+   /**
+   * Récupérer le commande de l'utilisateur
+   */
+  getCommande(): Observable<ApiResponse<Panier>> {
+    const userId = this.getCurrentUserId();
+    const headers = { 'X-User-Id': userId };
+    return this.apiService.get<ApiResponse<Panier>>(`${this.endpoint}/commande`, { headers });
+  }
 
   /**
    * Ajouter un produit au panier
@@ -149,7 +157,7 @@ export class PanierService {
    */
   removeFromPanier(productId: string): Observable<ApiResponse<Panier>> {
     const userId = this.getCurrentUserId();
-    return this.apiService.delete<ApiResponse<Panier>>(`${this.endpoint}/${productId}`, { userId });
+    return this.apiService.delete<ApiResponse<Panier>>(`${this.endpoint}/${productId}?userId=${userId}`);
   }
 
   /**
@@ -157,7 +165,8 @@ export class PanierService {
    */
   viderPanier(): Observable<ApiResponse<Panier>> {
     const userId = this.getCurrentUserId();
-    return this.apiService.delete<ApiResponse<Panier>>(`${this.endpoint}/vider`, { userId });
+    console.log('Vidage panier pour utilisateur:', userId);
+    return this.apiService.delete<ApiResponse<Panier>>(`${this.endpoint}/vider?userId=${userId}`);
   }
 
   /**

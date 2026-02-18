@@ -209,10 +209,8 @@ panierSchema.pre('deleteOne', { document: false, query: true }, async function(n
         }
       }
     }
-    
-    next();
   } catch (error) {
-    next(error);
+    console.error('Erreur libération stock:', error);
   }
 });
 
@@ -249,10 +247,8 @@ panierSchema.pre(['deleteMany', 'findOneAndDelete'], async function(next) {
         }
       }
     }
-    
-    next();
   } catch (error) {
-    next(error);
+    console.error('Erreur libération stock:', error);
   }
 });
 
