@@ -25,7 +25,7 @@ const generateEmailTemplate = (type, params) => {
         <p>Email: ${email}</p>
         <p>Veuillez entrer ce code pour réinitialiser votre mot de passe.</p>
         <strong>${confirmPassword}</strong>
-        ellee n'est valide que pour 10 minutes.
+        elle n'est valide que pour 10 minutes.
         <p>Si vous n'avez pas demandé de réinitialisation de mot de passe, veuillez ignorer cet email.</p>
         <p>Merci de ne pas répondre à cet email.</p>
         <p>Cordialement,</p>
@@ -49,13 +49,6 @@ const sendEmail = async (type, params) => {
       to: params.email,
       subject: template.subject,
       html: template.html,
-      attachments: [
-        {
-          filename: "logo.jpg",
-          path: "https://res.cloudinary.com/dunnmcqsz/image/upload/v1771178331/profiles/azet7dggknr76phhgh43.jpg",
-          cid: "unique@cid",
-        },
-      ],
     });
 
     return {
