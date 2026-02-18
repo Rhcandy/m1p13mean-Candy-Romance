@@ -53,6 +53,16 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Role',
     required: true
+  },
+  coderesetpwd: {
+    code: {
+      type: Number,
+      default: null
+    },
+    expiresAt: {
+      type: Date,
+      default: null
+    }
   }
 }, {
   timestamps: true,
