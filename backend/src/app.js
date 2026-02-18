@@ -70,6 +70,7 @@ const categorieProduitRoutes = require('./routes/categorieProduitRoutes');
 const produitRoutes = require('./routes/produitRoutes');
 const panierRoutes = require('./routes/panierRoutes');
 const avisRoutes = require('./routes/avisRoutes');
+const livraisonRoutes = require('./routes/livraisonRoutes');
 
 // Routes API
 app.use('/api/auth', authRoutes);
@@ -82,7 +83,7 @@ app.use('/api/categories-produit', categorieProduitRoutes);
 app.use('/api/produits', produitRoutes);
 app.use('/api/paniers', panierRoutes);
 app.use('/api/avis', avisRoutes);
-
+app.use('/api/livraison', livraisonRoutes);
 
 
 /**

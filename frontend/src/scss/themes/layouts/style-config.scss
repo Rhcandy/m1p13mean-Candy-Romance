@@ -1,3 +1,6 @@
+@use "sass:color";
+@use "sass:map";
+
 /**  =====================
     Customize css start
 ==========================  **/
@@ -226,7 +229,7 @@ $style-block-width: 375px;
     @each $name, $value in $preset-colors {
       > a {
         &[data-value='preset-#{$i}'] {
-          background: linear-gradient(135deg, map-get($value, 'primary') 50%, map-get($value, 'secondary') 50%);
+          background: linear-gradient(135deg, map.get($value, 'primary') 50%, map.get($value, 'secondary') 50%);
         }
       }
 

@@ -532,3 +532,279 @@ exports.validerPanier = async (req, res) => {
     });
   }
 };
+
+/**
+ * POST - Mettre à jour la commande avec adresse et méthode de paiement
+ */
+exports.mettreAJourCommande = async (req, res) => {
+  try {
+    const userId = req.body.userId || req.user?.id;
+    const { adresseLivraison, methodePaiement } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID utilisateur requis'
+      });
+    }
+
+    // Récupérer la commande en attente
+    const panier = await Panier.findOne({
+      userId,
+      statut: 'en_attente'
+    });
+    
+    if (!panier) {
+      return res.status(404).json({
+        success: false,
+        message: 'Commande en attente non trouvée'
+      });
+    }
+
+    // Mettre à jour les informations
+    if (adresseLivraison) {
+      panier.adresseLivraison = {
+        ...adresseLivraison,
+        pays: adresseLivraison.pays || 'France'
+      };
+    }
+
+    if (methodePaiement) {
+      panier.methodePaiement = methodePaiement;
+    }
+
+    await panier.save();
+    await panier.populate('produitsachete.produit', 'nom photo prix');
+    
+    res.status(200).json({
+      success: true,
+      message: 'Commande mise à jour avec succès',
+      data: panier
+    });
+  } catch (error) {
+    console.error('Erreur miseAJourCommande:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la mise à jour de la commande',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * POST - Payer la commande (passer de "en_attente" à "confirmee")
+ */
+exports.payerCommande = async (req, res) => {
+  try {
+    const userId = req.body.userId || req.user?.id;
+    const { paiementDetails } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID utilisateur requis'
+      });
+    }
+
+    // Récupérer la commande en attente
+    const panier = await Panier.findOne({
+      userId,
+      statut: 'en_attente'
+    });
+    
+    if (!panier) {
+      return res.status(404).json({
+        success: false,
+        message: 'Commande en attente non trouvée'
+      });
+    }
+
+    // Vérifier que l'adresse de livraison est définie
+    if (!panier.adresseLivraison || !panier.adresseLivraison.rue) {
+      return res.status(400).json({
+        success: false,
+        message: 'Adresse de livraison requise avant le paiement'
+      });
+    }
+
+    // Simuler le traitement du paiement
+    // Dans un vrai projet, intégrer Stripe, PayPal, etc.
+    const paiementReussi = await traiterPaiement(paiementDetails, panier.total);
+    
+    if (!paiementReussi) {
+      return res.status(400).json({
+        success: false,
+        message: 'Échec du paiement'
+      });
+    }
+
+    // Mettre à jour le statut
+    panier.statut = 'confirmee';
+    panier.isPaye = true;
+    panier.datePaiement = new Date();
+    
+    // Calculer la date de livraison (1 jour après paiement)
+    const dateLivraison = new Date();
+    dateLivraison.setDate(dateLivraison.getDate() + 1);
+    panier.dateLivraison = dateLivraison;
+    
+    await panier.save();
+    await panier.populate('produitsachete.produit', 'nom photo prix');
+    
+    res.status(200).json({
+      success: true,
+      message: 'Paiement effectué avec succès. Commande confirmée.',
+      data: {
+        commande: panier,
+        facture: genererFacture(panier)
+      }
+    });
+  } catch (error) {
+    console.error('Erreur payerCommande:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors du paiement',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * POST - Annuler une commande
+ */
+exports.annulerCommande = async (req, res) => {
+  try {
+    const userId = req.body.userId || req.user?.id;
+    const { motif } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID utilisateur requis'
+      });
+    }
+
+    // Récupérer la commande (panier ou en_attente)
+    const panier = await Panier.findOne({
+      userId,
+      statut: { $in: ['panier', 'en_attente'] }
+    });
+    
+    if (!panier) {
+      return res.status(404).json({
+        success: false,
+        message: 'Commande à annuler non trouvée'
+      });
+    }
+
+    // Libérer le stock réservé
+    for (const item of panier.produitsachete) {
+      const produit = await Product.findById(item.produit);
+      if (produit && produit.variant && produit.variant.length > 0) {
+        const variant = produit.variant[0];
+        variant.reserved = Math.max(0, (variant.reserved || 0) - item.qtt);
+        await produit.save();
+      }
+    }
+
+    // Mettre à jour le statut
+    panier.statut = 'annule';
+    panier.dateAnnulation = new Date();
+    if (motif) {
+      panier.notes = motif;
+    }
+    panier.isActive = false;
+    
+    await panier.save();
+    
+    res.status(200).json({
+      success: true,
+      message: 'Commande annulée avec succès',
+      data: panier
+    });
+  } catch (error) {
+    console.error('Erreur annulerCommande:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de l\'annulation',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * GET - Récupérer l'historique des commandes d'un utilisateur
+ */
+exports.getHistoriqueCommandes = async (req, res) => {
+  try {
+    const userId = req.headers['x-user-id'] || req.body.userId || req.user?.id;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID utilisateur requis'
+      });
+    }
+
+    const commandes = await Panier.find({
+      userId,
+      statut: { $ne: 'panier' } // Exclure les paniers actifs
+    })
+    .populate('produitsachete.produit', 'nom photo')
+    .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      message: 'Historique des commandes récupéré avec succès',
+      data: commandes
+    });
+  } catch (error) {
+    console.error('Erreur getHistoriqueCommandes:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération de l\'historique',
+      error: error.message
+    });
+  }
+};
+
+// Fonctions utilitaires
+async function traiterPaiement(paiementDetails, montant) {
+  // Simulation du traitement de paiement
+  // Dans un vrai projet, intégrer avec Stripe, PayPal, etc.
+  console.log('Traitement paiement:', { paiementDetails, montant });
+  
+  // Simuler un délai de traitement
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  // Simuler un succès (90% de chance de succès)
+  return Math.random() > 0.1;
+}
+
+function genererFacture(panier) {
+  return {
+    numeroFacture: `FAC-${panier.numeroCommande}`,
+    dateFacture: new Date().toISOString(),
+    client: {
+      id: panier.userId,
+      // Ajouter les infos client si disponibles
+    },
+    commande: {
+      numero: panier.numeroCommande,
+      date: panier.createdAt,
+      produits: panier.produitsachete,
+      sousTotal: panier.sousTotal,
+      fraisLivraison: panier.fraisLivraison,
+      total: panier.total
+    },
+    paiement: {
+      methode: panier.methodePaiement,
+      date: panier.datePaiement,
+      montant: panier.total
+    },
+    livraison: {
+      adresse: panier.adresseLivraison,
+      dateEstimee: panier.dateLivraison
+    }
+  };
+}

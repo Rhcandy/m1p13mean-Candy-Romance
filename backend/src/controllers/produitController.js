@@ -437,6 +437,97 @@ exports.updateProduit = async (req, res) => {
 
 /**
  * @swagger
+ * /api/produits/{id}/stock:
+ *   get:
+ *     summary: Récupérer le stock disponible d'un produit
+ *     tags: [Produit]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID du produit
+ *     responses:
+ *       200:
+ *         description: Stock récupéré avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     totalStock:
+ *                       type: number
+ *                       description: Stock total (somme de toutes les variantes)
+ *                     availableStock:
+ *                       type: number
+ *                       description: Stock disponible (total - réservé)
+ *                     variants:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           attributes:
+ *                             type: object
+ *                           qtt:
+ *                             type: number
+ *                           reserved:
+ *                             type: number
+ *                           available:
+ *                             type: number
+ *       404:
+ *         description: Produit non trouvé
+ */
+exports.getProduitStock = async (req, res) => {
+  try {
+    const produit = await Produit.findById(req.params.id);
+
+    if (!produit) {
+      return res.status(404).json({
+        success: false,
+        message: 'Produit non trouvé'
+      });
+    }
+
+    // Calculer le stock total en sommant TOUTES les variantes
+    // et en soustrayant TOUTES les réservations
+    let totalStock = 0;
+    let totalReserved = 0;
+
+    if (produit.variant && produit.variant.length > 0) {
+      for (const variant of produit.variant) {
+        totalStock += variant.qtt || 0;
+        totalReserved += variant.reserved || 0;
+      }
+    }
+
+    const totalAvailable = Math.max(0, totalStock - totalReserved);
+
+    res.status(200).json({
+      success: true,
+      message: 'Stock récupéré avec succès',
+      data: {
+        totalStock,        // Stock total de toutes les variantes
+        availableStock: totalAvailable  // Stock disponible total
+      }
+    });
+  } catch (error) {
+    console.error('Erreur récupération stock produit:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * @swagger
  * /api/produits/{id}:
  *   delete:
  *     summary: Supprimer un produit

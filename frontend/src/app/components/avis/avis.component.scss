@@ -1,3 +1,5 @@
+@use "sass:color";
+
 // Variables
 $primary-color: #6366f1;
 $primary-dark: #4f46e5;
@@ -317,7 +319,7 @@ $star-color: #fbbf24;
   transition: all 0.3s ease;
   
   &:hover {
-    border-color: darken($border-color, 10%);
+    border-color: color.scale($border-color, $lightness: -10%);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     transform: translateY(-1px);
   }

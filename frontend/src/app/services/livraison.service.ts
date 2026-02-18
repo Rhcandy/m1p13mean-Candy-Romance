@@ -1,0 +1,83 @@
+import { Injectable } from '@angular/core';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
+import { ApiService } from './api.service';
+
+export interface AdresseLivraison {
+  rue: string;
+  ville: string;
+  codePostal: string;
+  pays: string;
+  telephone?: string;
+}
+
+export interface FraisLivraisonResponse {
+  fraisLivraison: number;
+  distance: number;
+  dateLivraison: string;
+  centreDistribution: {
+    nom: string;
+    adresse: any;
+  };
+}
+
+export interface CentreDistribution {
+  _id: string;
+  nom: string;
+  adresse: {
+    rue: string;
+    ville: string;
+    codePostal: string;
+    pays: string;
+  };
+  telephone?: string;
+  email?: string;
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class LivraisonService {
+  private readonly endpoint = '/livraison';
+
+  constructor(private readonly apiService: ApiService) {}
+
+  /**
+   * Calculer les frais de livraison en fonction de l'adresse
+   */
+  calculerFraisLivraison(adresse: AdresseLivraison): Observable<FraisLivraisonResponse> {
+    return this.apiService.post<{data: FraisLivraisonResponse}>(`${this.endpoint}/calculer-frais`, { adresseLivraison: adresse }).pipe(
+      map(response => response.data)
+    );
+  }
+
+  /**
+   * Récupérer tous les centres de distribution
+   */
+  getCentresDistribution(): Observable<CentreDistribution[]> {
+    return this.apiService.get<{data: CentreDistribution[]}>(`${this.endpoint}/centres`).pipe(
+      map(response => response.data)
+    );
+  }
+
+  /**
+   * Formater une adresse pour l'affichage
+   */
+  formaterAdresse(adresse: AdresseLivraison): string {
+    return `${adresse.rue}, ${adresse.codePostal} ${adresse.ville}, ${adresse.pays}`;
+  }
+
+  /**
+   * Valider un code postal français
+   */
+  validerCodePostal(codePostal: string): boolean {
+    return /^[0-9]{5}$/.test(codePostal);
+  }
+
+  /**
+   * Valider un numéro de téléphone français
+   */
+  validerTelephone(telephone: string): boolean {
+    return /^(0[1-9])([0-9]{8})$/.test(telephone.replace(/\s/g, ''));
+  }
+}

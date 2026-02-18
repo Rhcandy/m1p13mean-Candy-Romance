@@ -35,7 +35,7 @@ export interface Panier {
   sousTotal: number;
   fraisLivraison: number;
   total: number;
-  statut: 'panier' | 'en_attente' | 'confirmee' | 'preparation' | 'expedie' | 'livre' | 'annule';
+  statut: 'panier' | 'en_attente' | 'confirmee' | 'preparation' | 'expedie' | 'livré';
   isPaye: boolean;
   islivre: boolean;
   expiresAt?: string; // Date d'expiration du panier
@@ -169,6 +169,39 @@ export class PanierService {
   }
 
   /**
+   * Mettre à jour la commande (adresse et méthode de paiement)
+   */
+  mettreAJourCommande(data: { adresseLivraison?: any; methodePaiement?: string }): Observable<ApiResponse<Panier>> {
+    const userId = this.getCurrentUserId();
+    return this.apiService.post<ApiResponse<Panier>>(`${this.endpoint}/mettre-a-jour`, { ...data, userId });
+  }
+
+  /**
+   * Payer la commande
+   */
+  payerCommande(paiementDetails?: any): Observable<ApiResponse<{ commande: Panier; facture: any }>> {
+    const userId = this.getCurrentUserId();
+    return this.apiService.post<ApiResponse<{ commande: Panier; facture: any }>>(`${this.endpoint}/payer`, { userId, paiementDetails });
+  }
+
+  /**
+   * Annuler une commande
+   */
+  annulerCommande(motif?: string): Observable<ApiResponse<Panier>> {
+    const userId = this.getCurrentUserId();
+    return this.apiService.post<ApiResponse<Panier>>(`${this.endpoint}/annuler`, { userId, motif });
+  }
+
+  /**
+   * Récupérer l'historique des commandes
+   */
+  getHistoriqueCommandes(): Observable<ApiResponse<Panier[]>> {
+    const userId = this.getCurrentUserId();
+    const headers = { 'X-User-Id': userId };
+    return this.apiService.get<ApiResponse<Panier[]>>(`${this.endpoint}/historique`, { headers });
+  }
+
+  /**
    * Calculer le nombre total d'articles dans le panier
    */
   getNombreArticles(panier: Panier): number {
@@ -211,12 +244,12 @@ export class PanierService {
   }
 
   /**
-   * Formater un montant en euros
+   * Formater un montant en Ariary
    */
   formatMontant(montant: number): string {
     return new Intl.NumberFormat('fr-FR', {
       style: 'currency',
-      currency: 'EUR'
+      currency: 'MGA' // Code ISO pour l'Ariary malgache
     }).format(montant);
   }
 

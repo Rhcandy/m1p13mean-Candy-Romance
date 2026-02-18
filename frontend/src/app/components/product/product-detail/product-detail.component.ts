@@ -113,8 +113,19 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
         this.router.navigate(['/produits']);
         return;
       }
+
+      // Récupérer le stock disponible via l'API
+      try {
+        const stockData = await lastValueFrom(this.productService.getProductStock(productId));
+        this.currentAvailableStock = stockData.availableStock;
+      } catch (stockError) {
+        console.error('Erreur récupération stock:', stockError);
+        // En cas d'erreur, calculer localement
+        this.calculateLocalStock();
+      }
+      
       // Valider le formulaire avec le stock disponible
-      const maxStock = this.getStockQuantity();
+      const maxStock = this.getAvailableStock();
       const validators = [
         Validators.required,
         Validators.min(1)
@@ -142,6 +153,24 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
       this.isLoading = false;
       this.cdr.detectChanges();
     }
+  }
+
+  // Méthode de secours pour calculer le stock localement
+  private calculateLocalStock(): void {
+    if (!this.product?.variant || this.product.variant.length === 0) {
+      this.currentAvailableStock = 0;
+      return;
+    }
+    
+    let totalAvailable = 0;
+    for (const variant of this.product.variant) {
+      const variantStock = variant.qtt || 0;
+      const variantReserved = variant.reserved || 0;
+      const variantAvailable = Math.max(0, variantStock - variantReserved);
+      totalAvailable += variantAvailable;
+    }
+    
+    this.currentAvailableStock = totalAvailable;
   }
 
   formatPrice(price: number): string {
@@ -184,15 +213,12 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   }
 
   getAvailableStock(): number {
-    if (!this.product?.variant || this.product.variant.length === 0) return 0;
-    
-    const variant = this.product.variant[0];
-    const totalStock = variant.qtt || 0;
-    const reservedStock = variant.reserved || 0;
-    const availableStock = totalStock - reservedStock;
-    
-    return Math.max(0, availableStock);
+    // Utiliser l'API pour obtenir le stock total disponible
+    // Cette méthode est maintenant un simple getter qui sera mis à jour par l'API
+    return this.currentAvailableStock || 0;
   }
+
+  private currentAvailableStock: number = 0;
 
   onQuantityChange(): void {
     const quantity = this.addToCartForm.get('quantity')?.value;

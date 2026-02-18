@@ -116,4 +116,14 @@ export class ProductService {
       map(response => response)
     );
   }
+
+  // Récupérer le stock d'un produit
+  getProductStock(productId: string): Observable<{
+    totalStock: number;
+    availableStock: number;
+  }> {
+    return this.api.get<{data: any}>(`/produits/${productId}/stock`).pipe(
+      map(response => response.data)
+    );
+  }
 }

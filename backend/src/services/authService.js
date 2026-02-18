@@ -84,7 +84,8 @@ class AuthService {
           nom: user.nom,
           email: user.email,
           pdppath: user.pdppath,
-          role: user.role.nom
+          role: user.role.nom,
+          adresse: user.adresse,
         },
         token
       };

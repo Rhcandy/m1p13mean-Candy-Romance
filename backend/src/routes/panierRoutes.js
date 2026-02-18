@@ -24,4 +24,16 @@ router.delete('/vider', panierController.viderPanier);
 // POST - Valider la commande
 router.post('/valider', panierController.validerPanier);
 
+// POST - Mettre à jour la commande (adresse, paiement)
+router.post('/mettre-a-jour', panierController.mettreAJourCommande);
+
+// POST - Payer la commande
+router.post('/payer', panierController.payerCommande);
+
+// POST - Annuler une commande
+router.post('/annuler', panierController.annulerCommande);
+
+// GET - Récupérer l'historique des commandes
+router.get('/historique', panierController.getHistoriqueCommandes);
+
 module.exports = router;
