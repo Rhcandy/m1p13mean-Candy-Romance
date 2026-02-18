@@ -40,6 +40,16 @@ export interface RegisterData {
   dtnaissance?: string;
 }
 
+export interface ForgotPasswordResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface ResetPasswordResponse {
+  success: boolean;
+  message: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -205,5 +215,17 @@ export class AuthService {
 
   hasRole(role: 'user' | 'admin_boutique' | 'admin_center' | 'super_admin'): boolean {
     return this.currentUser?.role === role;
+  }
+
+  forgotPassword(email: string): Observable<ForgotPasswordResponse> {
+    return this.api.post<ForgotPasswordResponse>('/auth/forgot-password', { email });
+  }
+
+  resetPassword(email: string, code: number, newPassword: string): Observable<ResetPasswordResponse> {
+    return this.api.post<ResetPasswordResponse>('/auth/reset-password', {
+      email,
+      code,
+      newPassword
+    });
   }
 }
