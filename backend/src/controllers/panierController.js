@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Panier = require('../models/Panier');
 const Product = require('../models/Produit');
+const Boutique = require('../models/Boutique');
 const authService = require('../services/authService');
 /**
  * GET - Récupérer le panier actif de l'utilisateur
@@ -18,6 +19,7 @@ exports.getPanier = async (req, res) => {
     }
 
     // Chercher le panier actif (non validé, non payé)
+    // IMPORTANT : statut 'panier' ET isActive: true, ignore expiresAt
     let panier = await Panier.findOne({
       userId,
       statut: 'panier',
@@ -69,19 +71,18 @@ exports.getCommande = async (req, res) => {
     }
 
     // Chercher le panier actif (non validé, non payé)
+    // Pour le statut "panier", on ignore expiresAt (pas d'expiration)
     let panier = await Panier.findOne({
       userId,
       statut: 'en_attente',
       isActive: false
     }).populate('produitsachete.produit', 'nom photo prix');
-    console.log(panier);
     res.status(200).json({
       success: true,
       message: 'Commande récupéré avec succès',
       data: panier
     });
   } catch (error) {
-    console.error('Erreur getPanier:', error);
     res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération du commande',
@@ -595,10 +596,14 @@ exports.mettreAJourCommande = async (req, res) => {
     }
 
     // Mettre à jour les informations
-    if (adresseLivraison) {
+    if (adresseLivraison === null) {
+      panier.adresseLivraison = null;
+    } else if (adresseLivraison) {
       panier.adresseLivraison = {
-        ...adresseLivraison,
-        pays: adresseLivraison.pays || 'France'
+        nomEndroit: adresseLivraison.nomEndroit || '',
+        latitude: adresseLivraison.latitude,
+        longitude: adresseLivraison.longitude,
+        telephone: adresseLivraison.telephone || ''
       };
     }
 
@@ -653,15 +658,16 @@ exports.payerCommande = async (req, res) => {
     }
 
     // Vérifier que l'adresse de livraison est définie
-    if (!panier.adresseLivraison || !panier.adresseLivraison.rue) {
-      return res.status(400).json({
-        success: false,
-        message: 'Adresse de livraison requise avant le paiement'
-      });
+    if (panier.adresseLivraison) {
+      const { latitude, longitude } = panier.adresseLivraison;
+      if (latitude == null || longitude == null) {
+        return res.status(400).json({
+          success: false,
+          message: 'Adresse de livraison requise avant le paiement'
+        });
+      }
     }
 
-    // Simuler le traitement du paiement
-    // Dans un vrai projet, intégrer Stripe, PayPal, etc.
     const paiementReussi = await traiterPaiement(paiementDetails, panier.total);
     
     if (!paiementReussi) {
@@ -675,6 +681,7 @@ exports.payerCommande = async (req, res) => {
     panier.statut = 'confirmee';
     panier.isPaye = true;
     panier.datePaiement = new Date();
+    panier.methodePaiement=paiementDetails.methode;
     
     // Calculer la date de livraison (1 jour après paiement)
     const dateLivraison = new Date();
@@ -801,16 +808,141 @@ exports.getHistoriqueCommandes = async (req, res) => {
   }
 };
 
+/**
+ * GET - Récupérer une commande par ID
+ */
+exports.getCommandeById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.userId;
+    const roleName = req.user?.roleName;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID commande requis'
+      });
+    }
+
+    const commande = await Panier.findById(id)
+      .populate('produitsachete.produit', 'nom photo prix')
+      .populate('userId', 'nom email');
+
+    if (!commande) {
+      return res.status(404).json({
+        success: false,
+        message: 'Commande non trouvée'
+      });
+    }
+
+    const isAdmin = ['admin_boutique', 'admin_centre', 'super_admin'].includes(roleName);
+    const ownerId = commande.userId?._id ? commande.userId._id.toString() : commande.userId?.toString();
+
+    if (!isAdmin && ownerId && ownerId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès refusé'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Commande récupérée avec succès',
+      data: commande
+    });
+  } catch (error) {
+    console.error('Erreur getCommandeById:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération de la commande',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * GET - Recuperer les commandes liees a la boutique de l'admin boutique
+ */
+exports.getCommandesBoutique = async (req, res) => {
+  try {
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID utilisateur requis'
+      });
+    }
+
+    const boutiques = await Boutique.find({ locataire: userId }).select('_id').lean();
+    if (!boutiques.length) {
+      return res.status(200).json({
+        success: true,
+        message: 'Aucune boutique trouvee',
+        data: []
+      });
+    }
+
+    const boutiqueIds = boutiques.map(boutique => boutique._id);
+    const produits = await Product.find({ boutiqueId: { $in: boutiqueIds } }).select('_id').lean();
+    if (!produits.length) {
+      return res.status(200).json({
+        success: true,
+        message: 'Aucun produit pour la boutique',
+        data: []
+      });
+    }
+
+    const produitIds = produits.map(produit => produit._id);
+
+    const commandes = await Panier.find({
+      statut: { $ne: 'panier' },
+      'produitsachete.produit': { $in: produitIds }
+    })
+      .populate('userId', 'nom email')
+      .populate('produitsachete.produit', 'nom photo prix boutiqueId')
+      .sort({ createdAt: -1 });
+
+    const boutiqueIdSet = new Set(boutiqueIds.map(id => id.toString()));
+    const commandesFiltrees = commandes.map((commande) => {
+      const produitsBoutique = (commande.produitsachete || []).filter((item) => {
+        const produit = item.produit;
+        if (!produit) return false;
+        const boutiqueId = produit.boutiqueId?._id || produit.boutiqueId;
+        return boutiqueId && boutiqueIdSet.has(boutiqueId.toString());
+      });
+
+      const sousTotalBoutique = produitsBoutique.reduce((total, item) => {
+        return total + (item.sousTotal || 0);
+      }, 0);
+
+      return {
+        ...commande.toObject(),
+        produitsBoutique,
+        sousTotalBoutique,
+        totalBoutique: sousTotalBoutique
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Commandes boutique recuperees avec succes',
+      data: commandesFiltrees
+    });
+  } catch (error) {
+    console.error('Erreur getCommandesBoutique:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la recuperation des commandes boutique',
+      error: error.message
+    });
+  }
+};
+
 // Fonctions utilitaires
 async function traiterPaiement(paiementDetails, montant) {
-  // Simulation du traitement de paiement
-  // Dans un vrai projet, intégrer avec Stripe, PayPal, etc.
   console.log('Traitement paiement:', { paiementDetails, montant });
-  
-  // Simuler un délai de traitement
   await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  // Simuler un succès (90% de chance de succès)
   return Math.random() > 0.1;
 }
 
@@ -820,7 +952,6 @@ function genererFacture(panier) {
     dateFacture: new Date().toISOString(),
     client: {
       id: panier.userId,
-      // Ajouter les infos client si disponibles
     },
     commande: {
       numero: panier.numeroCommande,

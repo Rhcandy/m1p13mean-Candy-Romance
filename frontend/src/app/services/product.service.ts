@@ -4,6 +4,8 @@ import { map } from 'rxjs/operators';
 import { ApiService } from './api.service';
 
 export interface Product {
+  promotions?: Promotion[];
+  isFavori?: boolean;
   averageRating: number;
   avis: any[];
   _id: string;
@@ -11,12 +13,22 @@ export interface Product {
   categorieId: { _id: string; nom: string };
   nom: string;
   photo: string;
+  description?: string;
   variant: any[];
   prix: any[];
   createdAt: string;
   updatedAt: string;
   __v: number;
   deliveryDate?: string;
+}
+
+export interface Promotion {
+  _id: string;
+  nom: string;
+  taux: number;
+  categorie?: string;
+  dateDebut: string;
+  dateFin: string;
 }
 
 export interface CreateProductData {

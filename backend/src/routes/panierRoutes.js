@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const panierController = require('../controllers/panierController');
 const authMiddleware = require('../middlewares/authMiddleware');
+const { roleMiddleware } = require('../middlewares/roleMiddleware');
 
 // Routes CRUD pour le panier
 router.use(authMiddleware); // Temporairement désactivé pour tests
@@ -40,4 +41,11 @@ router.post('/annuler', panierController.annulerCommande);
 // GET - Récupérer l'historique des commandes
 router.get('/historique', panierController.getHistoriqueCommandes);
 
+// GET - Recuperer les commandes liees a la boutique (admin boutique)
+router.get('/boutique-commandes', roleMiddleware(['admin_boutique', 'super_admin']), panierController.getCommandesBoutique);
+
+// GET - Recuperer une commande par ID
+router.get('/:id', panierController.getCommandeById);
+
 module.exports = router;
+

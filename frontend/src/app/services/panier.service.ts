@@ -1,9 +1,9 @@
-import { Injectable } from '@angular/core';
+﻿import { Injectable } from '@angular/core';
 import { Observable, BehaviorSubject } from 'rxjs';
 import { ApiService } from './api.service';
 import { AuthService } from './auth.service';
 
-// Interfaces basées sur le modèle Panier
+// Interfaces basÃ©es sur le modÃ¨le Panier
 export interface ProduitAchete {
   produit: {
     _id: string;
@@ -27,29 +27,31 @@ export interface ProduitAchete {
 }
 
 export interface Panier {
-  _id?: string; // Optionnel car créé par MongoDB
-  userId: string;
+  _id?: string; // Optionnel car crÃ©Ã© par MongoDB
+  userId: any;
   numeroCommande: string;
   produitsachete: ProduitAchete[];
   qtt: number;
   sousTotal: number;
   fraisLivraison: number;
   total: number;
-  statut: 'panier' | 'en_attente' | 'confirmee' | 'preparation' | 'expedie' | 'livré';
+  statut: 'panier' | 'en_attente' | 'confirmee' | 'preparation' | 'expedie' | 'livre';
   isPaye: boolean;
   islivre: boolean;
+  produitsBoutique?: ProduitAchete[];
+  sousTotalBoutique?: number;
+  totalBoutique?: number;
   expiresAt?: string; // Date d'expiration du panier
   datePaiement?: Date;
   dateLivraison?: Date;
   dateAnnulation?: Date;
   adresseLivraison?: {
-    rue: string;
-    ville: string;
-    codePostal: string;
-    pays: string;
-    telephone: string;
+    nomEndroit?: string;
+    latitude?: number;
+    longitude?: number;
+    telephone?: string;
   };
-  methodePaiement?: 'carte' | 'paypal' | 'virement' | 'espece';
+  methodePaiement?: 'carte' | 'virement' | 'espece';
   notes?: string;
   suiviColis?: {
     transporteur: string;
@@ -91,28 +93,28 @@ export class PanierService {
   ) {}
 
   /**
-   * Émettre un événement de mise à jour du panier
+   * Ã‰mettre un Ã©vÃ©nement de mise Ã  jour du panier
    */
   notifyPanierUpdated(): void {
     this.panierUpdated$.next(undefined);
   }
 
   /**
-   * Observer les mises à jour du panier
+   * Observer les mises Ã  jour du panier
    */
   onPanierUpdated(): Observable<void> {
     return this.panierUpdated$.asObservable();
   }
 
   /**
-   * Récupérer l'ID de l'utilisateur actuel
+   * RÃ©cupÃ©rer l'ID de l'utilisateur actuel
    */
   private getCurrentUserId(): string {
     return this.authService.getUserId();
   }
 
   /**
-   * Récupérer le panier de l'utilisateur
+   * RÃ©cupÃ©rer le panier de l'utilisateur
    */
   getPanier(): Observable<ApiResponse<Panier>> {
     const userId = this.getCurrentUserId();
@@ -120,7 +122,7 @@ export class PanierService {
     return this.apiService.get<ApiResponse<Panier>>(this.endpoint, { headers });
   }
    /**
-   * Récupérer le commande de l'utilisateur
+   * RÃ©cupÃ©rer le commande de l'utilisateur
    */
   getCommande(): Observable<ApiResponse<Panier>> {
     const userId = this.getCurrentUserId();
@@ -138,14 +140,14 @@ export class PanierService {
   }
 
   /**
-   * Ajouter un produit au panier (méthode de compatibilité)
+   * Ajouter un produit au panier (méthode de compatibilitÃ©)
    */
   ajouterProduit(productId: string, quantity: number = 1): Observable<ApiResponse<Panier>> {
     return this.addToPanier({ productId, quantity });
   }
 
   /**
-   * Mettre à jour la quantité d'un produit dans le panier
+   * Mettre Ã  jour la quantitÃ© d'un produit dans le panier
    */
   updateQuantite(productId: string, quantity: number): Observable<ApiResponse<Panier>> {
     const userId = this.getCurrentUserId();
@@ -170,7 +172,7 @@ export class PanierService {
   }
 
   /**
-   * Valider la commande (marquer le panier comme livré)
+   * Valider la commande (marquer le panier comme livrÃ©)
    */
   validerPanier(): Observable<ApiResponse<Panier>> {
     const userId = this.getCurrentUserId();
@@ -178,7 +180,7 @@ export class PanierService {
   }
 
   /**
-   * Mettre à jour la commande (adresse et méthode de paiement)
+   * Mettre Ã  jour la commande (adresse et méthode de paiement)
    */
   mettreAJourCommande(data: { adresseLivraison?: any; methodePaiement?: string }): Observable<ApiResponse<Panier>> {
     const userId = this.getCurrentUserId();
@@ -202,7 +204,7 @@ export class PanierService {
   }
 
   /**
-   * Récupérer l'historique des commandes
+   * RÃ©cupÃ©rer l'historique des commandes
    */
   getHistoriqueCommandes(): Observable<ApiResponse<Panier[]>> {
     const userId = this.getCurrentUserId();
@@ -225,7 +227,7 @@ export class PanierService {
   }
 
   /**
-   * Vérifier si le panier est vide
+   * VÃ©rifier si le panier est vide
    */
   isPanierVide(panier: Panier): boolean {
     return !panier || !panier.produitsachete || panier.produitsachete.length === 0;
@@ -263,6 +265,22 @@ export class PanierService {
   }
 
   /**
+   * Formater un montant pour PDF (separateur en ".")
+   */
+  formatMontantPdf(montant: number): string {
+    const safeValue = Number(montant ?? 0);
+    const rounded = Math.round(safeValue);
+    const absValue = Math.abs(rounded);
+    const formatted = absValue.toLocaleString('fr-FR', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    });
+    const withDots = formatted.replace(/[\u202f\u00a0\s]/g, '.');
+    const sign = rounded < 0 ? '-' : '';
+    return `${sign}${withDots} Ar`;
+  }
+
+  /**
    * Obtenir le libellé du statut en français
    */
   getStatutLibelle(statut: string): string {
@@ -284,10 +302,29 @@ export class PanierService {
   getMethodePaiementLibelle(methode: string): string {
     const methodes: { [key: string]: string } = {
       'carte': 'Carte bancaire',
-      'paypal': 'PayPal',
       'virement': 'Virement bancaire',
       'espece': 'Espèces'
     };
     return methodes[methode] || methode;
   }
+
+  /**
+   * Recuperer les commandes liees a la boutique de l'admin
+   */
+  getCommandesBoutique(): Observable<ApiResponse<Panier[]>> {
+    return this.apiService.get<ApiResponse<Panier[]>>(`${this.endpoint}/boutique-commandes`);
+  }
+
+  /**
+   * Recuperer une commande par ID
+   */
+  getCommandeById(commandeId: string): Observable<ApiResponse<Panier>> {
+    return this.apiService.get<ApiResponse<Panier>>(`${this.endpoint}/${commandeId}`);
+  }
 }
+
+
+
+
+
+

@@ -1,5 +1,6 @@
 const Avis = require('../models/Avis');
 const Produit = require('../models/Produit');
+const Panier = require('../models/Panier');
 
 /**
  * Calculer la moyenne des notes d'un produit
@@ -41,10 +42,13 @@ const updateProductRating = async (produitId) => {
  * @returns {Boolean} - True si l'utilisateur a commandé le produit
  */
 const hasUserOrderedProduct = async (userId, produitId) => {
-  // TODO: Implémenter la logique de vérification de commande
-  // Pour l'instant, on retourne true pour permettre les tests
-  // En production, vérifier dans la collection Commandes/Paniers
-  return true;
+  const commande = await Panier.findOne({
+    userId,
+    statut: { $in: ['en_attente', 'confirmee', 'preparation', 'expedie', 'livre'] },
+    'produitsachete.produit': produitId
+  }).select('_id').lean();
+
+  return Boolean(commande);
 };
 
 /**
@@ -172,3 +176,5 @@ module.exports = {
   deleteAvis,
   getAvisByProduit
 };
+
+

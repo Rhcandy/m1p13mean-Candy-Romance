@@ -4,10 +4,9 @@ import { map } from 'rxjs/operators';
 import { ApiService } from './api.service';
 
 export interface AdresseLivraison {
-  rue: string;
-  ville: string;
-  codePostal: string;
-  pays: string;
+  nomEndroit?: string;
+  latitude?: number;
+  longitude?: number;
   telephone?: string;
 }
 
@@ -52,7 +51,7 @@ export class LivraisonService {
   }
 
   /**
-   * Récupérer tous les centres de distribution
+   * Recuperer tous les centres de distribution
    */
   getCentresDistribution(): Observable<CentreDistribution[]> {
     return this.apiService.get<{data: CentreDistribution[]}>(`${this.endpoint}/centres`).pipe(
@@ -64,20 +63,17 @@ export class LivraisonService {
    * Formater une adresse pour l'affichage
    */
   formaterAdresse(adresse: AdresseLivraison): string {
-    return `${adresse.rue}, ${adresse.codePostal} ${adresse.ville}, ${adresse.pays}`;
+    if (adresse.nomEndroit) return adresse.nomEndroit;
+    if (adresse.latitude != null && adresse.longitude != null) {
+      return `${adresse.latitude}, ${adresse.longitude}`;
+    }
+    return '';
   }
 
   /**
-   * Valider un code postal français
-   */
-  validerCodePostal(codePostal: string): boolean {
-    return /^[0-9]{5}$/.test(codePostal);
-  }
-
-  /**
-   * Valider un numéro de téléphone français
+   * Valider un numero de telephone
    */
   validerTelephone(telephone: string): boolean {
-    return /^(0[1-9])([0-9]{8})$/.test(telephone.replace(/\s/g, ''));
+    return /^[0-9]{10,14}$/.test(telephone.replace(/\s/g, ''));
   }
 }

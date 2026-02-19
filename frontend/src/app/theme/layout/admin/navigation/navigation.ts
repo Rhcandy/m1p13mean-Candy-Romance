@@ -20,6 +20,8 @@ export interface NavigationItem {
 
 export function getNavigationItems(): NavigationItem[] {
   const authService = inject(AuthService);
+  const isUser = authService.hasRole('user');
+  const isBoutiqueAdmin = authService.hasRole('admin_boutique') || authService.hasRole('super_admin');
   
   return [
     {
@@ -48,6 +50,26 @@ export function getNavigationItems(): NavigationItem[] {
       classes: 'nav-item',
       url: '/produits',
       breadcrumbs: true
+    },
+    {
+      id: 'CommandesUser',
+      title: 'Mes commandes',
+      type: 'item',
+      icon: 'ti ti-receipt',
+      classes: 'nav-item',
+      url: '/commandes',
+      breadcrumbs: true,
+      hidden: !isUser
+    },
+    {
+      id: 'CommandesBoutique',
+      title: 'Commandes boutique',
+      type: 'item',
+      icon: 'ti ti-list-check',
+      classes: 'nav-item',
+      url: '/commandes',
+      breadcrumbs: true,
+      hidden: !isBoutiqueAdmin
     },
     {
       id: 'Panier',

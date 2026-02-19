@@ -1,8 +1,13 @@
-<div class="product-wrapper">
+﻿<div class="product-wrapper">
   <!-- Card avec bordure arrondie épaisse -->
   <div class="product-card clickable-card" (click)="onProductClick()" (keydown)="onProductClick()" tabindex="0" role="button" [attr.aria-label]="'Voir les détails du produit ' + product.nom">
     <!-- Section Image avec background coloré et prix flottant -->
     <div class="image-section">
+      @if (getActivePromotion()) {
+        <div class="promo-badge">
+          Promo {{ getPromotionBadgeText() }}
+        </div>
+      }
       <!-- Prix badge en haut à droite -->
       <div class="price-badge">
         <span class="price-text">
@@ -12,13 +17,15 @@
 
       <!-- Image du produit -->
       <div class="product-image-container">
-        <img [src]="product.photo" alt="{{ product.nom }}" class="product-image">
+        <img [src]="product.photo || 'https://via.placeholder.com/400x400'" alt="{{ product.nom }}" class="product-image">
       </div>
 
       <!-- Badge livraison en bas -->
-      <div class="delivery-badge">
-        Free Delivery until {{ product.deliveryDate }}
-      </div>
+      @if (product.deliveryDate) {
+        <div class="delivery-badge">
+          Livraison gratuite avant le {{ product.deliveryDate }}
+        </div>
+      }
     </div>
 
     <!-- Section Nom et Order Now -->
@@ -27,7 +34,7 @@
         <h3 class="product-name">
           {{ product.nom }}
         </h3>
-        <button type="button" class="order-button" 
+        <button type="button" class="order-button"
                 (click)="onOrderNow(); $event.stopPropagation()"
                 [disabled]="isAddingToCart || !hasStock()"
                 [class.loading]="isAddingToCart">
@@ -40,8 +47,8 @@
       @if (hasRating()) {
         <div class="rating-container">
           @for (star of getStars(); track $index) {
-            <i 
-              class="ti star-icon" 
+            <i
+              class="ti star-icon"
               [class]="star === 1 ? 'ti-star-filled' : (star === 0.5 ? 'ti-star-half-filled' : 'ti-star')"
               [class.star-filled]="star === 1"
               [class.star-half]="star === 0.5"
@@ -52,21 +59,31 @@
         </div>
       }
 
+      @if (product.description) {
+        <p class="product-description">{{ product.description }}</p>
+      }
+
       <!-- Tags/Chips -->
       <div class="tags-container">
         <!-- Tag catégorie -->
         <span class="tag tag-category">
           {{ product.categorieId.nom }}
         </span>
-        
+
         <!-- Tags des attributs du variant -->
-        <span 
+        <span
           *ngFor="let tag of variantTags"
           class="tag tag-variant"
         >
           {{ tag.label }}
         </span>
-        
+
+        @if (product.isFavori) {
+          <span class="tag tag-favori">
+            <i class="ti ti-heart-filled"></i>
+          </span>
+        }
+
       </div>
     </div>
   </div>

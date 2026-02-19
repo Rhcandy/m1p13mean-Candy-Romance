@@ -20,18 +20,15 @@ const Centre = require('../models/Centre');
  *               adresseLivraison:
  *                 type: object
  *                 properties:
- *                   rue:
+ *                   nomEndroit:
  *                     type: string
- *                   ville:
- *                     type: string
- *                   codePostal:
- *                     type: string
- *                   pays:
- *                     type: string
- *                     default: "France"
+ *                   latitude:
+ *                     type: number
+ *                   longitude:
+ *                     type: number
  *     responses:
  *       200:
- *         description: Frais de livraison calculés avec succès
+ *         description: Frais de livraison calcules avec succes
  *         content:
  *           application/json:
  *             schema:
@@ -44,63 +41,67 @@ const Centre = require('../models/Centre');
  *                   properties:
  *                     fraisLivraison:
  *                       type: number
- *                       description: Frais de livraison calculés
+ *                       description: Frais de livraison calcules
  *                     distance:
  *                       type: number
  *                       description: Distance en km
  *                     dateLivraison:
  *                       type: string
  *                       format: date
- *                       description: Date de livraison estimée
+ *                       description: Date de livraison estimee
  *       400:
  *         description: Adresse invalide
  *       404:
- *         description: Centre de distribution non trouvé
+ *         description: Centre de distribution non trouve
  */
 exports.calculerFraisLivraison = async (req, res) => {
   try {
     const { adresseLivraison } = req.body;
 
-    if (!adresseLivraison || !adresseLivraison.ville || !adresseLivraison.codePostal) {
+    if (!adresseLivraison || adresseLivraison.latitude == null || adresseLivraison.longitude == null) {
       return res.status(400).json({
         success: false,
-        message: 'Adresse de livraison invalide. Ville et code postal requis.'
+        message: 'Coordonnees de livraison requises.'
       });
     }
 
     const centre = await Centre.findOne();
-    
+
     if (!centre) {
       return res.status(404).json({
         success: false,
-        message: 'Aucun centre de distribution trouvé'
+        message: 'Aucun centre de distribution trouve'
       });
     }
 
-    // Calculer la distance (simulation - dans un vrai projet, utiliser une API de géolocalisation)
-    // Pour la démo, on simule une distance basée sur le code postal
-    const distance = simulerDistance(centre.adresse.codePostal, adresseLivraison.codePostal);
+    const [centreLng, centreLat] = centre.adresse.coordinates;
+    const distance = calculerDistanceKm(
+      centreLat,
+      centreLng,
+      Number(adresseLivraison.latitude),
+      Number(adresseLivraison.longitude)
+    );
 
-    // Calculer les frais: 3000 FCFA de base + 2 FCFA par km au-delà des premiers km
+    // Calculer les frais: 3000 FCFA de base + 2 FCFA par km au-dela des premiers km
     const baseFrais = 3000;
     const coutParKm = 2;
     const kmGratuits = 3; // premiers 3 km inclus dans la base
-    
+
     let fraisLivraison = baseFrais;
     if (distance > kmGratuits) {
       fraisLivraison += (distance - kmGratuits) * coutParKm;
     }
 
-    // Date de livraison: 1 jour après paiement
+    // Date de livraison: 1 jour apres paiement
     const dateLivraison = new Date();
     dateLivraison.setDate(dateLivraison.getDate() + 1);
 
     res.status(200).json({
       success: true,
-      message: 'Frais de livraison calculés avec succès',
+      message: 'Frais de livraison calcules avec succes',
       data: {
         fraisLivraison,
-        distance: Math.round(distance * 100) / 100, // arrondi à 2 décimales
+        distance: Math.round(distance * 100) / 100, // arrondi a 2 decimales
         dateLivraison: dateLivraison.toISOString().split('T')[0],
         centreDistribution: {
           nom: centre.nom,
@@ -108,7 +109,6 @@ exports.calculerFraisLivraison = async (req, res) => {
         }
       }
     });
-
   } catch (error) {
     console.error('Erreur calcul frais livraison:', error);
     res.status(500).json({
@@ -120,46 +120,48 @@ exports.calculerFraisLivraison = async (req, res) => {
 };
 
 /**
- * Fonction utilitaire pour simuler le calcul de distance
- * Dans un projet réel, utiliser Google Maps API ou similaire
+ * Fonction utilitaire pour calculer la distance en km
+ * Dans un projet reel, utiliser Google Maps API ou similaire
  */
-function simulerDistance(cpCentre, cpLivraison) {
-  // Simulation simple: différence entre les 2 premiers chiffres des codes postaux
-  const centre = parseInt(cpCentre.substring(0, 2));
-  const livraison = parseInt(cpLivraison.substring(0, 2));
-  
-  const difference = Math.abs(centre - livraison);
-  
-  // Convertir en km (approximation très grossière)
-  return difference * 50 + Math.random() * 10; // entre 0 et 10 km de plus
+function calculerDistanceKm(lat1, lon1, lat2, lon2) {
+  const toRad = (value) => (value * Math.PI) / 180;
+  const r = 6371;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return r * c;
 }
 
 /**
  * @swagger
  * /api/livraison/centres:
  *   get:
- *     summary: Récupérer tous les centres de distribution
+ *     summary: Recuperer tous les centres de distribution
  *     tags: [Livraison]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Centres récupérés avec succès
+ *         description: Centres recuperes avec succes
  */
 exports.getCentresDistribution = async (req, res) => {
   try {
     const centres = await Centre.find().select('nom adresse telephone email');
-    
+
     res.status(200).json({
       success: true,
-      message: 'Centres de distribution récupérés avec succès',
+      message: 'Centres de distribution recuperes avec succes',
       data: centres
     });
   } catch (error) {
-    console.error('Erreur récupération centres:', error);
+    console.error('Erreur recuperation centres:', error);
     res.status(500).json({
       success: false,
-      message: 'Erreur lors de la récupération des centres',
+      message: 'Erreur lors de la recuperation des centres',
       error: error.message
     });
   }

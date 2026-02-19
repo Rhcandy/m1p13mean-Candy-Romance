@@ -1,4 +1,5 @@
 const avisService = require('../services/avisService');
+const Avis = require('../models/Avis');
 
 /**
  * @swagger
@@ -102,7 +103,7 @@ exports.createAvis = async (req, res) => {
   try {
     const avisData = {
       ...req.body,
-      userId: req.user.id
+      userId: req.user.userId
     };
 
     const avis = await avisService.createAvis(avisData);
@@ -194,7 +195,7 @@ exports.createAvis = async (req, res) => {
 exports.updateAvis  = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const updateData = req.body;
     const avis = await avisService.updateAvis(id, updateData, userId);
     res.status(200).json({
@@ -331,7 +332,7 @@ exports.getAvisByUser = async (req, res) => {
 exports.deleteAvis = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = req.user.userId;
       const avis = await Avis.findById(req.params.id);
     if (!avis) {
       return res.status(404).json({
@@ -340,12 +341,12 @@ exports.deleteAvis = async (req, res) => {
       });
     }
 
-    await avisService.deleteAvis(id, userId);
+    const deletedAvis = await avisService.deleteAvis(id, userId);
 
     res.status(200).json({
       success: true,
       message: 'Avis supprimé avec succès',
-      data: updatedAvis
+      data: deletedAvis
     });
   } catch (error) {
     console.error('Erreur mise à jour avis:', error);
@@ -420,3 +421,50 @@ exports.getAvisByProduit = async (req, res) => {
     });
   }
 };
+
+
+
+exports.canReview = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { produitId } = req.params;
+    const canReview = await avisService.hasUserOrderedProduct(userId, produitId);
+
+    res.status(200).json({
+      success: true,
+      message: 'OK',
+      data: { canReview }
+    });
+  } catch (error) {
+    console.error('Erreur verification avis:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur',
+      error: error.message
+    });
+  }
+};
+
+exports.hasReviewed = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { produitId } = req.params;
+    const hasReviewed = await Avis.exists({ userId, produitId });
+
+    res.status(200).json({
+      success: true,
+      message: 'OK',
+      data: { hasReviewed: Boolean(hasReviewed) }
+    });
+  } catch (error) {
+    console.error('Erreur verification avis:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur',
+      error: error.message
+    });
+  }
+};
+
+
+

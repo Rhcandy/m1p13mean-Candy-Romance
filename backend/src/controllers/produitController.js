@@ -263,6 +263,7 @@ exports.getProduitsResults = async (req, res) => {
     const populatedResults = await Produit.populate(res.advancedResults.items, [
       { path: 'boutiqueId', select: 'nom' },
       { path: 'categorieId', select: ' nom' },
+      { path: 'promotions', select: 'nom taux dateDebut dateFin categorie' }
     ]);
 
     res.status(200).json({
@@ -304,6 +305,7 @@ exports.getProduitById = async (req, res) => {
       .populate('boutiqueId', 'nom')
       .populate('categorieId', 'nom')
       .populate('avis')
+      .populate('promotions', 'nom taux dateDebut dateFin categorie')
       .populate({
         path: 'prix',
         populate: {

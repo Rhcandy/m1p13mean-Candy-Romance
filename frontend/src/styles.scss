@@ -37,6 +37,9 @@ File: style.css
 @import 'scss/themes/customizer';
 @import 'scss/style-preset.scss';
 
+// Leaflet maps
+@import 'node_modules/leaflet/dist/leaflet.css';
+
 // fonts
 @import url('scss/fonts/berry/berry-icons.css'); /** custom font icons - berry **/
 @import 'scss/fonts/tabler-icons.min.css';

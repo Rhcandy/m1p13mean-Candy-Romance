@@ -71,6 +71,10 @@ const produitSchema = new mongoose.Schema({
   avis: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Avis'
+  }],
+  promotions: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Promotion'
   }]
 }, {
   timestamps: true,

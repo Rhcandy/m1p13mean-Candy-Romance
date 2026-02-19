@@ -46,6 +46,14 @@ const routes: Routes = [
       {
         path: 'mes-commandes',
         loadComponent: () => import('./demo/pages/mes-commandes/mes-commandes.component').then((c) => c.MesCommandesComponent)
+      },
+      {
+        path: 'commandes',
+        loadComponent: () => import('./demo/pages/mes-commandes/mes-commandes.component').then((c) => c.MesCommandesComponent)
+      },
+      {
+        path: 'commande/:id',
+        loadComponent: () => import('./demo/pages/commande-detail/commande-detail.component').then((c) => c.CommandeDetailComponent)
       }
     ]
   },

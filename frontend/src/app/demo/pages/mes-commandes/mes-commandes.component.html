@@ -1,6 +1,6 @@
-<div class="commandes-container">
+﻿<div class="commandes-container">
   <div class="commandes-header">
-    <h1>Mes commandes</h1>
+    <h1>{{ isAdminBoutique ? 'Commandes boutique' : 'Mes commandes' }}</h1>
     <div class="header-actions">
       <button class="btn btn-outline-primary" (click)="refreshCommandes()">
         <i class="ti ti-refresh"></i>
@@ -8,7 +8,7 @@
       </button>
       <button class="btn btn-primary" (click)="goToProducts()">
         <i class="ti ti-shopping-cart-plus"></i>
-        Nouvelles commandes
+        {{ isAdminBoutique ? 'Voir produits' : 'Nouvelles commandes' }}
       </button>
     </div>
   </div>
@@ -16,13 +16,13 @@
   @if (loading) {
     <div class="loading-state">
       <div class="spinner-border text-primary"></div>
-      <p>Chargement de vos commandes...</p>
+      <p>Chargement des commandes...</p>
     </div>
   } @else if (commandes.length === 0) {
     <div class="empty-state">
       <i class="ti ti-package-off"></i>
-      <h2>Vous n'avez pas encore de commandes</h2>
-      <p>Découvrez nos produits et passez votre première commande !</p>
+      <h2>{{ isAdminBoutique ? 'Aucune commande pour votre boutique' : 'Vous n\'avez pas encore de commandes' }}</h2>
+      <p>{{ isAdminBoutique ? 'Vos produits n\'ont pas encore ete commandes.' : 'Decouvrez nos produits et passez votre premiere commande !' }}</p>
       <button class="btn btn-primary" (click)="goToProducts()">
         <i class="ti ti-shopping-cart"></i>
         Voir les produits
@@ -35,12 +35,18 @@
           <div class="commande-header">
             <div class="commande-info">
               <div class="commande-number">
-                <strong>Commande:</strong> {{ commande.numeroCommande }}
+                <strong>Facture:</strong> {{ getNumeroFacture(commande) }}
               </div>
               <div class="commande-date">
                 <i class="ti ti-calendar"></i>
                 {{ commande.createdAt | date:'longDate' }}
               </div>
+              @if (isAdminBoutique && commande.userId?.nom) {
+                <div class="commande-date">
+                  <i class="ti ti-user"></i>
+                  {{ commande.userId?.nom }} ({{ commande.userId?.email }})
+                </div>
+              }
             </div>
             <div class="commande-status">
               <span class="status-badge {{ getStatutClass(commande.statut) }}">
@@ -50,44 +56,12 @@
             </div>
           </div>
 
-          <div class="commande-products">
-            @for (produit of commande.produitsachete.slice(0, 3); track produit.produit._id) {
-              <div class="product-mini">
-                <img [src]="produit.produit.photo" [alt]="produit.produit.nom" class="product-thumb">
-                <div class="product-info">
-                  <div class="product-name">{{ produit.produit?.nom }}</div>
-                  <div class="product-qty">Qté: {{ produit.qtt }}</div>
-                </div>
-              </div>
-            }
-            @if (commande.produitsachete.length > 3) {
-              <div class="more-products">
-                +{{ commande.produitsachete.length - 3 }} autre{{ commande.produitsachete.length - 3 > 1 ? 's' : '' }}
-              </div>
-            }
-          </div>
-
-          <div class="commande-summary">
-            <div class="summary-row">
-              <span>Sous-total:</span>
-              <span>{{ formatPrice(commande.sousTotal) }}</span>
-            </div>
-            <div class="summary-row">
-              <span>Livraison:</span>
-              <span>{{ formatPrice(commande.fraisLivraison) }}</span>
-            </div>
-            <div class="summary-row total">
-              <span>Total:</span>
-              <span>{{ formatPrice(commande.total) }}</span>
-            </div>
-          </div>
-
           <div class="commande-actions">
             <button class="btn btn-outline-primary btn-sm" (click)="voirDetails(commande)">
               <i class="ti ti-eye"></i>
               Détails
             </button>
-            
+
             @if (commande.isPaye) {
               <button class="btn btn-outline-secondary btn-sm" (click)="telechargerFacture(commande)">
                 <i class="ti ti-download"></i>
@@ -95,26 +69,6 @@
               </button>
             }
           </div>
-
-          <!-- Informations supplémentaires -->
-          @if (commande.adresseLivraison) {
-            <div class="commande-delivery">
-              <i class="ti ti-map-pin"></i>
-              <span>
-                {{ commande.adresseLivraison.rue }}, 
-                {{ commande.adresseLivraison.codePostal }} {{ commande.adresseLivraison.ville }}
-              </span>
-            </div>
-          }
-
-          @if (commande.dateLivraison && commande.statut !== 'panier' && commande.statut !== 'en_attente') {
-            <div class="commande-delivery-date">
-              <i class="ti ti-truck-delivery"></i>
-              <span>
-                Livraison prévue: {{ commande.dateLivraison | date:'longDate' }}
-              </span>
-            </div>
-          }
         </div>
       }
     </div>

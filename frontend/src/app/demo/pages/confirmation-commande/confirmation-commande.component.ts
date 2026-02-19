@@ -1,8 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+﻿import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
 import { PanierService } from '../../../services/panier.service';
 import { NotificationService } from '../../../services/notification.service';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface Facture {
   numeroFacture: string;
@@ -67,67 +69,105 @@ export class ConfirmationCommandeComponent implements OnInit {
     return this.panierService.formatMontant(price);
   }
 
+  formatPricePdf(price: number): string {
+    return this.panierService.formatMontantPdf(price);
+  }
+
+  getFraisLivraison(): number {
+    if (!this.facture) return 0;
+    return this.getFraisLivraisonPdf(this.facture);
+  }
+
+  private getFraisLivraisonPdf(facture: Facture): number {
+    const rawFrais = Number(facture.commande?.fraisLivraison);
+    if (Number.isFinite(rawFrais) && rawFrais >= 0) {
+      return rawFrais;
+    }
+    const total = Number(facture.commande?.total);
+    const sousTotal = Number(facture.commande?.sousTotal);
+    const fallback = total - sousTotal;
+    return Number.isFinite(fallback) && fallback > 0 ? fallback : 0;
+  }
+
   downloadFacture(): void {
     if (!this.facture) return;
 
-    // Créer le contenu de la facture en format texte
-    const factureContent = this.generateFactureContent();
-    
-    // Créer un blob et télécharger
-    const blob = new Blob([factureContent], { type: 'text/plain' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Facture-${this.facture.numeroFacture}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-    
+    const doc = this.buildFacturePdf();
+    doc.save(`Facture-${this.facture.numeroFacture}.pdf`);
+
     this.notificationService.success('Facture téléchargée avec succès');
   }
 
-  private generateFactureContent(): string {
-    if (!this.facture) return '';
+  private buildFacturePdf(): jsPDF {
+    const doc = new jsPDF();
+    const facture = this.facture;
+    if (!facture) return doc;
 
-    let content = `FACTURE N°${this.facture.numeroFacture}\n`;
-    content += `Date: ${new Date(this.facture.dateFacture).toLocaleDateString('fr-FR')}\n`;
-    content += `Client ID: ${this.facture.client?.id || 'N/A'}\n\n`;
-    
-    content += `COMMANDE N°${this.facture.commande.numero}\n`;
-    content += `Date commande: ${new Date(this.facture.commande.date).toLocaleDateString('fr-FR')}\n\n`;
-    
-    content += `PRODUITS:\n`;
-    this.facture.commande.produits.forEach((produit, index) => {
-      content += `${index + 1}. ${produit.produit?.nom || 'Produit'}\n`;
-      content += `   Quantité: ${produit.qtt}\n`;
-      content += `   Prix unitaire: ${this.formatPrice(produit.prixUnitaire)}\n`;
-      content += `   Sous-total: ${this.formatPrice(produit.sousTotal)}\n\n`;
+    const adresse = facture.livraison?.adresse;
+    const adresseText = adresse?.nomEndroit
+      ? adresse.nomEndroit
+      : (adresse?.latitude != null && adresse?.longitude != null)
+        ? `${adresse.latitude}, ${adresse.longitude}`
+        : 'Non renseignee';
+    const telephoneText = adresse?.telephone ? adresse.telephone : 'Non renseigne';
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.text('Facture', 14, 18);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Numero: ${facture.numeroFacture}`, 14, 26);
+    doc.text(`Date: ${new Date(facture.dateFacture).toLocaleDateString('fr-FR')}`, 14, 32);
+    doc.text(`Commande: ${facture.commande.numero}`, 14, 38);
+
+    const rows = facture.commande.produits.map((produit: any, index: number) => ([
+      String(index + 1),
+      produit.produit?.nom || 'Produit',
+      String(produit.qtt),
+      this.formatPricePdf(produit.prixUnitaire),
+      this.formatPricePdf(produit.sousTotal)
+    ]));
+
+    autoTable(doc, {
+      startY: 44,
+      head: [['#', 'Produit', 'Qte', 'Prix', 'Sous-total']],
+      body: rows,
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [47, 111, 237] }
     });
-    
-    content += `RÉCAPITULATIF:\n`;
-    content += `Sous-total: ${this.formatPrice(this.facture.commande.sousTotal)}\n`;
-    content += `Frais de livraison: ${this.formatPrice(this.facture.commande.fraisLivraison)}\n`;
-    content += `Total: ${this.formatPrice(this.facture.commande.total)}\n\n`;
-    
-    content += `PAIEMENT:\n`;
-    content += `Méthode: ${this.facture.paiement.methode}\n`;
-    content += `Date: ${new Date(this.facture.paiement.date).toLocaleDateString('fr-FR')}\n`;
-    content += `Montant: ${this.formatPrice(this.facture.paiement.montant)}\n\n`;
-    
-    content += `LIVRAISON:\n`;
-    if (this.facture.livraison.adresse) {
-      content += `${this.facture.livraison.adresse.rue}\n`;
-      content += `${this.facture.livraison.adresse.codePostal} ${this.facture.livraison.adresse.ville}\n`;
-      content += `${this.facture.livraison.adresse.pays}\n`;
-    }
-    content += `Date estimée: ${new Date(this.facture.livraison.dateEstimee).toLocaleDateString('fr-FR')}\n`;
-    
-    return content;
+
+    const finalY = (doc as any).lastAutoTable?.finalY || 44;
+    const summaryY = finalY + 8;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Resume', 14, summaryY);
+    doc.setFont('helvetica', 'normal');
+    const fraisLivraison = this.getFraisLivraisonPdf(facture);
+    doc.text(`Sous-total: ${this.formatPricePdf(facture.commande.sousTotal)}`, 14, summaryY + 6);
+    doc.text(`Frais livraison: ${this.formatPricePdf(fraisLivraison)}`, 14, summaryY + 12);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Total: ${this.formatPricePdf(facture.commande.total)}`, 14, summaryY + 18);
+
+    const paiementY = summaryY + 28;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Paiement', 14, paiementY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Methode: ${this.panierService.getMethodePaiementLibelle(facture.paiement.methode || 'carte')}`, 14, paiementY + 6);
+    doc.text(`Date: ${new Date(facture.paiement.date).toLocaleDateString('fr-FR')}`, 14, paiementY + 12);
+    doc.text(`Montant: ${this.formatPricePdf(facture.paiement.montant)}`, 14, paiementY + 18);
+
+    const livraisonY = paiementY + 28;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Livraison', 14, livraisonY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Adresse: ${adresseText}`, 14, livraisonY + 6);
+    doc.text(`Telephone: ${telephoneText}`, 14, livraisonY + 12);
+    doc.text(`Date estimee: ${new Date(facture.livraison.dateEstimee).toLocaleDateString('fr-FR')}`, 14, livraisonY + 18);
+
+    return doc;
   }
 
   goToOrders(): void {
-    this.router.navigate(['/mes-commandes']);
+    this.router.navigate(['/commandes']);
   }
 
   goToHome(): void {
