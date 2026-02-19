@@ -4,6 +4,8 @@ import { map } from 'rxjs/operators';
 import { ApiService } from './api.service';
 
 export interface Product {
+  promotions?: Promotion[];
+  isFavori?: boolean;
   averageRating: number;
   avis: any[];
   _id: string;
@@ -11,12 +13,22 @@ export interface Product {
   categorieId: { _id: string; nom: string };
   nom: string;
   photo: string;
+  description?: string;
   variant: any[];
   prix: any[];
   createdAt: string;
   updatedAt: string;
   __v: number;
   deliveryDate?: string;
+}
+
+export interface Promotion {
+  _id: string;
+  nom: string;
+  taux: number;
+  categorie?: string;
+  dateDebut: string;
+  dateFin: string;
 }
 
 export interface CreateProductData {
@@ -114,6 +126,16 @@ export class ProductService {
   getProductsByShop(shopId: string): Observable<Product[]> {
     return this.api.get<Product[]>(`/produits?boutiqueId=${shopId}`).pipe(
       map(response => response)
+    );
+  }
+
+  // Récupérer le stock d'un produit
+  getProductStock(productId: string): Observable<{
+    totalStock: number;
+    availableStock: number;
+  }> {
+    return this.api.get<{data: any}>(`/produits/${productId}/stock`).pipe(
+      map(response => response.data)
     );
   }
 }

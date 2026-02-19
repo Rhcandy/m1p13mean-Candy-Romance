@@ -3,11 +3,13 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { PanierService, Panier, ProduitAchete } from '../../../services/panier.service';
+import { ProductService } from '../../../services/product.service';
 import { AuthService } from '../../../services/auth.service';
 import { NotificationService } from '../../../services/notification.service';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { trigger, transition, style, animate } from '@angular/animations';
+import { lastValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-panier',
@@ -40,6 +42,7 @@ export class PanierComponent implements OnInit, OnDestroy {
   constructor(
     private readonly router: Router,
     private readonly panierService: PanierService,
+    private readonly productService: ProductService,
     private readonly authService: AuthService,
     private readonly notificationService: NotificationService,
     private readonly cdr: ChangeDetectorRef
@@ -72,9 +75,25 @@ export class PanierComponent implements OnInit, OnDestroy {
     this.loading = true;
 
     this.panierService.getPanier().pipe(takeUntil(this.destroy$)).subscribe({
-      next: (response) => {
-        Promise.resolve().then(() => {
+      next: async (response) => {
+        Promise.resolve().then(async () => {
           this.panier = response.data;
+          
+          // Charger le stock disponible pour chaque produit via l'API
+          if (this.panier && this.panier.produitsachete) {
+            for (const item of this.panier.produitsachete) {
+              try {
+                const stockData = await this.loadProductStock(item.produit._id);
+                // Stocker le stock disponible dans une propriété temporaire
+                (item.produit as any).availableStock = stockData;
+              } catch (error) {
+                console.error(`Erreur chargement stock pour ${item.produit.nom}:`, error);
+                // Utiliser le calcul local en secours
+                (item.produit as any).availableStock = this.getAvailableStock(item.produit);
+              }
+            }
+          }
+          
           this.loading = false;
           this.isLoading = false;
           this.updateTimeRemaining();
@@ -142,29 +161,7 @@ export class PanierComponent implements OnInit, OnDestroy {
     this.isExpired = false;
   }
 
-  // ─── Stock ───────────────────────────────────────────────
 
-  /**
-   * CORRECTION BUG STOCK :
-   * Avant, `getProductStock` retournait le stock total (sans déduire reserved)
-   * et `getAvailableStock` retournait total - reserved.
-   *
-   * Le template utilisait `getAvailableStock` pour l'affichage du badge
-   * MAIS la condition [class.low-stock] était basée sur `getAvailableStock`,
-   * qui pouvait renvoyer 0 alors que le produit était encore en stock.
-   *
-   * CAUSE PRINCIPALE : si `variant` est undefined/null ou si le champ `qtt`
-   * n'existe pas sur la variante, les deux méthodes retournaient 0 → Rupture.
-   *
-   * SOLUTION : on vérifie d'abord si une variante existe, puis on cherche
-   * le champ de stock sur plusieurs noms possibles (qtt, quantity, stock)
-   * pour être robuste face aux variations d'API.
-   */
-
-  /**
-   * Résout la valeur de stock depuis un objet variant,
-   * en testant plusieurs noms de champs courants.
-   */
   private resolveVariantStock(variant: any): { total: number; reserved: number } {
     if (!variant) return { total: 0, reserved: 0 };
 
@@ -203,6 +200,12 @@ export class PanierComponent implements OnInit, OnDestroy {
    * C'est cette valeur qui pilote l'affichage du badge et les boutons +/-
    */
   getAvailableStock(produit: ProduitAchete['produit']): number {
+    // Utiliser d'abord le stock chargé via l'API, sinon le calcul local
+    if ((produit as any).availableStock !== undefined) {
+      return (produit as any).availableStock;
+    }
+    
+    // Secours : calcul local
     const variant = produit.variant?.[0] ?? produit.variant ?? null;
     const { total, reserved } = this.resolveVariantStock(variant);
     const available = total - reserved;
@@ -211,6 +214,19 @@ export class PanierComponent implements OnInit, OnDestroy {
     console.debug(`[Stock] ${produit.nom} → total=${total} reserved=${reserved} available=${available}`);
 
     return Math.max(0, available);
+  }
+
+  /**
+   * Méthode pour obtenir le stock total via l'API (si nécessaire)
+   */
+  private async loadProductStock(produitId: string): Promise<number> {
+    try {
+      const stockData = await lastValueFrom(this.productService.getProductStock(produitId));
+      return stockData.availableStock;
+    } catch (error) {
+      console.error('Erreur chargement stock:', error);
+      return 0; // En cas d'erreur, retourner 0
+    }
   }
 
   // ─── Quantités ───────────────────────────────────────────
@@ -230,8 +246,22 @@ export class PanierComponent implements OnInit, OnDestroy {
     this.panierService.updateQuantite(item.produit._id, quantity)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: (response) => {
+        next: async (response) => {
           this.panier = response.data;
+          
+          // Recharger les stocks disponibles pour tous les produits
+          if (this.panier && this.panier.produitsachete) {
+            for (const item of this.panier.produitsachete) {
+              try {
+                const stockData = await this.loadProductStock(item.produit._id);
+                (item.produit as any).availableStock = stockData;
+              } catch (error) {
+                console.error(`Erreur chargement stock pour ${item.produit.nom}:`, error);
+                (item.produit as any).availableStock = this.getAvailableStock(item.produit);
+              }
+            }
+          }
+          
           this.updateTimeRemaining();
           this.notificationService.success('Quantité mise à jour');
           this.cdr.detectChanges();
@@ -266,8 +296,22 @@ export class PanierComponent implements OnInit, OnDestroy {
     this.panierService.removeFromPanier(item.produit._id)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: (response) => {
+        next: async (response) => {
           this.panier = response.data;
+          
+          // Recharger les stocks disponibles pour tous les produits restants
+          if (this.panier && this.panier.produitsachete) {
+            for (const item of this.panier.produitsachete) {
+              try {
+                const stockData = await this.loadProductStock(item.produit._id);
+                (item.produit as any).availableStock = stockData;
+              } catch (error) {
+                console.error(`Erreur chargement stock pour ${item.produit.nom}:`, error);
+                (item.produit as any).availableStock = this.getAvailableStock(item.produit);
+              }
+            }
+          }
+          
           this.updateTimeRemaining();
           this.notificationService.success('Article supprimé du panier');
           this.cdr.detectChanges();
@@ -329,7 +373,7 @@ export class PanierComponent implements OnInit, OnDestroy {
         next: (response) => {
           this.panier = response.data;
           this.notificationService.success('Commande validée avec succès !');
-          setTimeout(() => this.router.navigate(['/mes-commandes']), 1500);
+          this.router.navigate(['/checkout']);
         },
         error: (error) => {
           console.error('Erreur validation commande:', error);
@@ -372,7 +416,5 @@ export class PanierComponent implements OnInit, OnDestroy {
     return this.panier ? this.panierService.getTotal(this.panier) : 0;
   }
 
-  getFraisLivraison(): number {
-    return this.panier ? this.panierService.getFraisLivraison(this.panier) : 0;
-  }
+  
 }

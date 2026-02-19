@@ -34,6 +34,26 @@ const routes: Routes = [
       {
         path: 'panier',
         loadComponent: () => import('./demo/pages/panier/panier.component').then((c) => c.PanierComponent)
+      },
+      {
+        path: 'checkout',
+        loadComponent: () => import('./demo/pages/checkout/checkout.component').then((c) => c.CheckoutComponent)
+      },
+      {
+        path: 'confirmation-commande',
+        loadComponent: () => import('./demo/pages/confirmation-commande/confirmation-commande.component').then((c) => c.ConfirmationCommandeComponent)
+      },
+      {
+        path: 'mes-commandes',
+        loadComponent: () => import('./demo/pages/mes-commandes/mes-commandes.component').then((c) => c.MesCommandesComponent)
+      },
+      {
+        path: 'commandes',
+        loadComponent: () => import('./demo/pages/mes-commandes/mes-commandes.component').then((c) => c.MesCommandesComponent)
+      },
+      {
+        path: 'commande/:id',
+        loadComponent: () => import('./demo/pages/commande-detail/commande-detail.component').then((c) => c.CommandeDetailComponent)
       }
     ]
   },

@@ -6,6 +6,8 @@ import { PanierService } from '../../../services/panier.service';
 import { ProductService } from '../../../services/product.service';
 import { AvisService } from '../../../services/avis.service';
 import { NotificationService } from '../../../services/notification.service';
+import { AuthService } from '../../../services/auth.service';
+import { FavorisService } from '../../../services/favoris.service';
 import { AvisComponent } from '../../avis/avis.component';
 import { lastValueFrom, Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -38,7 +40,17 @@ interface Prix {
   updatedAt: string;
 }
 
+interface Promotion {
+  _id: string;
+  nom: string;
+  taux: number;
+  categorie?: string;
+  dateDebut: string;
+  dateFin: string;
+}
+
 interface Product {
+  promotions?: Promotion[];
   averageRating: number;
   avis: any[];
   _id: string;
@@ -74,6 +86,10 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   isAddingToCart = false;
   
   addToCartForm: FormGroup;
+  currentUserId = '';
+  currentUserName = '';
+  isFavori = false;
+  favorisLoading = false;
 
   constructor(
     private readonly route: ActivatedRoute,
@@ -81,7 +97,9 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     private readonly fb: FormBuilder,
     private readonly panierService: PanierService,
     private readonly productService: ProductService,
-    private readonly avisService: AvisService
+    private readonly avisService: AvisService,
+    private readonly authService: AuthService,
+    private readonly favorisService: FavorisService
   ) {
     this.addToCartForm = this.fb.group({
       quantity: [1, [Validators.required, Validators.min(1), Validators.max(10)]]
@@ -89,6 +107,9 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    const user = this.authService.getUser();
+    this.currentUserId = user?.id || '';
+    this.currentUserName = user?.nom || '';
     this.route.params.pipe(takeUntil(this.destroy$)).subscribe(params => {
       const productId = params['id'];
       if (productId) {
@@ -113,8 +134,19 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
         this.router.navigate(['/produits']);
         return;
       }
+
+      // Récupérer le stock disponible via l'API
+      try {
+        const stockData = await lastValueFrom(this.productService.getProductStock(productId));
+        this.currentAvailableStock = stockData.availableStock;
+      } catch (stockError) {
+        console.error('Erreur récupération stock:', stockError);
+        // En cas d'erreur, calculer localement
+        this.calculateLocalStock();
+      }
+      
       // Valider le formulaire avec le stock disponible
-      const maxStock = this.getStockQuantity();
+      const maxStock = this.getAvailableStock();
       const validators = [
         Validators.required,
         Validators.min(1)
@@ -130,6 +162,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
       
       // Charger les avis du produit
       this.loadProductAvis(this.product.avis);
+      this.loadFavoriStatus();
       
       Promise.resolve().then(() => {
         this.cdr.detectChanges();
@@ -142,6 +175,24 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
       this.isLoading = false;
       this.cdr.detectChanges();
     }
+  }
+
+  // Méthode de secours pour calculer le stock localement
+  private calculateLocalStock(): void {
+    if (!this.product?.variant || this.product.variant.length === 0) {
+      this.currentAvailableStock = 0;
+      return;
+    }
+    
+    let totalAvailable = 0;
+    for (const variant of this.product.variant) {
+      const variantStock = variant.qtt || 0;
+      const variantReserved = variant.reserved || 0;
+      const variantAvailable = Math.max(0, variantStock - variantReserved);
+      totalAvailable += variantAvailable;
+    }
+    
+    this.currentAvailableStock = totalAvailable;
   }
 
   formatPrice(price: number): string {
@@ -179,20 +230,38 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     return availableStock > 0;
   }
 
+  getActivePromotion(): Promotion | null {
+    if (!this.product?.promotions?.length) return null;
+    const now = new Date();
+    return this.product.promotions.find((promo) => this.isPromotionActive(promo, now)) || null;
+  }
+
+  getPromotionBadgeText(): string {
+    const promo = this.getActivePromotion();
+    if (!promo) return '';
+    const taux = Number.isFinite(promo.taux) ? promo.taux : 0;
+    return `-${taux}%`;
+  }
+
+  private isPromotionActive(promo: Promotion, now: Date): boolean {
+    if (promo.categorie && promo.categorie !== 'produit') return false;
+    const debut = new Date(promo.dateDebut);
+    const fin = new Date(promo.dateFin);
+    if (Number.isNaN(debut.getTime()) || Number.isNaN(fin.getTime())) return false;
+    return now >= debut && now <= fin;
+  }
+
   getStockQuantity(): number {
     return this.product?.variant && this.product.variant.length > 0 ? (this.product.variant[0]?.qtt || 0) : 0;
   }
 
   getAvailableStock(): number {
-    if (!this.product?.variant || this.product.variant.length === 0) return 0;
-    
-    const variant = this.product.variant[0];
-    const totalStock = variant.qtt || 0;
-    const reservedStock = variant.reserved || 0;
-    const availableStock = totalStock - reservedStock;
-    
-    return Math.max(0, availableStock);
+    // Utiliser l'API pour obtenir le stock total disponible
+    // Cette méthode est maintenant un simple getter qui sera mis à jour par l'API
+    return this.currentAvailableStock || 0;
   }
+
+  private currentAvailableStock: number = 0;
 
   onQuantityChange(): void {
     const quantity = this.addToCartForm.get('quantity')?.value;
@@ -284,22 +353,56 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
    * Charger les avis du produit
    */
   loadProductAvis(productAvis: any[]): void {
-    // Initialiser avec les données d'exemple si aucun avis n'est fourni
-    if (!productAvis || productAvis.length === 0) {
-      this.productAvis = [
-        {
-          "_id": "1",
-          "userId": "60f1b2b3c4d5e6f7g8h9i0j1",
-          "produitId": "60f1b2b3c4d5e6f7g8h9i0j2",
-          "note": 4,
-          "commentaire": "Excellent produit, je recommande vivement",
-          "createdAt": "2026-02-16T14:20:38.319Z",
-          "updatedAt": "2026-02-16T14:20:38.319Z"
-        }
-      ];
-    } else {
-      this.productAvis = productAvis;
-    }
+    // Laisser l'API charger les avis pour avoir les infos utilisateur
+    this.productAvis = [];
     this.cdr.detectChanges();
+  }
+  private loadFavoriStatus(): void {
+    if (!this.product || !this.currentUserId) {
+      this.isFavori = false;
+      return;
+    }
+
+    this.favorisService.isFavori(this.product._id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (isFavori) => {
+          this.isFavori = isFavori;
+          this.cdr.detectChanges();
+        },
+        error: () => {
+          this.isFavori = false;
+          this.cdr.detectChanges();
+        }
+      });
+  }
+
+  toggleFavori(): void {
+    if (!this.product) return;
+    if (!this.currentUserId) {
+      this.notificationService.warning('Veuillez vous connecter pour gerer les favoris');
+      return;
+    }
+
+    this.favorisLoading = true;
+    const action$ = this.isFavori
+      ? this.favorisService.removeFavori(this.product._id)
+      : this.favorisService.addFavori(this.product._id);
+
+    action$.pipe(takeUntil(this.destroy$)).subscribe({
+      next: () => {
+        this.isFavori = !this.isFavori;
+        this.favorisLoading = false;
+        this.notificationService.success(
+          this.isFavori ? 'Ajoute aux favoris' : 'Retire des favoris'
+        );
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.favorisLoading = false;
+        this.notificationService.error('Erreur lors de la mise a jour des favoris');
+        this.cdr.detectChanges();
+      }
+    });
   }
 }

@@ -107,17 +107,16 @@ const panierSchema = new mongoose.Schema({
   
   // Adresse de livraison
   adresseLivraison: {
-    rue: String,
-    ville: String,
-    codePostal: String,
-    pays: { type: String, default: 'France' },
+    nomEndroit: String,
+    latitude: Number,
+    longitude: Number,
     telephone: String
   },
   
   // Méthode de paiement
   methodePaiement: {
     type: String,
-    enum: ['carte', 'paypal', 'virement', 'espece'],
+    enum: ['carte', 'virement', 'espece'],
     default: 'carte'
   },
   
@@ -148,7 +147,15 @@ const panierSchema = new mongoose.Schema({
 // Index pour optimiser les requêtes
 panierSchema.index({ userId: 1, statut: 1 });
 panierSchema.index({ createdAt: -1 });
-panierSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 }); // TTL index for automatic expiration
+// TTL index uniquement pour les paniers actifs (statut "panier")
+panierSchema.index({ 
+  expiresAt: 1 
+}, { 
+  expireAfterSeconds: 0,
+  partialFilterExpression: {
+    statut: 'panier' // Prendre en compte expiresAt uniquement pour les paniers actifs
+  }
+});
 
 // Middleware pour générer le numéro de commande automatiquement
 panierSchema.pre('save', async function() {
@@ -209,10 +216,8 @@ panierSchema.pre('deleteOne', { document: false, query: true }, async function(n
         }
       }
     }
-    
-    next();
   } catch (error) {
-    next(error);
+    console.error('Erreur libération stock:', error);
   }
 });
 
@@ -249,10 +254,8 @@ panierSchema.pre(['deleteMany', 'findOneAndDelete'], async function(next) {
         }
       }
     }
-    
-    next();
   } catch (error) {
-    next(error);
+    console.error('Erreur libération stock:', error);
   }
 });
 

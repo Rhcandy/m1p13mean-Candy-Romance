@@ -85,25 +85,7 @@ class PanierService {
     return await this.getPanierById(panier._id);
   }
 
-  /**
-   * Récupérer le panier actif d'un utilisateur
-   * @param {string} userId - ID de l'utilisateur
-   * @returns {Promise<Object|null>} Panier de l'utilisateur ou null
-   */
-  async getPanierByUserId(userId) {
-    try {
-      const panier = await Panier.findOne({ 
-        userId, 
-        isPaye: false 
-      })
-        .populate('produitsachete.produit', 'nom photo prix')
-        .populate('userId', 'nom email');
-
-      return panier;
-    } catch (error) {
-      throw new Error(`Erreur lors de la récupération du panier: ${error.message}`);
-    }
-  }
+  
 
   /**
    * Récupérer toutes les commandes d'un utilisateur
@@ -225,7 +207,7 @@ class PanierService {
       );
 
       if (indexProduit === -1) {
-        throw new Error('Produit non trouvé dans le panier');
+        throw new Error('Produit non trouvé dans le panier 3');
       }
 
       if (nouvelleQuantite <= 0) {
@@ -264,28 +246,7 @@ class PanierService {
     return await this.updateProduitQuantity(panierId, produitId, 0);
   }
 
-  /**
-   * Vider complètement un panier
-   * @param {string} panierId - ID du panier
-   * @returns {Promise<boolean>} True si supprimé
-   */
-  async viderPanier(panierId) {
-    try {
-      const panier = await Panier.findById(panierId);
-      if (!panier) {
-        throw new Error('Panier non trouvé');
-      }
-
-      if (panier.isPaye) {
-        throw new Error('Impossible de vider une commande déjà payée');
-      }
-
-      await Panier.findByIdAndDelete(panierId);
-      return true;
-    } catch (error) {
-      throw new Error(`Erreur lors du vidage du panier: ${error.message}`);
-    }
-  }
+  
 
   /**
    * Calculer le total d'une liste de produits

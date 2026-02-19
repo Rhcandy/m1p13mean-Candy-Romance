@@ -7,6 +7,8 @@ import { ProductService, Product } from "../../../services/product.service";
 import { ProductDisplayComponent } from "../../../components/product/product-display/product-display.component";
 import { PanierService } from "../../../services/panier.service";
 import { firstValueFrom } from "rxjs";
+import { FavorisService } from "../../../services/favoris.service";
+import { AuthService } from "../../../services/auth.service";
 
 interface Pagination {
   totalDocs: number;
@@ -32,23 +34,26 @@ export class ProduitsComponent implements OnInit {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly fb = inject(FormBuilder);
   private readonly panierService: PanierService = inject(PanierService);
-  
+  private readonly favorisService: FavorisService = inject(FavorisService);
+  private readonly authService: AuthService = inject(AuthService);
+
   produits: Product[] = [];
   pagination: Pagination | null = null;
   currentPage = 1;
   pageSize = 5;
-  
+
   // Formulaire de filtres
   filterForm!: FormGroup;
   showFilters = false;
   filterOptions: FilterOptions = { categories: [], boutiques: [] };
-  
+
   // États de chargement
   isLoading = false;
   isLoadingFilters = false;
-  
+
   // État du panier
   panierItemCount = 0;
+  private favorisIds = new Set<string>();
 
   ngOnInit(): void {
     this.initializeFilterForm();
@@ -76,7 +81,7 @@ export class ProduitsComponent implements OnInit {
       // Pour l'instant, nous utilisons des données mock ou les produits existants
       const categoriesSet = new Set<string>();
       const boutiquesSet = new Set<string>();
-      
+
       // Récupérer tous les produits pour extraire les catégories et boutiques uniques
       const allProductsResponse = await firstValueFrom(this.productService.getAllProducts({ limit: 5}));
       if (allProductsResponse) {
@@ -89,7 +94,7 @@ export class ProduitsComponent implements OnInit {
           }
         });
       }
-      
+
       this.filterOptions.categories = Array.from(categoriesSet).map(cat => JSON.parse(cat));
       this.filterOptions.boutiques = Array.from(boutiquesSet).map(bout => JSON.parse(bout));
       Promise.resolve().then(() => {
@@ -107,13 +112,14 @@ export class ProduitsComponent implements OnInit {
   loadProducts(): void {
     this.isLoading = true;
     const params = this.buildQueryParams();
-    
+
     this.productService.getAllProducts(params).subscribe({
       next: (result) => {
         this.produits = result.items;
-        
+
         this.pagination = result.pagination;
         this.isLoading = false;
+        this.loadFavoris();
          Promise.resolve().then(() => {
           this.cdr.detectChanges();
         });
@@ -124,6 +130,32 @@ export class ProduitsComponent implements OnInit {
         this.cdr.detectChanges();
       }
     });
+  }
+
+  private loadFavoris(): void {
+    if (!this.authService.isAuthenticated) {
+      this.applyFavorisToProducts([]);
+      return;
+    }
+
+    this.favorisService.getFavoris().subscribe({
+      next: (favoris) => {
+        this.applyFavorisToProducts(favoris.map((fav) => fav._id));
+      },
+      error: (error) => {
+        console.error('Erreur chargement favoris:', error);
+        this.applyFavorisToProducts([]);
+      }
+    });
+  }
+
+  private applyFavorisToProducts(favoriIds: string[]): void {
+    this.favorisIds = new Set(favoriIds);
+    this.produits = this.produits.map((product) => ({
+      ...product,
+      isFavori: this.favorisIds.has(product._id)
+    }));
+    this.cdr.detectChanges();
   }
 
   private buildQueryParams(): any {
@@ -196,15 +228,15 @@ export class ProduitsComponent implements OnInit {
 
   getPagesArray(): number[] {
     if (!this.pagination) return [];
-    
+
     const pages: number[] = [];
     const start = Math.max(1, this.pagination.page - 2);
     const end = Math.min(this.pagination.totalPages, this.pagination.page + 2);
-    
+
     for (let i = start; i <= end; i++) {
       pages.push(i);
     }
-    
+
     return pages;
   }
 
@@ -231,13 +263,13 @@ export class ProduitsComponent implements OnInit {
   getActiveFiltersCount(): number {
     const formValues = this.filterForm.value;
     let count = 0;
-    
+
     if (formValues.nom?.trim()) count++;
     if (formValues.categorieId) count++;
     if (formValues.boutiqueId) count++;
     if (formValues.prixMin && formValues.prixMin > 0) count++;
     if (formValues.prixMax && formValues.prixMax > 0) count++;
-    
+
     return count;
   }
 
@@ -262,7 +294,6 @@ export class ProduitsComponent implements OnInit {
       quantity: quantity
     }).subscribe({
       next: (response) => {
-        console.log('Produit ajouté au panier:', response.data);
         // Mettre à jour le compteur d'articles si nécessaire
         this.updatePanierItemCount();
         // Afficher une notification de succès

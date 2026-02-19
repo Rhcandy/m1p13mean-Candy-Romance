@@ -149,12 +149,6 @@
               <td colspan="5">
                 <div class="cart-footer">
                   <div class="cart-summary">
-                    <div class="summary-item">
-                      <span>Livraison :</span>
-                      <strong>
-                        {{ getFraisLivraison() === 0 ? 'Gratuite' : formatPrice(getFraisLivraison()) }}
-                      </strong>
-                    </div>
                     <div class="summary-item total">
                       <span>Total :</span>
                       <strong>{{ formatPrice(calculateTotal()) }}</strong>
@@ -166,8 +160,15 @@
                       <i class="ti ti-arrow-left"></i>
                       Continuer
                     </button>
+                    <button 
+                      class="btn btn-outline-danger btn-sm me-2" 
+                      (click)="viderPanier()"
+                      [disabled]="!panier || panier.produitsachete.length === 0">
+                      <i class="ti ti-trash"></i>
+                      Vider le panier
+                    </button>
                     <button
-                      class="btn btn-primary btn-sm"
+                      class="btn btn-outline-success btn-sm"
                       (click)="validerCommande()"
                       [disabled]="panier.produitsachete.length === 0 || isExpired">
                       Commander

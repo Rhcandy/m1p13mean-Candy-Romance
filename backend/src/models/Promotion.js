@@ -15,7 +15,7 @@ const promotionSchema = new mongoose.Schema({
   categorie: {
     type: String,
     required: true,
-    enum: ['pour boutique', 'pour acheteur']
+    enum: ['boutique', 'acheteur','produit']
   },
   dateDebut: {
     type: Date,

@@ -84,7 +84,8 @@ class AuthService {
           nom: user.nom,
           email: user.email,
           pdppath: user.pdppath,
-          role: user.role.nom
+          role: user.role.nom,
+          adresse: user.adresse,
         },
         token
       };
@@ -110,6 +111,24 @@ class AuthService {
       return jwt.verify(token, process.env.JWT_SECRET);
     } catch (error) {
       throw new Error('Token invalide ou expiré');
+    }
+  }
+
+  /**
+   * Extraire l'utilisateur à partir du token JWT
+   * @param {string} token - Token JWT
+   * @returns {Promise<Object>} - Utilisateur avec ses informations complètes
+   */
+  async getUserIdByToken(req) {
+    try {
+    
+      const token = req.headers.authorization.substring(7);
+      // Vérifier et décoder le token
+      const decoded = this.verifyToken(token);
+      
+      return decoded.userId;
+    } catch (error) {
+      throw new Error(`Erreur lors de la récupération de l'utilisateur: ${error.message}`);
     }
   }
 

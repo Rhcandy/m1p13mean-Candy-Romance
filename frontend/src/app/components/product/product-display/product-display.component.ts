@@ -31,7 +31,18 @@ interface Prix {
   updatedAt: string;
 }
 
+interface Promotion {
+  _id: string;
+  nom: string;
+  taux: number;
+  categorie?: string;
+  dateDebut: string;
+  dateFin: string;
+}
+
 interface Product {
+  promotions?: Promotion[];
+  isFavori?: boolean;
   averageRating: number;
   avis: any[];
   _id: string;
@@ -39,6 +50,7 @@ interface Product {
   categorieId: Categorie;
   nom: string;
   photo: string;
+  description?: string;
   variant: Variant[];
   prix: Prix[];
   createdAt: string;
@@ -176,5 +188,26 @@ export class ProductDisplayComponent implements OnInit {
   // Vérifier si le produit a un rating
   hasRating(): boolean {
     return this.product.averageRating && this.product.averageRating > 0;
+  }
+
+  getActivePromotion(): Promotion | null {
+    if (!this.product?.promotions?.length) return null;
+    const now = new Date();
+    return this.product.promotions.find((promo) => this.isPromotionActive(promo, now)) || null;
+  }
+
+  getPromotionBadgeText(): string {
+    const promo = this.getActivePromotion();
+    if (!promo) return '';
+    const taux = Number.isFinite(promo.taux) ? promo.taux : 0;
+    return `-${taux}%`;
+  }
+
+  private isPromotionActive(promo: Promotion, now: Date): boolean {
+    if (promo.categorie && promo.categorie !== 'produit') return false;
+    const debut = new Date(promo.dateDebut);
+    const fin = new Date(promo.dateFin);
+    if (Number.isNaN(debut.getTime()) || Number.isNaN(fin.getTime())) return false;
+    return now >= debut && now <= fin;
   }
 }

@@ -63,7 +63,11 @@ const userSchema = new mongoose.Schema({
       type: Date,
       default: null
     }
-  }
+  },
+  favoris: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Produit'
+  }]
 }, {
   timestamps: true,
   collection: 'users'

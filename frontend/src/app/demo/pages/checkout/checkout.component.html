@@ -1,0 +1,328 @@
+<div class="checkout-container">
+  <div class="checkout-header">
+    <h2>Finaliser ma commande</h2>
+    <div class="checkout-progress">
+      <div class="progress-step" [class.active]="currentStep >= 1" [class.completed]="currentStep > 1">
+        <div class="step-number">1</div>
+        <div class="step-label">Adresse</div>
+      </div>
+      <div class="progress-line" [class.completed]="currentStep > 1"></div>
+      <div class="progress-step" [class.active]="currentStep >= 2" [class.completed]="currentStep > 2">
+        <div class="step-number">2</div>
+        <div class="step-label">Paiement</div>
+      </div>
+      <div class="progress-line" [class.completed]="currentStep > 2"></div>
+      <div class="progress-step" [class.active]="currentStep >= 3">
+        <div class="step-number">3</div>
+        <div class="step-label">Confirmation</div>
+      </div>
+    </div>
+  </div>
+
+  @if (loading) {
+    <div class="loading-state">
+      <div class="spinner-border text-primary"></div>
+      <p>Chargement de votre commande...</p>
+    </div>
+  } @else if (panier) {
+    <div class="checkout-content">
+      <!-- Recapitulatif de la commande -->
+      <div class="order-summary">
+        <h3>Recapitulatif de la commande</h3>
+        <div class="summary-items">
+          @for (item of panier.produitsachete; track item.produit._id) {
+            <div class="summary-item">
+              <img [src]="item.produit.photo" [alt]="item.produit.nom" class="item-thumb">
+              <div class="item-details">
+                <div class="item-name">{{ item.produit.nom }}</div>
+                <div class="item-quantity">Quantite: {{ item.qtt }}</div>
+              </div>
+              <div class="item-price">{{ formatPrice(item.sousTotal) }}</div>
+            </div>
+          }
+        </div>
+
+        <div class="summary-totals">
+          <div class="total-line">
+            <span>Sous-total:</span>
+            <span>{{ formatPrice(panier.sousTotal) }}</span>
+          </div>
+          @if (shouldShowFraisLivraison()) {
+            <div class="total-line">
+              <span>Frais de livraison:</span>
+              <span>{{ formatPrice(fraisLivraison) }}</span>
+            </div>
+          }
+          <div class="total-line total">
+            <span>Total:</span>
+            <span>{{ formatPrice(getTotalWithFrais()) }}</span>
+          </div>
+        </div>
+
+        @if (shouldShowFraisLivraison() && dateLivraisonEstimee) {
+          <div class="delivery-info">
+            <i class="ti ti-truck-delivery"></i>
+            <span>Livraison estimee: {{ dateLivraisonEstimee | date:'longDate' }}</span>
+          </div>
+        }
+      </div>
+
+      <!-- Formulaire -->
+      <div class="checkout-form">
+        <form [formGroup]="checkoutForm">
+          <!-- Etape 1: Adresse de livraison -->
+          @if (currentStep === 1) {
+            <div class="form-section">
+              <h3>Adresse de livraison</h3>
+
+              <div class="form-group">
+                <label>Mode de livraison</label>
+                <div class="payment-methods">
+                  <div class="payment-method">
+                    <input type="radio" id="retrait" value="retrait" formControlName="modeLivraison">
+                    <label for="retrait" class="payment-label">
+                      <i class="ti ti-package"></i>
+                      Retrait en boutique
+                    </label>
+                  </div>
+                  <div class="payment-method">
+                    <input type="radio" id="livraison" value="livraison" formControlName="modeLivraison">
+                    <label for="livraison" class="payment-label">
+                      <i class="ti ti-truck-delivery"></i>
+                      Livraison
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              @if (modeLivraison === 'livraison') {
+                <div class="form-group">
+                  <label for="nomEndroit">Nom du lieu *</label>
+                  <input
+                    type="text"
+                    id="nomEndroit"
+                    formControlName="nomEndroit"
+                    class="form-control"
+                    [class.is-invalid]="isFieldInvalid('nomEndroit')"
+                    placeholder="Ex: Maison, bureau, hotel">
+                  @if (isFieldInvalid('nomEndroit')) {
+                    <div class="invalid-feedback">{{ getErrorMessage('nomEndroit') }}</div>
+                  }
+                </div>
+
+                <div class="form-group">
+                  <label>Position sur la carte</label>
+                  <app-leaflet-map
+                    [height]="'260px'"
+                    [initialPosition]="mapInitialPosition"
+                    [autoSetMarker]="true"
+                    (mapClick)="onMapClick($event)"></app-leaflet-map>
+                  @if (selectedMapLocation) {
+                    <div class="mt-2">
+                      <div class="small text-muted">
+                        Position selectionnee: {{ selectedMapLocation.lat | number:'1.6-6' }}, {{ selectedMapLocation.lng | number:'1.6-6' }}
+                      </div>
+                    </div>
+                  }
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="latitude">Latitude *</label>
+                    <input
+                      type="number"
+                      step="any"
+                      id="latitude"
+                      formControlName="latitude"
+                      class="form-control"
+                      [class.is-invalid]="isFieldInvalid('latitude')"
+                      placeholder="Latitude">
+                    @if (isFieldInvalid('latitude')) {
+                      <div class="invalid-feedback">{{ getErrorMessage('latitude') }}</div>
+                    }
+                  </div>
+
+                  <div class="form-group">
+                    <label for="longitude">Longitude *</label>
+                    <input
+                      type="number"
+                      step="any"
+                      id="longitude"
+                      formControlName="longitude"
+                      class="form-control"
+                      [class.is-invalid]="isFieldInvalid('longitude')"
+                      placeholder="Longitude">
+                    @if (isFieldInvalid('longitude')) {
+                      <div class="invalid-feedback">{{ getErrorMessage('longitude') }}</div>
+                    }
+                  </div>
+                </div>
+              }
+
+              <div class="form-group">
+                <label for="telephone">Telephone *</label>
+                <input
+                  type="tel"
+                  id="telephone"
+                  formControlName="telephone"
+                  class="form-control"
+                  [class.is-invalid]="isFieldInvalid('telephone')"
+                  placeholder="0612345678"
+                  minlength="10"
+                  maxlength="14">
+                @if (isFieldInvalid('telephone')) {
+                  <div class="invalid-feedback">{{ getErrorMessage('telephone') }}</div>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Etape 2: Paiement -->
+          @if (currentStep === 2) {
+            <div class="form-section">
+              <h3>Methode de paiement</h3>
+
+              <div class="payment-methods">
+                <div class="payment-method">
+                  <input type="radio" id="carte" value="carte" formControlName="methodePaiement">
+                  <label for="carte" class="payment-label">
+                    <i class="ti ti-credit-card"></i>
+                    Carte bancaire
+                  </label>
+                </div>
+                <div class="payment-method">
+                  <input type="radio" id="espece" value="espece" formControlName="methodePaiement">
+                  <label for="espece" class="payment-label">
+                    <i class="ti ti-cash"></i>
+                    Especes
+                  </label>
+                </div>
+              </div>
+
+              @if (checkoutForm.get('methodePaiement')?.value === 'carte') {
+                <div class="card-details">
+                  <h4>Details de la carte</h4>
+
+                  <div class="form-group">
+                    <label for="carteNumero">Numero de carte *</label>
+                    <input
+                      type="text"
+                      id="carteNumero"
+                      formControlName="carteNumero"
+                      class="form-control"
+                      [class.is-invalid]="isFieldInvalid('carteNumero')"
+                      placeholder="1234 5678 9012 3456"
+                      maxlength="16">
+                    @if (isFieldInvalid('carteNumero')) {
+                      <div class="invalid-feedback">{{ getErrorMessage('carteNumero') }}</div>
+                    }
+                  </div>
+
+                  <div class="form-group">
+                    <label for="carteNom">Nom du titulaire *</label>
+                    <input
+                      type="text"
+                      id="carteNom"
+                      formControlName="carteNom"
+                      class="form-control"
+                      [class.is-invalid]="isFieldInvalid('carteNom')"
+                      placeholder="Jean Dupont">
+                    @if (isFieldInvalid('carteNom')) {
+                      <div class="invalid-feedback">{{ getErrorMessage('carteNom') }}</div>
+                    }
+                  </div>
+
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label for="carteExpiry">Date d'expiration *</label>
+                      <input
+                        type="text"
+                        id="carteExpiry"
+                        formControlName="carteExpiry"
+                        class="form-control"
+                        [class.is-invalid]="isFieldInvalid('carteExpiry')"
+                        placeholder="MM/AA"
+                        maxlength="5">
+                      @if (isFieldInvalid('carteExpiry')) {
+                        <div class="invalid-feedback">{{ getErrorMessage('carteExpiry') }}</div>
+                      }
+                    </div>
+
+                    <div class="form-group">
+                      <label for="carteCVV">CVV *</label>
+                      <input
+                        type="text"
+                        id="carteCVV"
+                        formControlName="carteCVV"
+                        class="form-control"
+                        [class.is-invalid]="isFieldInvalid('carteCVV')"
+                        placeholder="123"
+                        maxlength="4">
+                      @if (isFieldInvalid('carteCVV')) {
+                        <div class="invalid-feedback">{{ getErrorMessage('carteCVV') }}</div>
+                      }
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+
+          <!-- Etape 3: Confirmation -->
+          @if (currentStep === 3) {
+            <div class="confirmation-section">
+              <h3>Confirmation de la commande</h3>
+              <div class="confirmation-message">
+                <i class="ti ti-check-circle text-success"></i>
+                <p>Votre commande est prete a etre validee.</p>
+                <p>Numero de commande: <strong>{{ panier.numeroCommande }}</strong></p>
+                <p>Montant total: <strong>{{ formatPrice(getTotalWithFrais()) }}</strong></p>
+              </div>
+            </div>
+          }
+        </form>
+
+        <!-- Boutons de navigation -->
+        <div class="form-actions">
+          @if (currentStep > 1) {
+            <button type="button" class="btn btn-outline-secondary" (click)="previousStep()">
+              <i class="ti ti-arrow-left"></i>
+              Precedent
+            </button>
+          }
+
+          @if (currentStep < 3) {
+            <button type="button" class="btn btn-primary" (click)="nextStep()">
+              Suivant
+              <i class="ti ti-arrow-right"></i>
+            </button>
+          }
+
+          @if (currentStep === 3) {
+            <button
+              type="button"
+              class="btn btn-success"
+              (click)="processPayment()"
+              [disabled]="processingPayment">
+              @if (processingPayment) {
+                <span class="spinner-border spinner-border-sm me-2"></span>
+                Traitement en cours...
+              } @else {
+                <i class="ti ti-check me-2"></i>
+                Confirmer et payer
+              }
+            </button>
+          }
+        </div>
+
+        <!-- Bouton d'annulation -->
+        <div class="cancel-section">
+          <button type="button" class="btn btn-outline-danger btn-sm" (click)="cancelOrder()">
+            <i class="ti ti-x"></i>
+            Annuler la commande
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

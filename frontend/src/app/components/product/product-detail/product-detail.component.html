@@ -25,6 +25,12 @@
               <img [src]="product.photo || 'https://via.placeholder.com/400x400'" alt="{{ product.nom }}" class="main-image">
             </div>
 
+            @if (getActivePromotion()) {
+              <div class="promo-badge">
+                Promo {{ getPromotionBadgeText() }}
+              </div>
+            }
+
             <!-- Badge de stock -->
             <div class="stock-badge" [class.in-stock]="hasStock()" [class.out-of-stock]="!hasStock()">
               @if (hasStock()) {
@@ -62,8 +68,14 @@
 
               <!-- Tags -->
               <div class="tags-container">
-                <span class="tag tag-category">{{ product.categorieId.nom }}</span>
-                <span class="tag tag-boutique">{{ product.boutiqueId.nom }}</span>
+                <span class="tag tag-category">
+                  <i class="ti ti-tag"></i>
+                  {{ product.categorieId.nom }}
+                </span>
+                <span class="tag tag-boutique">
+                  <i class="ti ti-building-store"></i>
+                  {{ product.boutiqueId.nom }}
+                </span>
               </div>
             </div>
 
@@ -154,7 +166,7 @@
                     [disabled]="!hasStock() || addToCartForm.invalid || isAddingToCart"
                     [class.loading]="isAddingToCart">
                     <span class="btn-icon">
-                      <i class="ti" 
+                      <i class="ti"
                         [class.ti-shopping-cart-plus]="!isAddingToCart"
                         [class.ti-loader-3]="isAddingToCart"
                         [class.spinner]="isAddingToCart">
@@ -168,10 +180,11 @@
                   <button
                     type="button"
                     class="btn btn-outline-danger wishlist-btn"
-                    title="Ajouter à la wishlist"
-                    aria-label="Ajouter à la wishlist">
-                    <i class="ti ti-heart"></i>
-                    <span class="mobile-hidden">Favoris</span>
+                    title="Favoris"
+                    aria-label="Favoris"
+                    (click)="toggleFavori()"
+                    [disabled]="favorisLoading">
+                    <i class="ti" [class.ti-heart]="!isFavori" [class.ti-heart-filled]="isFavori"></i>
                   </button>
                 </div>
 
@@ -188,10 +201,11 @@
         </div>
         <!-- Section Avis en pleine largeur -->
         <div class="avis-section mt-5 col-12">
-          <app-avis 
-            [avis]="productAvis" 
+          <app-avis
+            [avis]="productAvis"
             [produitId]="product?._id"
-            [currentUserId]="''">
+            [currentUserId]="currentUserId"
+            [currentUserName]="currentUserName">
           </app-avis>
         </div>
       </div>
@@ -207,3 +221,6 @@
     </div>
   }
 </div>
+
+
+

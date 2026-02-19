@@ -11,6 +11,7 @@ router.use(authMiddleware);
 router.post('/', adminOrManager, uploadPicture, produitController.createProduit);
 router.get('/', produitController.getAllProduits, produitController.getProduitsResults);
 router.get('/:id', produitController.getProduitById);
+router.get('/:id/stock', produitController.getProduitStock);
 router.put('/:id', adminOrManager, uploadPicture, produitController.updateProduit);
 router.delete('/:id', adminOrManager, produitController.deleteProduit);
 
