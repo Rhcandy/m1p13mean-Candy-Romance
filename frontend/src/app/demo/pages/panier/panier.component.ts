@@ -129,35 +129,73 @@ export class PanierComponent implements OnInit, OnDestroy {
 
   updateTimeRemaining(): void {
     let expiryTime: number | null = null;
+    let shouldCheckExpiration = false;
 
-    if (this.panier?.expiresAt) {
-      // Cas 1 : le backend fournit directement expiresAt
-      expiryTime = new Date(this.panier.expiresAt).getTime();
-    } else if (this.panier?.createdAt) {
-      // Cas 2 : on calcule 2h après la création
-      expiryTime = new Date(this.panier.createdAt).getTime() + 2 * 60 * 60 * 1000;
+    // Logique d'expiration selon le statut du panier
+    if (this.panier?.statut === 'panier') {
+      // Pour les paniers actifs : on vérifie expiresAt (2h par défaut)
+      shouldCheckExpiration = true;
+      if (this.panier?.expiresAt) {
+        // Cas 1 : le backend fournit directement expiresAt
+        expiryTime = new Date(this.panier.expiresAt).getTime();
+      } else if (this.panier?.createdAt) {
+        // Cas 2 : on calcule 2h après la création
+        expiryTime = new Date(this.panier.createdAt).getTime() + 2 * 60 * 60 * 1000;
+      }
+    } else if (this.panier?.statut === 'en_attente') {
+      // Pour les paniers en attente : on vérifie expiresAt (24h par défaut)
+      shouldCheckExpiration = true;
+      if (this.panier?.expiresAt) {
+        expiryTime = new Date(this.panier.expiresAt).getTime();
+      } else if (this.panier?.createdAt) {
+        // Cas 2 : on calcule 24h après la validation
+        expiryTime = new Date(this.panier.createdAt).getTime() + 24 * 60 * 60 * 1000;
+      }
+    } else {
+      // Pour les autres statuts (confirmee, preparation, expedie, livre, annule) : pas d'expiration
+      shouldCheckExpiration = false;
     }
 
-    if (expiryTime === null) {
+    if (!shouldCheckExpiration || expiryTime === null) {
       this.timeRemaining = 'Non défini';
+      this.isExpired = false;
       return;
     }
 
     const diff = expiryTime - Date.now();
+    const tenMinutesInMs = 10 * 60 * 1000;
 
     if (diff <= 0) {
       this.timeRemaining = 'Expiré';
       this.isExpired = true;
       clearInterval(this.countdownInterval);
-      this.notificationService.error('Votre panier a expiré. Veuillez le recréer.');
+      
+      // Action différente selon le statut
+      if (this.panier?.statut === 'panier') {
+        this.notificationService.error('Votre panier a expiré. Veuillez le recréer.');
+        // Supprimer automatiquement le panier expiré
+        this.supprimerPanierExpiré();
+      } else if (this.panier?.statut === 'en_attente') {
+        this.notificationService.warning('Votre commande a expiré. Veuillez contacter le support.');
+        // Ne pas supprimer automatiquement les commandes en attente
+        // Laisser l'admin boutique gérer manuellement
+      }
       return;
     }
 
-    const h = Math.floor(diff / 3_600_000);
-    const m = Math.floor((diff % 3_600_000) / 60_000);
-    const s = Math.floor((diff % 60_000) / 1000);
-
-    this.timeRemaining = `${h}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`;
+    // Afficher un warning si moins de 10 minutes
+    if (diff <= tenMinutesInMs && diff > 0) {
+      const h = Math.floor(diff / 3_600_000);
+      const m = Math.floor((diff % 3_600_000) / 60_000);
+      const s = Math.floor((diff % 60_000) / 1000);
+      this.timeRemaining = `⚠️ ${h}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`;
+    } else {
+      const h = Math.floor(diff / 3_600_000);
+      const m = Math.floor((diff % 3_600_000) / 60_000);
+      const s = Math.floor((diff % 60_000) / 1000);
+      this.timeRemaining = `${h}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`;
+    }
+    
     this.isExpired = false;
   }
 
@@ -384,6 +422,26 @@ export class PanierComponent implements OnInit, OnDestroy {
 
   goToProducts(): void {
     this.router.navigate(['/produits']);
+  }
+
+  // ─── Gestion expiration ───────────────────────────────────
+
+  supprimerPanierExpiré(): void {
+    if (!this.panier?._id) return;
+    
+    this.panierService.viderPanier()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          this.panier = null;
+          this.notificationService.info('Le panier expiré a été supprimé automatiquement.');
+          this.cdr.detectChanges();
+        },
+        error: (error) => {
+          console.error('Erreur suppression panier expiré:', error);
+          // Ne pas afficher d'erreur à l'utilisateur, le panier est déjà expiré
+        }
+      });
   }
 
   continuerAchats(): void {

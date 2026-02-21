@@ -9,5 +9,7 @@ router.use(authMiddleware);
 // Routes pour la livraison
 router.post('/calculer-frais', livraisonController.calculerFraisLivraison);
 router.get('/centres', livraisonController.getCentresDistribution);
+router.get('/centres/:id', livraisonController.getCentreDistributionById);
+router.put('/centres/:id/frais', livraisonController.updateCentreFraisLivraison);
 
 module.exports = router;

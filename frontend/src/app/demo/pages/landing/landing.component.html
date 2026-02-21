@@ -1,0 +1,441 @@
+<!-- landing.component.html -->
+
+<!-- ═══ NAVBAR ═══════════════════════════════════════════════ -->
+<nav class="navbar" [class.scrolled]="isScrolled">
+  <div class="nav-container">
+    <div class="nav-brand" (click)="scrollTo('hero')">
+      <div class="brand-icon">
+        <i class="ti ti-shopping-bag"></i>
+      </div>
+      <span class="brand-name">Bazaar<span class="brand-dot">.</span></span>
+    </div>
+
+    <div class="nav-links" [class.open]="menuOpen">
+      <a class="nav-link" (click)="scrollTo('hero'); menuOpen=false">Accueil</a>
+      <a class="nav-link" (click)="scrollTo('about'); menuOpen=false">À propos</a>
+      <a class="nav-link" (click)="scrollTo('features'); menuOpen=false">Fonctionnalités</a>
+      <a class="nav-link" (click)="scrollTo('contact'); menuOpen=false">Contact</a>
+      
+      @if (!isAuthenticated) {
+        <button class="btn-nav-cta" (click)="goToLogin()">Se connecter</button>
+        <button class="btn-nav-cta-secondary" (click)="goToRegister()">S'inscrire</button>
+      } @else if (isBoutiqueAdmin) {
+        <button class="btn-nav-cta" (click)="goToProducts()">Mes produits</button>
+        <button class="btn-nav-cta-secondary" (click)="goToDashboard()">Dashboard</button>
+        <button class="btn-nav-cta-danger" (click)="logout()">Se déconnecter</button>
+      } @else {
+        <button class="btn-nav-cta" (click)="goToProducts()">Voir les produits</button>
+        <button class="btn-nav-cta-secondary" (click)="goToDashboard()">Mon profil</button>
+        <button class="btn-nav-cta-danger" (click)="logout()">Se déconnecter</button>
+      }
+    </div>
+
+    <button class="nav-burger" (click)="menuOpen = !menuOpen">
+      <span [class.open]="menuOpen"></span>
+    </button>
+  </div>
+</nav>
+
+<!-- ═══ HERO ═════════════════════════════════════════════════ -->
+<section class="hero" id="hero">
+  <!-- Décorations background -->
+  <div class="hero-bg">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+    <div class="grid-overlay"></div>
+  </div>
+
+  <div class="hero-container">
+    <div class="hero-content">
+      <!-- Badge -->
+      <div class="hero-badge" @fadeUp>
+        <div class="badge-dot"></div>
+        <span>Marketplace nouvelle génération</span>
+        <i class="ti ti-arrow-right"></i>
+      </div>
+
+      <!-- Headline -->
+      <h1 class="hero-title" @fadeUp>
+        Achetez & Vendez<br>
+        <span class="title-gradient">sans limites</span>
+      </h1>
+
+      <!-- Subtitle -->
+      <p class="hero-subtitle" @fadeUp>
+        La marketplace qui connecte acheteurs et vendeurs en toute simplicité.
+        Des milliers de produits, une expérience fluide, une sécurité totale.
+      </p>
+
+      <!-- CTAs -->
+      <div class="hero-ctas" @fadeUp>
+        @if (!isAuthenticated) {
+          <button class="btn-primary-hero" (click)="goToProducts()">
+            <i class="ti ti-sparkles"></i>
+            <span>Explorer les produits</span>
+          </button>
+          <button class="btn-secondary-hero" (click)="goToLogin()">
+            <i class="ti ti-user"></i>
+            <span>Se connecter</span>
+          </button>
+        } @else if (isBoutiqueAdmin) {
+          <button class="btn-primary-hero" (click)="goToProducts()">
+            <i class="ti ti-package"></i>
+            <span>Gérer mes produits</span>
+          </button>
+          <button class="btn-secondary-hero" (click)="goToDashboard()">
+            <i class="ti ti-chart-bar"></i>
+            <span>Dashboard</span>
+          </button>
+        } @else {
+          <button class="btn-primary-hero" (click)="goToProducts()">
+            <i class="ti ti-sparkles"></i>
+            <span>Voir les produits</span>
+          </button>
+          <button class="btn-secondary-hero" (click)="goToDashboard()">
+            <i class="ti ti-user"></i>
+            <span>Mon profil</span>
+          </button>
+        }
+      </div>
+
+      <button class="btn-secondary-hero" routerLink="/register">
+        <span>Devenir vendeur</span>
+        <i class="ti ti-arrow-right"></i>
+      </button>
+
+      <!-- Social proof -->
+      <div class="hero-stats" @fadeUp>
+        <div class="stat-item">
+          <strong>12K+</strong>
+          <span>Produits</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <strong>3K+</strong>
+          <span>Vendeurs</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <strong>98%</strong>
+          <span>Satisfaction</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hero visual -->
+    <div class="hero-visual" @slideIn>
+      <div class="visual-card main-card">
+        <div class="card-header-strip"></div>
+        <div class="card-img-placeholder">
+          <i class="ti ti-photo"></i>
+        </div>
+        <div class="card-body-mock">
+          <div class="mock-title-bar"></div>
+          <div class="mock-subtitle-bar"></div>
+          <div class="mock-price">
+            <span class="mock-price-old">120 000 Ar</span>
+            <span class="mock-price-new">89 000 Ar</span>
+          </div>
+          <div class="mock-btn">
+            <span>Ajouter au panier</span>
+            <i class="ti ti-shopping-cart-plus"></i>
+          </div>
+        </div>
+        <div class="card-badge-new">Nouveau</div>
+      </div>
+
+      <div class="visual-card side-card side-top">
+        <div class="side-card-inner">
+          <div class="side-icon green"><i class="ti ti-circle-check"></i></div>
+          <div class="side-text">
+            <strong>Commande livrée</strong>
+            <span>il y a 2 min</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="visual-card side-card side-bottom">
+        <div class="side-card-inner">
+          <div class="side-icon violet"><i class="ti ti-trending-up"></i></div>
+          <div class="side-text">
+            <strong>+340 ventes</strong>
+            <span>aujourd'hui</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Floating orbs -->
+      <div class="float-orb orb-1"></div>
+      <div class="float-orb orb-2"></div>
+    </div>
+  </div>
+
+  <!-- Scroll indicator -->
+  <div class="scroll-hint" (click)="scrollTo('about')">
+    <div class="scroll-mouse">
+      <div class="scroll-wheel"></div>
+    </div>
+    <span>Défiler</span>
+  </div>
+</section>
+
+<!-- ═══ FEATURES STRIP ════════════════════════════════════════ -->
+<section class="features-strip" id="features">
+  <div class="strip-container">
+    <div class="strip-item" *ngFor="let f of features">
+      <div class="strip-icon" [style.background]="f.bg">
+        <i [class]="'ti ' + f.icon" [style.color]="f.color"></i>
+      </div>
+      <div class="strip-text">
+        <strong>{{ f.title }}</strong>
+        <span>{{ f.desc }}</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ ABOUT ════════════════════════════════════════════════ -->
+<section class="about" id="about">
+  <div class="about-container">
+
+    <!-- Left: visual -->
+    <div class="about-visual">
+      <div class="about-grid-bg"></div>
+      <div class="about-img-wrap">
+        <div class="about-img-main">
+          <i class="ti ti-world"></i>
+        </div>
+        <div class="about-img-accent"></div>
+      </div>
+
+      <div class="about-float-card card-users">
+        <div class="float-icon violet"><i class="ti ti-users"></i></div>
+        <div class="float-info">
+          <strong>Communauté active</strong>
+          <span>+50 000 membres</span>
+        </div>
+      </div>
+
+      <div class="about-float-card card-trust">
+        <div class="float-icon green"><i class="ti ti-shield-check"></i></div>
+        <div class="float-info">
+          <strong>Transactions sécurisées</strong>
+          <span>SSL + Paiement certifié</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: content -->
+    <div class="about-content">
+      <div class="section-eyebrow">
+        <div class="eyebrow-line"></div>
+        <span>À propos de Bazaar</span>
+      </div>
+
+      <h2 class="about-title">
+        La marketplace qui<br>
+        <span class="title-gradient">change tout</span>
+      </h2>
+
+      <p class="about-text">
+        Bazaar est née d'une vision simple : rendre le commerce en ligne accessible à tous,
+        que vous soyez un particulier ou un professionnel. Notre plateforme connecte des milliers
+        de vendeurs passionnés avec des acheteurs à la recherche de produits uniques.
+      </p>
+      <p class="about-text">
+        Avec une interface intuitive, des outils de gestion puissants et un système de paiement
+        sécurisé, Bazaar est la solution complète pour votre activité e-commerce.
+      </p>
+
+      <div class="about-pillars">
+        <div class="pillar" *ngFor="let p of pillars">
+          <div class="pillar-icon" [style.background]="p.bg">
+            <i [class]="'ti ' + p.icon" [style.color]="p.color"></i>
+          </div>
+          <div>
+            <strong>{{ p.title }}</strong>
+            <p>{{ p.desc }}</p>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-about-cta" routerLink="/about">
+        Notre histoire complète
+        <i class="ti ti-arrow-right"></i>
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ CATEGORIES ════════════════════════════════════════════ -->
+<section class="categories">
+  <div class="cat-container">
+    <div class="section-header">
+      <div class="section-eyebrow">
+        <div class="eyebrow-line"></div>
+        <span>Nos catégories</span>
+      </div>
+      <h2>Trouvez ce que <span class="title-gradient">vous cherchez</span></h2>
+    </div>
+
+    <div class="cat-grid">
+      <div class="cat-card" *ngFor="let cat of categories; let i = index"
+           [style.animation-delay]="(i * 0.08) + 's'">
+        <div class="cat-icon-wrap" [style.background]="cat.bg">
+          <i [class]="'ti ' + cat.icon" [style.color]="cat.color"></i>
+        </div>
+        <span class="cat-name">{{ cat.name }}</span>
+        <span class="cat-count">{{ cat.count }}</span>
+        <div class="cat-arrow"><i class="ti ti-arrow-right"></i></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ CONTACT ════════════════════════════════════════════════ -->
+<section class="contact" id="contact">
+  <div class="contact-container">
+
+    <!-- Left -->
+    <div class="contact-info">
+      <div class="section-eyebrow">
+        <div class="eyebrow-line"></div>
+        <span>Contact</span>
+      </div>
+      <h2 class="contact-title">
+        Parlons de<br>
+        <span class="title-gradient">votre projet</span>
+      </h2>
+      <p class="contact-subtitle">
+        Une question, un partenariat, une suggestion ?
+        Notre équipe vous répond en moins de 24h.
+      </p>
+
+      <div class="contact-channels">
+        <div class="channel" *ngFor="let ch of channels">
+          <div class="channel-icon" [style.background]="ch.bg">
+            <i [class]="'ti ' + ch.icon" [style.color]="ch.color"></i>
+          </div>
+          <div class="channel-info">
+            <strong>{{ ch.label }}</strong>
+            <span>{{ ch.value }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Form -->
+    <div class="contact-form-wrap">
+      <form class="contact-form" [formGroup]="contactForm" (ngSubmit)="sendMessage()">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Prénom</label>
+            <div class="input-wrap">
+              <i class="ti ti-user"></i>
+              <input type="text" formControlName="prenom" placeholder="Jean" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Nom</label>
+            <div class="input-wrap">
+              <i class="ti ti-user"></i>
+              <input type="text" formControlName="nom" placeholder="Dupont" />
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Email</label>
+          <div class="input-wrap">
+            <i class="ti ti-mail"></i>
+            <input type="email" formControlName="email" placeholder="jean@exemple.com" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Sujet</label>
+          <div class="input-wrap">
+            <i class="ti ti-tag"></i>
+            <select formControlName="sujet">
+              <option value="">Choisir un sujet…</option>
+              <option value="info">Informations générales</option>
+              <option value="vendor">Devenir vendeur</option>
+              <option value="support">Support technique</option>
+              <option value="partenariat">Partenariat</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Message</label>
+          <div class="input-wrap textarea-wrap">
+            <i class="ti ti-message"></i>
+            <textarea formControlName="message" rows="4" placeholder="Votre message…"></textarea>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-send" [disabled]="contactForm.invalid || isSending">
+          @if (isSending) {
+            <div class="btn-spinner"></div>
+            <span>Envoi en cours…</span>
+          } @else if (sent) {
+            <i class="ti ti-circle-check"></i>
+            <span>Message envoyé !</span>
+          } @else {
+            <i class="ti ti-send"></i>
+            <span>Envoyer le message</span>
+          }
+        </button>
+
+        @if (sent) {
+          <div class="success-banner">
+            <i class="ti ti-confetti"></i>
+            Merci ! Nous vous répondons sous 24h.
+          </div>
+        }
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FOOTER ════════════════════════════════════════════════ -->
+<footer class="footer">
+  <div class="footer-top">
+    <div class="footer-brand">
+      <div class="brand-icon"><i class="ti ti-shopping-bag"></i></div>
+      <span class="brand-name">Bazaar<span class="brand-dot">.</span></span>
+      <p>La marketplace de demain, disponible aujourd'hui.</p>
+    </div>
+
+    <div class="footer-links-group">
+      <h5>Marketplace</h5>
+      <a routerLink="/products">Tous les produits</a>
+      <a routerLink="/categories">Catégories</a>
+      <a routerLink="/promotions">Promotions</a>
+    </div>
+
+    <div class="footer-links-group">
+      <h5>Vendeurs</h5>
+      <a routerLink="/register">S'inscrire</a>
+      <a routerLink="/dashboard">Tableau de bord</a>
+      <a routerLink="/guide">Guide vendeur</a>
+    </div>
+
+    <div class="footer-links-group">
+      <h5>Support</h5>
+      <a routerLink="/faq">FAQ</a>
+      <a routerLink="/contact">Contact</a>
+      <a routerLink="/cgu">CGU</a>
+    </div>
+  </div>
+
+  <div class="footer-bottom">
+    <span>© {{ currentYear }} Bazaar. Tous droits réservés.</span>
+    <div class="footer-socials">
+      <a href="#" class="social-btn"><i class="ti ti-brand-facebook"></i></a>
+      <a href="#" class="social-btn"><i class="ti ti-brand-instagram"></i></a>
+      <a href="#" class="social-btn"><i class="ti ti-brand-twitter"></i></a>
+    </div>
+  </div>
+</footer>

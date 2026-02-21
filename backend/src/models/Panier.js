@@ -56,6 +56,11 @@ const panierSchema = new mongoose.Schema({
     default: 0,
     min: 0
   },
+  remiseAcheteur: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
   
   // Statut du panier (actif ou non)
   isActive: {
@@ -167,14 +172,14 @@ panierSchema.pre('save', async function() {
 
 // Middleware pour calculer les totaux automatiquement
 panierSchema.pre('save', function() {
-  if (this.isModified('produitsachete')) {
+  if (this.isModified('produitsachete') || this.isModified('remiseAcheteur') || this.isModified('fraisLivraison')) {
     // Calculer le sous-total
     this.sousTotal = this.produitsachete.reduce((total, item) => {
       return total + (item.sousTotal || 0);
     }, 0);
     
     // Calculer le total final
-    this.total = this.sousTotal + (this.fraisLivraison || 0);
+    this.total = Math.max(0, this.sousTotal - (this.remiseAcheteur || 0) + (this.fraisLivraison || 0));
     
     // Mettre à jour la quantité totale
     this.qtt = this.produitsachete.reduce((total, item) => {

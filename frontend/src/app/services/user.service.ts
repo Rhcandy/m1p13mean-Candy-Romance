@@ -62,7 +62,7 @@ export class UserService {
 
   updateProfilePicture(file: File): Observable<ApiResponse<UserProfile>> {
     const formData = new FormData();
-    formData.append('profilePicture', file);
+    formData.append('photo', file);
     return this.api.putFile<ApiResponse<UserProfile>>('/users/profile-picture', formData);
   }
 }

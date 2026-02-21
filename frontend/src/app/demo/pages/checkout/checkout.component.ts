@@ -49,6 +49,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   checkoutForm: FormGroup;
   fraisLivraison = 0;
   dateLivraisonEstimee: Date | null = null;
+  private centreFraisLivraison: { baseFrais: number; coutParKm: number; kmGratuits: number } | null = null;
 
   modeLivraison: 'retrait' | 'livraison' = 'retrait';
   currentUser: any = null;
@@ -90,6 +91,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     this.refreshUserProfile();
     this.loadPanier();
     this.loadUserAddress();
+    this.loadCentreFraisLivraison();
     this.onModeLivraisonChange();
     this.watchFormChanges();
   }
@@ -118,6 +120,20 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       },
       error: (error) => {
         console.error('Erreur chargement utilisateur:', error);
+      }
+    });
+  }
+
+  private loadCentreFraisLivraison(): void {
+    this.livraisonService.getCentresDistribution().pipe(takeUntil(this.destroy$)).subscribe({
+      next: (centres) => {
+        const premierCentre = centres && centres.length > 0 ? centres[0] : null;
+        if (premierCentre?.fraisLivraison) {
+          this.centreFraisLivraison = premierCentre.fraisLivraison;
+        }
+      },
+      error: (error) => {
+        console.error('Erreur chargement centres:', error);
       }
     });
   }
@@ -215,6 +231,9 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       next: (response) => {
         this.fraisLivraison = response.fraisLivraison;
         this.dateLivraisonEstimee = new Date(response.dateLivraison);
+        if (response.centreDistribution?.fraisLivraison) {
+          this.centreFraisLivraison = response.centreDistribution.fraisLivraison;
+        }
         this.updateTotal();
       },
       error: (error) => {
@@ -226,9 +245,8 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   }
 
   private calculerFraisLivraisonSimulation(): void {
-    const baseFrais = 3000;
-    const coutParKm = 2;
-    const kmGratuits = 3;
+    const frais = this.centreFraisLivraison || { baseFrais: 3000, coutParKm: 2, kmGratuits: 3 };
+    const { baseFrais, coutParKm, kmGratuits } = frais;
 
     const distance = 5;
     this.fraisLivraison = baseFrais;
@@ -370,7 +388,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         return false;
       }
     }
-
+    
     return true;
   }
 

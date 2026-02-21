@@ -21,25 +21,60 @@ export interface NavigationItem {
 export function getNavigationItems(): NavigationItem[] {
   const authService = inject(AuthService);
   const isUser = authService.hasRole('user');
-  const isBoutiqueAdmin = authService.hasRole('admin_boutique') || authService.hasRole('super_admin');
-  
+  const isBoutiqueOwner = !authService.hasRole('user') && !authService.hasRole('admin_center');
   return [
     {
-      id: 'dashboard',
-      title: 'Dashboard',
-      type: 'group',
+      id: 'Ma boutique',
+      title: 'Ma boutique',
+      type: 'collapse',
       icon: 'icon-navigation',
-      hidden: authService.hasRole('user'),
+      hidden: authService.hasRole('user') || authService.hasRole('admin_center'),
       children: [
         {
-          id: 'default',
+          id: 'dashboard-boutique',
           title: 'Dashboard',
           type: 'item',
           classes: 'nav-item',
           url: '/default',
           icon: 'ti ti-dashboard',
           breadcrumbs: false
-        }
+        },
+        {
+          id: 'infoboutique',
+          title: 'Informations boutique',
+          type: 'item',
+          classes: 'nav-item',
+          url: '/boutique/informations',
+          icon: 'ti ti-info-circle',
+          breadcrumbs: true
+        },
+        {
+          id: 'produits-boutique',
+          title: 'Produits boutique',
+          type: 'item',
+          classes: 'nav-item',
+          url: '/boutique/produits',
+          icon: 'ti ti-package',
+          breadcrumbs: true
+        },
+        {
+          id: 'promotions',
+          title: 'Promotions',
+          type: 'item',
+          classes: 'nav-item',
+          url: '/boutique/promotions',
+          icon: 'ti ti-discount',
+          breadcrumbs: true
+        },
+        {
+          id: 'commandes-boutique',
+          title: 'Commandes boutique',
+          type: 'item',
+          classes: 'nav-item',
+          url: '/boutique/commandes',
+          icon: 'ti ti-receipt',
+          breadcrumbs: true
+        },
       ]
     },
     {
@@ -49,6 +84,15 @@ export function getNavigationItems(): NavigationItem[] {
       icon: 'ti ti-shopping-cart',
       classes: 'nav-item',
       url: '/produits',
+      breadcrumbs: true
+    },
+    {
+      id: 'Boutiques',
+      title: 'Boutiques',
+      type: 'item',
+      icon: 'ti ti-building-store',
+      classes: 'nav-item',
+      url: '/boutiques',
       breadcrumbs: true
     },
     {
@@ -62,16 +106,6 @@ export function getNavigationItems(): NavigationItem[] {
       hidden: !isUser
     },
     {
-      id: 'CommandesBoutique',
-      title: 'Commandes boutique',
-      type: 'item',
-      icon: 'ti ti-list-check',
-      classes: 'nav-item',
-      url: '/commandes',
-      breadcrumbs: true,
-      hidden: !isBoutiqueAdmin
-    },
-    {
       id: 'Panier',
       title: 'Panier',
       type: 'item',
@@ -81,8 +115,8 @@ export function getNavigationItems(): NavigationItem[] {
       url: '/panier',
       breadcrumbs: true
     },
-    
-    
-    
+
+
+
   ];
 }

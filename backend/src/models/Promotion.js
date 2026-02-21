@@ -24,18 +24,34 @@ const promotionSchema = new mongoose.Schema({
   dateFin: {
     type: Date,
     required: true
+  },
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  produitId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Produit',
+    default: null
+  },
+  boutiqueId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Boutique',
+    default: null
+  },
+  acheteurId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
   }
 }, {
   timestamps: true,
   collection: 'promotions'
 });
-
-// Validation pour s'assurer que dateFin est après dateDebut
-promotionSchema.pre('save', function(next) {
+promotionSchema.pre('save', function () {
   if (this.dateFin <= this.dateDebut) {
-    next(new Error('La date de fin doit être postérieure à la date de début'));
-  } else {
-    next();
+    throw new Error('La date de fin doit être postérieure à la date de début');
   }
 });
 

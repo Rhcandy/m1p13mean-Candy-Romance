@@ -41,7 +41,7 @@ async function initializeRoles() {
           type: 'Point',
           coordinates: [-18.952783162227885, 47.528457818843464]
         },
-        proprietaire: []
+        locataire: []
       });
       await centre.save();
       console.log('Centre "Royal City" créé avec succès');
@@ -70,7 +70,7 @@ async function initializeRoles() {
         await user.save();
         
         // Ajouter l'utilisateur comme propriétaire du centre
-        royalCityCentre.proprietaire.push(user._id);
+        royalCityCentre.locataire.push(user._id);
         await royalCityCentre.save();
         
         console.log('Utilisateur "admincenter" créé avec succès et associé au centre Royal City');

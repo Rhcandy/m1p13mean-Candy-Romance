@@ -1,81 +1,55 @@
-🔹 Guide de recherche avancée – Middleware AdvancedResults
-Ce guide explique comment effectuer des recherches avancées sur une API utilisant le middleware advancedResults pour filtrer, trier, paginer et sélectionner les champs renvoyés.
+﻿Guide AdvancedResults (filtres API)
 
-1️⃣ Pagination
-Permet de diviser les résultats en pages.
+Ce document explique comment utiliser le middleware advancedResults pour filtrer, trier, paginer et limiter les champs renvoyes.
 
-Paramètre	Type	Description	Valeur par défaut
-page	integer	Numéro de la page à afficher	1
-limit	integer	Nombre de résultats par page	10
-Exemple :
-?page=2&limit=5 → affiche la deuxième page avec 5 résultats par page.
+1. Pagination
+- page: numero de page (defaut 1)
+- limit: nombre de resultats par page (defaut 10)
+Exemple: ?page=2&limit=5
 
-2️⃣ Tri (sort)
-Permet de trier les résultats sur un ou plusieurs champs.
+2. Tri (sort)
+- sort: champs de tri separes par des virgules
+- prefixer un champ par "-" pour un tri descendant
+Exemples:
+- ?sort=nom
+- ?sort=-createdAt
+- ?sort=nom,-createdAt
 
-Paramètre	Type	Exemple	Description
-sort	string	name,-createdAt	Champs pour trier. - devant un champ = tri décroissant
-Exemples :
+3. Projection des champs (fields)
+- fields: liste des champs a inclure, separes par des virgules
+Exemple: ?fields=nom,prix,photo
+Par defaut, certains champs sensibles (ex: password) sont exclus.
 
-sort=name → tri par name ascendant
-sort=-createdAt → tri par createdAt décroissant
-sort=name,-createdAt → tri par name croissant, puis createdAt décroissant
-3️⃣ Projection des champs (fields)
-Permet de limiter les champs renvoyés dans la réponse.
+4. Filtres simples
+- Filtre exact: ?role=admin
+- Recherche texte (regex): champ[regex]=valeur
+- Options regex: champ[options]=i (insensible a la casse)
+Exemple: ?nom[regex]=bonbon&nom[options]=i
 
-Paramètre	Type	Exemple	Description
-fields	string	name,email,role	Liste des champs à inclure dans la réponse
-Par défaut, certains champs sensibles comme password sont exclus.
+5. Filtres par intervalle (nombres ou dates)
+Utilisez gte, lte, gt, lt, ne, in, nin.
+Exemples:
+- ?age[gte]=18&age[lte]=30
+- ?createdAt[gte]=2026-01-01&createdAt[lte]=2026-01-28
+- ?role[in]=admin,user
 
-4️⃣ Filtres simples
-Filtrage exact ou via texte partiel (regex).
+6. Exemples pour Produits
+- Filtrer par boutique et categorie:
+  GET /api/produits?boutiqueId=ID_BOUTIQUE&categorieId=ID_CATEGORIE
 
-Paramètre	Type	Exemple	Description
-role	string	role=admin	Filtre exact sur le rôle
-isActive	boolean	isActive=true	Filtre sur l’état actif
-email	string	email[regex]=axel	Recherche texte partielle, insensible à la casse
-name	string	name[regex]=john	Recherche texte partielle sur le nom
-Syntaxe regex : champ[regex]=valeur → correspond à “contient”.
+- Recherche par nom (contient, insensible a la casse):
+  GET /api/produits?nom[regex]=bonbon&nom[options]=i
 
-5️⃣ Filtres intervalle (dates ou nombres)
-Permet de filtrer selon une valeur minimale ou maximale.
+- Filtrer par prix min/max (prix.prixUnitaire est un champ imbrique):
+  GET /api/produits?prix.prixUnitaire[gte]=100&prix.prixUnitaire[lte]=500
 
-Paramètre	Opérateur	Exemple URL	Description
-age[gte]	≥	age[gte]=18	Valeur minimale
-age[lte]	≤	age[lte]=30	Valeur maximale
-age[gt]	>	age[gt]=18	Strictement supérieur
-age[lt]	<	age[lt]=30	Strictement inférieur
-role[ne]	≠	role[ne]=admin	Valeur différente
-role[in]	in	role[in]=admin,user	Une des valeurs de la liste
-role[nin]	not in	role[nin]=admin,user	Aucune des valeurs de la liste
-name[regex]	regex	name[regex]=axel	Recherche texte insensible à la casse
-createdAt[gte]	≥	createdAt[gte]=2026-01-01	Date minimum
-createdAt[lte]	≤	createdAt[lte]=2026-01-28	Date maximum
-Les opérateurs gte, lte, gt, lt fonctionnent pour nombres et dates.
-Les opérateurs in et nin acceptent plusieurs valeurs séparées par des virgules.
-$regex est utile pour la recherche texte insensible à la casse.
+- Exemple complet:
+  GET /api/produits?page=1&limit=10&sort=-createdAt&nom[regex]=choco&nom[options]=i&categorieId=ID_CATEGORIE&boutiqueId=ID_BOUTIQUE&prix.prixUnitaire[gte]=100&prix.prixUnitaire[lte]=500
 
-6️⃣ Exemples de requêtes
-Exemple 1 – Filtre simple
-GET /api/users?role=admin&isActive=true
-Récupère tous les utilisateurs actifs avec rôle admin.
-Exemple 2 – Recherche texte
-GET /api/users?email[regex]=axel
-Récupère tous les utilisateurs dont l’email contient “axel”.
-Exemple 3 – Intervalle de dates
-GET /api/users?createdAt[gte]=2026-01-01&createdAt[lte]=2026-01-28
-Récupère les utilisateurs créés entre le 1er et le 28 janvier 2026.
-Exemple 4 – Combinaison complète
-GET /api/users?page=2&limit=5&sort=name,-createdAt&fields=name,email,role&email[regex]=axel&role=boutique&isActive=true&createdAt[gte]=2026-01-01&createdAt[lte]=2026-01-28
-Deuxième page, 5 résultats par page
-Tri par name croissant puis createdAt décroissant
-Affiche seulement name, email, role
-Filtre sur email contenant “axel”, rôle boutique, actif seulement
-Créés entre le 1er et 28 janvier 2026
-7️⃣ Résumé
-Filtrage dynamique : n’importe quel champ du modèle
-Recherche texte : champ[regex]=valeur
-Intervalle : champ[gte]=valeur, champ[lte]=valeur
-Tri : sort=champ1,-champ2
-Pagination : page et limit
-Projection : fields pour choisir les champs à renvoyer
+Resume
+- Filtrage dynamique sur n'importe quel champ du modele
+- Regex: champ[regex]=valeur (+ champ[options]=i)
+- Intervalle: champ[gte]=valeur, champ[lte]=valeur
+- Tri: sort=champ1,-champ2
+- Pagination: page et limit
+- Projection: fields=champ1,champ2

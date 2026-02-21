@@ -1,11 +1,179 @@
-const mongoose = require('mongoose');
+﻿const mongoose = require('mongoose');
 const Panier = require('../models/Panier');
 const Product = require('../models/Produit');
 const Boutique = require('../models/Boutique');
+const Promotion = require('../models/Promotion');
 const authService = require('../services/authService');
+
+const roundCurrency = (value) => Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+
+const getIdValue = (value) => {
+  if (!value) return null;
+  return value._id ? value._id.toString() : value.toString();
+};
+
+const getLatestPrixUnitaire = (produit, fallback = 0) => {
+  if (produit && Array.isArray(produit.prix) && produit.prix.length > 0) {
+    const lastPrix = produit.prix[produit.prix.length - 1];
+    if (lastPrix && lastPrix.prixUnitaire != null) {
+      return Number(lastPrix.prixUnitaire) || 0;
+    }
+  }
+  return Number(fallback) || 0;
+};
+
+const applyPromotionsToPanier = async (panier, options = {}) => {
+  if (!panier) {
+    return panier;
+  }
+
+  const items = Array.isArray(panier.produitsachete) ? panier.produitsachete : [];
+  if (items.length === 0) {
+    panier.remiseAcheteur = 0;
+    panier.sousTotal = 0;
+    panier.total = roundCurrency((panier.fraisLivraison || 0));
+    panier.qtt = 0;
+    return panier;
+  }
+
+  const session = options.session;
+  const now = options.now || new Date();
+  const productIds = items.map((item) => getIdValue(item.produit)).filter(Boolean);
+
+  if (!productIds.length) {
+    panier.remiseAcheteur = 0;
+    panier.sousTotal = 0;
+    panier.total = roundCurrency((panier.fraisLivraison || 0));
+    panier.qtt = 0;
+    return panier;
+  }
+
+  let productsQuery = Product.find({ _id: { $in: productIds } })
+    .select('prix boutiqueId')
+    .lean();
+  if (session) {
+    productsQuery = productsQuery.session(session);
+  }
+  const produits = await productsQuery;
+  const produitById = new Map(produits.map((produit) => [produit._id.toString(), produit]));
+
+  let productPromosQuery = Promotion.find({
+    categorie: 'produit',
+    produitId: { $in: productIds },
+    dateDebut: { $lte: now },
+    dateFin: { $gte: now }
+  }).select('taux produitId').lean();
+  if (session) {
+    productPromosQuery = productPromosQuery.session(session);
+  }
+  const promotionsProduit = await productPromosQuery;
+  const tauxByProduit = new Map();
+  promotionsProduit.forEach((promotion) => {
+    const produitId = getIdValue(promotion.produitId);
+    if (!produitId) return;
+    const taux = Number(promotion.taux) || 0;
+    const existing = tauxByProduit.get(produitId) || 0;
+    if (taux > existing) {
+      tauxByProduit.set(produitId, taux);
+    }
+  });
+
+  let sousTotal = 0;
+  const sousTotalByBoutique = new Map();
+
+  items.forEach((item) => {
+    const produitId = getIdValue(item.produit);
+    const produit = produitId ? produitById.get(produitId) : null;
+    const basePrice = getLatestPrixUnitaire(produit, item.prixUnitaire);
+    const taux = produitId ? (tauxByProduit.get(produitId) || 0) : 0;
+    const prixApplique = roundCurrency(basePrice * (1 - taux / 100));
+
+    item.prixUnitaire = prixApplique;
+    item.sousTotal = roundCurrency(prixApplique * (item.qtt || 0));
+
+    sousTotal += item.sousTotal;
+
+    const boutiqueId = produit && produit.boutiqueId ? produit.boutiqueId.toString() : null;
+    if (boutiqueId) {
+      sousTotalByBoutique.set(boutiqueId, (sousTotalByBoutique.get(boutiqueId) || 0) + item.sousTotal);
+    }
+  });
+
+  sousTotal = roundCurrency(sousTotal);
+
+  let remiseAcheteur = 0;
+  const acheteurId = getIdValue(panier.userId);
+  if (acheteurId) {
+    let acheteurPromosQuery = Promotion.find({
+      categorie: 'acheteur',
+      acheteurId,
+      dateDebut: { $lte: now },
+      dateFin: { $gte: now }
+    }).select('taux boutiqueId createdBy').lean();
+    if (session) {
+      acheteurPromosQuery = acheteurPromosQuery.session(session);
+    }
+    const promotionsAcheteur = await acheteurPromosQuery;
+
+    if (promotionsAcheteur.length) {
+      const creatorIds = promotionsAcheteur
+        .filter((promo) => !promo.boutiqueId && promo.createdBy)
+        .map((promo) => promo.createdBy);
+
+      const boutiquesByCreator = new Map();
+      if (creatorIds.length) {
+        let boutiquesQuery = Boutique.find({ locataire: { $in: creatorIds } })
+          .select('_id locataire')
+          .lean();
+        if (session) {
+          boutiquesQuery = boutiquesQuery.session(session);
+        }
+        const boutiques = await boutiquesQuery;
+        boutiques.forEach((boutique) => {
+          (boutique.locataire || []).forEach((locataireId) => {
+            const key = locataireId.toString();
+            if (!boutiquesByCreator.has(key)) {
+              boutiquesByCreator.set(key, new Set());
+            }
+            boutiquesByCreator.get(key).add(boutique._id.toString());
+          });
+        });
+      }
+
+      promotionsAcheteur.forEach((promotion) => {
+        let eligibleSubtotal = sousTotal;
+        if (promotion.boutiqueId) {
+          eligibleSubtotal = sousTotalByBoutique.get(promotion.boutiqueId.toString()) || 0;
+        } else if (promotion.createdBy) {
+          const boutiqueSet = boutiquesByCreator.get(promotion.createdBy.toString());
+          if (boutiqueSet && boutiqueSet.size) {
+            eligibleSubtotal = 0;
+            boutiqueSet.forEach((boutiqueId) => {
+              eligibleSubtotal += sousTotalByBoutique.get(boutiqueId) || 0;
+            });
+          }
+        }
+
+        const remise = eligibleSubtotal * ((Number(promotion.taux) || 0) / 100);
+        if (remise > remiseAcheteur) {
+          remiseAcheteur = remise;
+        }
+      });
+    }
+  }
+
+  remiseAcheteur = roundCurrency(remiseAcheteur);
+
+  panier.remiseAcheteur = remiseAcheteur;
+  panier.sousTotal = sousTotal;
+  panier.total = roundCurrency(Math.max(0, sousTotal - remiseAcheteur + (panier.fraisLivraison || 0)));
+  panier.qtt = items.reduce((total, item) => total + (item.qtt || 0), 0);
+
+  return panier;
+};
 /**
- * GET - Récupérer le panier actif de l'utilisateur
- * Le panier actif est celui à l'état "panier" ET qui n'a pas été payé
+ * GET - RÃ©cupÃ©rer le panier actif de l'utilisateur
+ * Le panier actif est celui Ã  l'Ã©tat "panier" ET qui n'a pas Ã©tÃ© payÃ©
  */
 exports.getPanier = async (req, res) => {
   try {
@@ -18,7 +186,7 @@ exports.getPanier = async (req, res) => {
       });
     }
 
-    // Chercher le panier actif (non validé, non payé)
+    // Chercher le panier actif (non validÃ©, non payÃ©)
     // IMPORTANT : statut 'panier' ET isActive: true, ignore expiresAt
     let panier = await Panier.findOne({
       userId,
@@ -42,18 +210,22 @@ exports.getPanier = async (req, res) => {
         islivre: false,
         isActive: true
       };
+    } else {
+      await applyPromotionsToPanier(panier);
+      await panier.save();
+      await panier.populate('produitsachete.produit', 'nom photo prix');
     }
 
     res.status(200).json({
       success: true,
-      message: 'Panier récupéré avec succès',
+      message: 'Panier rÃ©cupÃ©rÃ© avec succÃ¨s',
       data: panier
     });
   } catch (error) {
     console.error('Erreur getPanier:', error);
     res.status(500).json({
       success: false,
-      message: 'Erreur lors de la récupération du panier',
+      message: 'Erreur lors de la rÃ©cupÃ©ration du panier',
       error: error.message
     });
   }
@@ -70,31 +242,37 @@ exports.getCommande = async (req, res) => {
       });
     }
 
-    // Chercher le panier actif (non validé, non payé)
+    // Chercher le panier actif (non validÃ©, non payÃ©)
     // Pour le statut "panier", on ignore expiresAt (pas d'expiration)
     let panier = await Panier.findOne({
       userId,
       statut: 'en_attente',
       isActive: false
     }).populate('produitsachete.produit', 'nom photo prix');
+
+    if (panier) {
+      await applyPromotionsToPanier(panier);
+      await panier.save();
+      await panier.populate('produitsachete.produit', 'nom photo prix');
+    }
     res.status(200).json({
       success: true,
-      message: 'Commande récupéré avec succès',
+      message: 'Commande rÃ©cupÃ©rÃ© avec succÃ¨s',
       data: panier
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Erreur lors de la récupération du commande',
+      message: 'Erreur lors de la rÃ©cupÃ©ration du commande',
       error: error.message
     });
   }
 };
 
 /**
- * POST - Ajouter un produit au panier (ou à un panier existant)
- * Si un panier actif existe déjà, on ajoute le produit dedans
- * Si le produit existe déjà dans le panier, on augmente la quantité
+ * POST - Ajouter un produit au panier (ou Ã  un panier existant)
+ * Si un panier actif existe dÃ©jÃ , on ajoute le produit dedans
+ * Si le produit existe dÃ©jÃ  dans le panier, on augmente la quantitÃ©
  */
 exports.addToPanier = async (req, res) => {
   const session = await mongoose.startSession();
@@ -118,11 +296,11 @@ exports.addToPanier = async (req, res) => {
       session.endSession();
       return res.status(400).json({
         success: false,
-        message: 'La quantité doit être au moins 1'
+        message: 'La quantitÃ© doit Ãªtre au moins 1'
       });
     }
 
-    // Récupérer le produit
+    // RÃ©cupÃ©rer le produit
     const produit = await Product.findById(productId).session(session);
     if (!produit) {
       await session.abortTransaction();
@@ -133,7 +311,7 @@ exports.addToPanier = async (req, res) => {
       });
     }
 
-    // Trouver la variante appropriée
+    // Trouver la variante appropriÃ©e
     let variant = produit.variant && produit.variant.length > 0 ? produit.variant[0] : null;
     
     if (!variant) {
@@ -145,23 +323,23 @@ exports.addToPanier = async (req, res) => {
       });
     }
 
-    // Vérifier le stock disponible
+    // VÃ©rifier le stock disponible
     const availableStock = (variant.qtt || 0) - (variant.reserved || 0);
     if (availableStock < quantity) {
       await session.abortTransaction();
       session.endSession();
       return res.status(400).json({
         success: false,
-        message: `Stock insuffisant. Disponible: ${availableStock}, Demandé: ${quantity}`
+        message: `Stock insuffisant. Disponible: ${availableStock}, DemandÃ©: ${quantity}`
       });
     }
 
-    // Réserver le stock
+    // RÃ©server le stock
     variant.reserved = (variant.reserved || 0) + quantity;
     await produit.save({ session });
 
     // Chercher le panier actif de l'utilisateur
-    // IMPORTANT : statut 'panier' ET isActive: true pour récupérer le bon panier
+    // IMPORTANT : statut 'panier' ET isActive: true pour rÃ©cupÃ©rer le bon panier
     let panier = await Panier.findOne({
       userId,
       statut: 'panier',
@@ -169,13 +347,13 @@ exports.addToPanier = async (req, res) => {
       isPaye: false
     }).session(session);
 
-    // Récupérer le prix du produit
+    // RÃ©cupÃ©rer le prix du produit
     const prixUnitaire = produit.prix && produit.prix.length > 0 
       ? produit.prix[produit.prix.length - 1].prixUnitaire 
       : 0;
 
     if (!panier) {
-      // Créer un nouveau panier avec numéro de commande
+      // CrÃ©er un nouveau panier avec numÃ©ro de commande
       const count = await Panier.countDocuments().session(session);
       const numeroCommande = `CMD-${Date.now()}-${String(count + 1).padStart(4, '0')}`;
       
@@ -191,13 +369,13 @@ exports.addToPanier = async (req, res) => {
       });
     }
 
-    // Vérifier si le produit existe déjà dans le panier
+    // VÃ©rifier si le produit existe dÃ©jÃ  dans le panier
     const existingItemIndex = panier.produitsachete.findIndex(
       item => item.produit.toString() === productId
     );
 
     if (existingItemIndex !== -1) {
-      // Produit existe : augmenter la quantité
+      // Produit existe : augmenter la quantitÃ©
       const oldQuantity = panier.produitsachete[existingItemIndex].qtt;
       panier.produitsachete[existingItemIndex].qtt = oldQuantity + quantity;
       panier.produitsachete[existingItemIndex].sousTotal = 
@@ -212,27 +390,18 @@ exports.addToPanier = async (req, res) => {
       });
     }
 
-    // Recalculer les totaux
-    panier.sousTotal = panier.produitsachete.reduce((total, item) => {
-      return total + (item.sousTotal || 0);
-    }, 0);
-    
-    panier.total = panier.sousTotal + (panier.fraisLivraison || 0);
-    
-    panier.qtt = panier.produitsachete.reduce((total, item) => {
-      return total + item.qtt;
-    }, 0);
+    await applyPromotionsToPanier(panier, { session });
 
     await panier.save({ session });
     await session.commitTransaction();
     session.endSession();
 
-    // Repeupler les produits pour la réponse
+    // Repeupler les produits pour la rÃ©ponse
     await panier.populate('produitsachete.produit', 'nom photo prix');
 
     res.status(200).json({
       success: true,
-      message: `Produit ajouté au panier avec succès (quantité: ${quantity})`,
+      message: `Produit ajoutÃ© au panier avec succÃ¨s (quantitÃ©: ${quantity})`,
       data: panier
     });
 
@@ -249,7 +418,7 @@ exports.addToPanier = async (req, res) => {
 };
 
 /**
- * PUT - Mettre à jour la quantité d'un produit dans le panier
+ * PUT - Mettre Ã  jour la quantitÃ© d'un produit dans le panier
  */
 exports.updateQuantite = async (req, res) => {
   try {
@@ -263,64 +432,58 @@ exports.updateQuantite = async (req, res) => {
 
     const { productId } = req.params;
     const { quantity } = req.body;
-    
+
     if (!quantity || quantity < 1) {
       return res.status(400).json({
         success: false,
-        message: 'Quantité invalide (minimum 1)'
+        message: 'Quantite invalide (minimum 1)'
       });
     }
-    
-    // Récupérer le panier actif
+
     const panier = await Panier.findOne({
       userId,
       statut: 'panier',
       isActive: true
     });
-    
+
     if (!panier) {
       return res.status(404).json({
         success: false,
-        message: 'Panier non trouvé'
+        message: 'Panier non trouve'
       });
     }
-    
-    // Chercher le produit dans le panier
+
     const itemIndex = panier.produitsachete.findIndex(
       item => item.produit.toString() === productId
     );
-    
+
     if (itemIndex === -1) {
       return res.status(404).json({
         success: false,
-        message: 'Produit non trouvé dans le panier 1'
+        message: 'Produit non trouve dans le panier'
       });
     }
-    
-    // Vérifier le stock disponible pour la nouvelle quantité
+
     const currentQuantity = panier.produitsachete[itemIndex].qtt;
     const quantityDifference = quantity - currentQuantity;
-    
+
     if (quantityDifference > 0) {
-      // On augmente : vérifier le stock disponible
       const produit = await Product.findById(productId);
       if (produit && produit.variant && produit.variant.length > 0) {
         const variant = produit.variant[0];
         const availableStock = (variant.qtt || 0) - (variant.reserved || 0);
-        
+
         if (availableStock < quantityDifference) {
           return res.status(400).json({
             success: false,
-            message: `Stock insuffisant. Seulement ${availableStock} articles supplémentaires disponibles`
+            message: `Stock insuffisant. Seulement ${availableStock} articles supplementaires disponibles`
           });
         }
-        
-        // Ajuster la réservation
+
         variant.reserved = (variant.reserved || 0) + quantityDifference;
         await produit.save();
       }
     } else if (quantityDifference < 0) {
-      // On diminue : libérer la réservation
       const produit = await Product.findById(productId);
       if (produit && produit.variant && produit.variant.length > 0) {
         const variant = produit.variant[0];
@@ -328,36 +491,26 @@ exports.updateQuantite = async (req, res) => {
         await produit.save();
       }
     }
-    
-    // Mettre à jour la quantité et le sous-total
+
     panier.produitsachete[itemIndex].qtt = quantity;
-    panier.produitsachete[itemIndex].sousTotal = 
+    panier.produitsachete[itemIndex].sousTotal =
       quantity * panier.produitsachete[itemIndex].prixUnitaire;
-    
-    // Recalculer les totaux
-    panier.sousTotal = panier.produitsachete.reduce((total, item) => {
-      return total + (item.sousTotal || 0);
-    }, 0);
-    
-    panier.total = panier.sousTotal + (panier.fraisLivraison || 0);
-    
-    panier.qtt = panier.produitsachete.reduce((total, item) => {
-      return total + item.qtt;
-    }, 0);
-    
+
+    await applyPromotionsToPanier(panier);
+
     await panier.save();
     await panier.populate('produitsachete.produit', 'nom photo prix');
-    
+
     res.status(200).json({
       success: true,
-      message: 'Quantité mise à jour avec succès',
+      message: 'Quantite mise a jour avec succes',
       data: panier
     });
   } catch (error) {
     console.error('Erreur updateQuantite:', error);
     res.status(500).json({
       success: false,
-      message: 'Erreur lors de la mise à jour de la quantité',
+      message: 'Erreur lors de la mise a jour de la quantite',
       error: error.message
     });
   }
@@ -377,73 +530,59 @@ exports.removeFromPanier = async (req, res) => {
     }
 
     const { productId } = req.params;
-    
-    // Récupérer le panier actif
+
     const panier = await Panier.findOne({
       userId,
       statut: 'panier',
       isActive: true
     });
-    
+
     if (!panier) {
       return res.status(404).json({
         success: false,
-        message: 'Panier non trouvé'
+        message: 'Panier non trouve'
       });
     }
-    
-    // Chercher le produit à supprimer pour libérer la réservation
+
     const itemToRemove = panier.produitsachete.find(
       item => item.produit.toString() === productId
     );
-    
+
     if (!itemToRemove) {
       return res.status(404).json({
         success: false,
-        message: 'Produit non trouvé dans le panier2'
+        message: 'Produit non trouve dans le panier'
       });
     }
-    
-    // Libérer la réservation du stock
+
     const produit = await Product.findById(productId);
     if (produit && produit.variant && produit.variant.length > 0) {
       const variant = produit.variant[0];
       variant.reserved = Math.max(0, (variant.reserved || 0) - itemToRemove.qtt);
       await produit.save();
     }
-    
-    // Supprimer le produit du panier
+
     panier.produitsachete = panier.produitsachete.filter(
       item => item.produit.toString() !== productId
     );
-    
-    // Recalculer les totaux
-    panier.sousTotal = panier.produitsachete.reduce((total, item) => {
-      return total + (item.sousTotal || 0);
-    }, 0);
-    
-    panier.total = panier.sousTotal + (panier.fraisLivraison || 0);
-    
-    panier.qtt = panier.produitsachete.reduce((total, item) => {
-      return total + item.qtt;
-    }, 0);
-    
-    // Si panier vide, le supprimer
+
     if (panier.produitsachete.length === 0) {
       await Panier.deleteOne({ _id: panier._id });
       return res.status(200).json({
         success: true,
-        message: 'Produit supprimé et panier vidé',
+        message: 'Produit supprime et panier vide',
         data: null
       });
     }
-    
+
+    await applyPromotionsToPanier(panier);
+
     await panier.save();
     await panier.populate('produitsachete.produit', 'nom photo prix');
-    
+
     res.status(200).json({
       success: true,
-      message: 'Produit supprimé du panier avec succès',
+      message: 'Produit supprime du panier avec succes',
       data: panier
     });
   } catch (error) {
@@ -457,7 +596,7 @@ exports.removeFromPanier = async (req, res) => {
 };
 
 /**
- * DELETE - Vider complètement le panier
+ * DELETE - Vider completement le panier
  */
 exports.viderPanier = async (req, res) => {
   try {
@@ -469,7 +608,7 @@ exports.viderPanier = async (req, res) => {
       });
     }
 
-    // Récupérer le panier actif
+    // RÃ©cupÃ©rer le panier actif
     const panier = await Panier.findOne({
       userId,
       statut: 'panier',
@@ -479,11 +618,11 @@ exports.viderPanier = async (req, res) => {
     if (!panier) {
       return res.status(404).json({
         success: false,
-        message: 'Panier non trouvé'
+        message: 'Panier non trouvÃ©'
       });
     } 
     
-    // Libérer le stock pour tous les produits
+    // LibÃ©rer le stock pour tous les produits
     for (const item of panier.produitsachete) {
       const produit = await Product.findById(item.produit);
       if (produit && produit.variant && produit.variant.length > 0) {
@@ -498,7 +637,7 @@ exports.viderPanier = async (req, res) => {
     
     res.status(200).json({
       success: true,
-      message: 'Panier vidé et supprimé avec succès',
+      message: 'Panier vidÃ© et supprimÃ© avec succÃ¨s',
       data: null
     });
   } catch (error) {
@@ -512,7 +651,7 @@ exports.viderPanier = async (req, res) => {
 };
 
 /**
- * POST - Valider/Confirmer la commande (passer de "panier" à "en_attente")
+ * POST - Valider/Confirmer la commande (passer de "panier" Ã  "en_attente")
  */
 exports.validerPanier = async (req, res) => {
   try {
@@ -524,7 +663,7 @@ exports.validerPanier = async (req, res) => {
       });
     }
 
-    // Récupérer le panier actif
+    // RÃ©cupÃ©rer le panier actif
     const panier = await Panier.findOne({
       userId,
       statut: 'panier',
@@ -534,7 +673,7 @@ exports.validerPanier = async (req, res) => {
     if (!panier) {
       return res.status(404).json({
         success: false,
-        message: 'Panier non trouvé ou vide'
+        message: 'Panier non trouvÃ© ou vide'
       });
     }
 
@@ -544,17 +683,19 @@ exports.validerPanier = async (req, res) => {
         message: 'Impossible de valider un panier vide'
       });
     }
+
+    await applyPromotionsToPanier(panier);
     
-    // Changer le statut à "en_attente" (commande confirmée, en attente de paiement)
+    // Changer le statut Ã  "en_attente" (commande confirmÃ©e, en attente de paiement)
     panier.statut = 'en_attente';
-    panier.isActive = false; // Marquer le panier comme non-actif (fin de l'édition)
+    panier.isActive = false; // Marquer le panier comme non-actif (fin de l'Ã©dition)
     
     await panier.save();
     await panier.populate('produitsachete.produit', 'nom photo prix');
     
     res.status(200).json({
       success: true,
-      message: 'Commande validée avec succès. En attente de paiement.',
+      message: 'Commande validÃ©e avec succÃ¨s. En attente de paiement.',
       data: panier
     });
   } catch (error) {
@@ -568,7 +709,7 @@ exports.validerPanier = async (req, res) => {
 };
 
 /**
- * POST - Mettre à jour la commande avec adresse et méthode de paiement
+ * POST - Mettre Ã  jour la commande avec adresse et mÃ©thode de paiement
  */
 exports.mettreAJourCommande = async (req, res) => {
   try {
@@ -582,7 +723,7 @@ exports.mettreAJourCommande = async (req, res) => {
       });
     }
 
-    // Récupérer la commande en attente
+    // RÃ©cupÃ©rer la commande en attente
     const panier = await Panier.findOne({
       userId,
       statut: 'en_attente'
@@ -591,11 +732,11 @@ exports.mettreAJourCommande = async (req, res) => {
     if (!panier) {
       return res.status(404).json({
         success: false,
-        message: 'Commande en attente non trouvée'
+        message: 'Commande en attente non trouvÃ©e'
       });
     }
 
-    // Mettre à jour les informations
+    // Mettre Ã  jour les informations
     if (adresseLivraison === null) {
       panier.adresseLivraison = null;
     } else if (adresseLivraison) {
@@ -616,21 +757,21 @@ exports.mettreAJourCommande = async (req, res) => {
     
     res.status(200).json({
       success: true,
-      message: 'Commande mise à jour avec succès',
+      message: 'Commande mise Ã  jour avec succÃ¨s',
       data: panier
     });
   } catch (error) {
     console.error('Erreur miseAJourCommande:', error);
     res.status(500).json({
       success: false,
-      message: 'Erreur lors de la mise à jour de la commande',
+      message: 'Erreur lors de la mise Ã  jour de la commande',
       error: error.message
     });
   }
 };
 
 /**
- * POST - Payer la commande (passer de "en_attente" à "confirmee")
+ * POST - Payer la commande (passer de "en_attente" Ã  "confirmee")
  */
 exports.payerCommande = async (req, res) => {
   try {
@@ -644,7 +785,7 @@ exports.payerCommande = async (req, res) => {
       });
     }
 
-    // Récupérer la commande en attente
+    // RÃ©cupÃ©rer la commande en attente
     const panier = await Panier.findOne({
       userId,
       statut: 'en_attente'
@@ -653,11 +794,11 @@ exports.payerCommande = async (req, res) => {
     if (!panier) {
       return res.status(404).json({
         success: false,
-        message: 'Commande en attente non trouvée'
+        message: 'Commande en attente non trouvÃ©e'
       });
     }
 
-    // Vérifier que l'adresse de livraison est définie
+    // VÃ©rifier que l'adresse de livraison est dÃ©finie
     if (panier.adresseLivraison) {
       const { latitude, longitude } = panier.adresseLivraison;
       if (latitude == null || longitude == null) {
@@ -668,22 +809,25 @@ exports.payerCommande = async (req, res) => {
       }
     }
 
+    await applyPromotionsToPanier(panier);
+    await panier.save();
+
     const paiementReussi = await traiterPaiement(paiementDetails, panier.total);
     
     if (!paiementReussi) {
       return res.status(400).json({
         success: false,
-        message: 'Échec du paiement'
+        message: 'Ã‰chec du paiement'
       });
     }
 
-    // Mettre à jour le statut
+    // Mettre Ã  jour le statut
     panier.statut = 'confirmee';
     panier.isPaye = true;
     panier.datePaiement = new Date();
     panier.methodePaiement=paiementDetails.methode;
     
-    // Calculer la date de livraison (1 jour après paiement)
+    // Calculer la date de livraison (1 jour aprÃ¨s paiement)
     const dateLivraison = new Date();
     dateLivraison.setDate(dateLivraison.getDate() + 1);
     panier.dateLivraison = dateLivraison;
@@ -693,7 +837,7 @@ exports.payerCommande = async (req, res) => {
     
     res.status(200).json({
       success: true,
-      message: 'Paiement effectué avec succès. Commande confirmée.',
+      message: 'Paiement effectuÃ© avec succÃ¨s. Commande confirmÃ©e.',
       data: {
         commande: panier,
         facture: genererFacture(panier)
@@ -724,7 +868,7 @@ exports.annulerCommande = async (req, res) => {
       });
     }
 
-    // Récupérer la commande (panier ou en_attente)
+    // RÃ©cupÃ©rer la commande (panier ou en_attente)
     const panier = await Panier.findOne({
       userId,
       statut: { $in: ['panier', 'en_attente'] }
@@ -733,11 +877,11 @@ exports.annulerCommande = async (req, res) => {
     if (!panier) {
       return res.status(404).json({
         success: false,
-        message: 'Commande à annuler non trouvée'
+        message: 'Commande Ã  annuler non trouvÃ©e'
       });
     }
 
-    // Libérer le stock réservé
+    // LibÃ©rer le stock rÃ©servÃ©
     for (const item of panier.produitsachete) {
       const produit = await Product.findById(item.produit);
       if (produit && produit.variant && produit.variant.length > 0) {
@@ -747,7 +891,7 @@ exports.annulerCommande = async (req, res) => {
       }
     }
 
-    // Mettre à jour le statut
+    // Mettre Ã  jour le statut
     panier.statut = 'annule';
     panier.dateAnnulation = new Date();
     if (motif) {
@@ -759,7 +903,7 @@ exports.annulerCommande = async (req, res) => {
     
     res.status(200).json({
       success: true,
-      message: 'Commande annulée avec succès',
+      message: 'Commande annulÃ©e avec succÃ¨s',
       data: panier
     });
   } catch (error) {
@@ -773,7 +917,7 @@ exports.annulerCommande = async (req, res) => {
 };
 
 /**
- * GET - Récupérer l'historique des commandes d'un utilisateur
+ * GET - RÃ©cupÃ©rer l'historique des commandes d'un utilisateur
  */
 exports.getHistoriqueCommandes = async (req, res) => {
   try {
@@ -795,21 +939,21 @@ exports.getHistoriqueCommandes = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Historique des commandes récupéré avec succès',
+      message: 'Historique des commandes rÃ©cupÃ©rÃ© avec succÃ¨s',
       data: commandes
     });
   } catch (error) {
     console.error('Erreur getHistoriqueCommandes:', error);
     res.status(500).json({
       success: false,
-      message: 'Erreur lors de la récupération de l\'historique',
+      message: 'Erreur lors de la rÃ©cupÃ©ration de l\'historique',
       error: error.message
     });
   }
 };
 
 /**
- * GET - Récupérer une commande par ID
+ * GET - RÃ©cupÃ©rer une commande par ID
  */
 exports.getCommandeById = async (req, res) => {
   try {
@@ -831,7 +975,7 @@ exports.getCommandeById = async (req, res) => {
     if (!commande) {
       return res.status(404).json({
         success: false,
-        message: 'Commande non trouvée'
+        message: 'Commande non trouvÃ©e'
       });
     }
 
@@ -841,20 +985,20 @@ exports.getCommandeById = async (req, res) => {
     if (!isAdmin && ownerId && ownerId !== userId) {
       return res.status(403).json({
         success: false,
-        message: 'Accès refusé'
+        message: 'AccÃ¨s refusÃ©'
       });
     }
 
     res.status(200).json({
       success: true,
-      message: 'Commande récupérée avec succès',
+      message: 'Commande rÃ©cupÃ©rÃ©e avec succÃ¨s',
       data: commande
     });
   } catch (error) {
     console.error('Erreur getCommandeById:', error);
     res.status(500).json({
       success: false,
-      message: 'Erreur lors de la récupération de la commande',
+      message: 'Erreur lors de la rÃ©cupÃ©ration de la commande',
       error: error.message
     });
   }
@@ -972,3 +1116,5 @@ function genererFacture(panier) {
     }
   };
 }
+
+

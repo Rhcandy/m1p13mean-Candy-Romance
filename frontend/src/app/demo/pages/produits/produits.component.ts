@@ -3,12 +3,15 @@ import { ChangeDetectorRef, Component, inject, OnInit } from "@angular/core";
 import { ReactiveFormsModule, FormsModule } from "@angular/forms";
 import { RouterModule } from "@angular/router";
 import { FormBuilder, FormGroup, Validators } from "@angular/forms";
+import { ActivatedRoute } from "@angular/router";
 import { ProductService, Product } from "../../../services/product.service";
 import { ProductDisplayComponent } from "../../../components/product/product-display/product-display.component";
 import { PanierService } from "../../../services/panier.service";
 import { firstValueFrom } from "rxjs";
 import { FavorisService } from "../../../services/favoris.service";
 import { AuthService } from "../../../services/auth.service";
+import { CategorieProduit, CategorieProduitService } from "../../../services/categorie-produit.service";
+import { Boutique, BoutiqueService } from "../../../services/boutique.service";
 
 interface Pagination {
   totalDocs: number;
@@ -18,8 +21,8 @@ interface Pagination {
 }
 
 interface FilterOptions {
-  categories: Array<{ _id: string; nom: string }>;
-  boutiques: Array<{ _id: string; nom: string }>;
+  categories: CategorieProduit[];
+  boutiques: Boutique[];
 }
 
 @Component({
@@ -36,11 +39,14 @@ export class ProduitsComponent implements OnInit {
   private readonly panierService: PanierService = inject(PanierService);
   private readonly favorisService: FavorisService = inject(FavorisService);
   private readonly authService: AuthService = inject(AuthService);
+  private readonly categorieService = inject(CategorieProduitService);
+  private readonly boutiqueService = inject(BoutiqueService);
+  private readonly route = inject(ActivatedRoute);
 
   produits: Product[] = [];
   pagination: Pagination | null = null;
   currentPage = 1;
-  pageSize = 5;
+  pageSize = 10;
 
   // Formulaire de filtres
   filterForm!: FormGroup;
@@ -55,10 +61,24 @@ export class ProduitsComponent implements OnInit {
   panierItemCount = 0;
   private favorisIds = new Set<string>();
 
+  // Informations sur la boutique sélectionnée
+  selectedBoutiqueName: string | null = null;
+
   ngOnInit(): void {
     this.initializeFilterForm();
     this.loadFilterOptions();
+    this.checkQueryParams();
     this.loadProducts();
+  }
+
+  private checkQueryParams(): void {
+    this.route.queryParams.subscribe(params => {
+      // Si on vient de la page boutiques avec un paramètre boutique
+      if (params['boutique']) {
+        this.filterForm.patchValue({ boutiqueId: params['boutique'] });
+        this.selectedBoutiqueName = params['nomBoutique'] || null;
+      }
+    });
   }
 
   private initializeFilterForm(): void {
@@ -76,32 +96,19 @@ export class ProduitsComponent implements OnInit {
   private async loadFilterOptions(): Promise<void> {
     this.isLoadingFilters = true;
     try {
-      // Charger les catégories et boutiques disponibles
-      // Note: Vous devrez peut-être créer des endpoints spécifiques pour ces données
-      // Pour l'instant, nous utilisons des données mock ou les produits existants
-      const categoriesSet = new Set<string>();
-      const boutiquesSet = new Set<string>();
+      const [categories, boutiques] = await Promise.all([
+        firstValueFrom(this.categorieService.getAllCategories()),
+        firstValueFrom(this.boutiqueService.getAllBoutiques())
+      ]);
 
-      // Récupérer tous les produits pour extraire les catégories et boutiques uniques
-      const allProductsResponse = await firstValueFrom(this.productService.getAllProducts({ limit: 5}));
-      if (allProductsResponse) {
-        allProductsResponse.items.forEach(product => {
-          if (product.categorieId) {
-            categoriesSet.add(JSON.stringify(product.categorieId));
-          }
-          if (product.boutiqueId) {
-            boutiquesSet.add(JSON.stringify(product.boutiqueId));
-          }
-        });
-      }
-
-      this.filterOptions.categories = Array.from(categoriesSet).map(cat => JSON.parse(cat));
-      this.filterOptions.boutiques = Array.from(boutiquesSet).map(bout => JSON.parse(bout));
+      this.filterOptions.categories = categories;
+      this.filterOptions.boutiques = boutiques;
       Promise.resolve().then(() => {
         this.cdr.detectChanges();
       });
     } catch (error) {
       console.error('Erreur lors du chargement des options de filtre:', error);
+      this.filterOptions = { categories: [], boutiques: [] };
        this.cdr.detectChanges();
     } finally {
       this.isLoadingFilters = false;
@@ -183,20 +190,24 @@ export class ProduitsComponent implements OnInit {
     }
 
     // Filtre par prix (intervalle)
-    if (formValues.prixMin && formValues.prixMin > 0) {
-      params['prix[gte]'] = formValues.prixMin;
+    const hasPrixMin = formValues.prixMin !== null && formValues.prixMin !== undefined && formValues.prixMin !== '';
+    const prixMin = Number(formValues.prixMin);
+    if (hasPrixMin && !Number.isNaN(prixMin) && prixMin >= 0) {
+      params['prix.prixUnitaire[gte]'] = prixMin;
     }
 
-    if (formValues.prixMax && formValues.prixMax > 0) {
-      params['prix[lte]'] = formValues.prixMax;
+    const hasPrixMax = formValues.prixMax !== null && formValues.prixMax !== undefined && formValues.prixMax !== '';
+    const prixMax = Number(formValues.prixMax);
+    if (hasPrixMax && !Number.isNaN(prixMax) && prixMax >= 0) {
+      params['prix.prixUnitaire[lte]'] = prixMax;
     }
 
     // Tri
     if (formValues.sortBy) {
       const sortOrder = formValues.sortOrder === 'desc' ? '-' : '';
-      params.sort = `${sortOrder}${formValues.sortBy}`;
+      const sortField = formValues.sortBy === 'prix' ? 'prix.prixUnitaire' : formValues.sortBy;
+      params.sort = `${sortOrder}${sortField}`;
     }
-     console.log(params);
     return params;
   }
 
@@ -211,6 +222,14 @@ export class ProduitsComponent implements OnInit {
       sortBy: 'nom',
       sortOrder: 'asc'
     });
+    this.selectedBoutiqueName = null;
+    this.currentPage = 1;
+    this.loadProducts();
+  }
+
+  clearBoutiqueFilter(): void {
+    this.filterForm.patchValue({ boutiqueId: '' });
+    this.selectedBoutiqueName = null;
     this.currentPage = 1;
     this.loadProducts();
   }
@@ -224,6 +243,12 @@ export class ProduitsComponent implements OnInit {
       this.currentPage = page;
       this.loadProducts();
     }
+  }
+
+  onPageSizeChange(): void {
+    this.pageSize = Number(this.pageSize) || 10;
+    this.currentPage = 1;
+    this.loadProducts();
   }
 
   getPagesArray(): number[] {
@@ -251,24 +276,28 @@ export class ProduitsComponent implements OnInit {
   // Méthodes pour gérer l'état des filtres
   hasActiveFilters(): boolean {
     const formValues = this.filterForm.value;
+    const hasPrixMin = formValues.prixMin !== null && formValues.prixMin !== undefined && formValues.prixMin !== '';
+    const hasPrixMax = formValues.prixMax !== null && formValues.prixMax !== undefined && formValues.prixMax !== '';
     return !!(
       formValues.nom?.trim() ||
       formValues.categorieId ||
       formValues.boutiqueId ||
-      (formValues.prixMin && formValues.prixMin > 0) ||
-      (formValues.prixMax && formValues.prixMax > 0)
+      hasPrixMin ||
+      hasPrixMax
     );
   }
 
   getActiveFiltersCount(): number {
     const formValues = this.filterForm.value;
     let count = 0;
+    const hasPrixMin = formValues.prixMin !== null && formValues.prixMin !== undefined && formValues.prixMin !== '';
+    const hasPrixMax = formValues.prixMax !== null && formValues.prixMax !== undefined && formValues.prixMax !== '';
 
     if (formValues.nom?.trim()) count++;
     if (formValues.categorieId) count++;
     if (formValues.boutiqueId) count++;
-    if (formValues.prixMin && formValues.prixMin > 0) count++;
-    if (formValues.prixMax && formValues.prixMax > 0) count++;
+    if (hasPrixMin) count++;
+    if (hasPrixMax) count++;
 
     return count;
   }

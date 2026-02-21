@@ -1,0 +1,88 @@
+<div class="boutiques-container">
+  @if (loading) {
+    <div class="loading-state">
+      <div class="spinner-border text-primary"></div>
+      <p>Chargement des boutiques...</p>
+    </div>
+  } @else if (boutiques.length === 0) {
+    <div class="empty-state">
+      <i class="ti ti-store"></i>
+      <h2>Aucune boutique disponible</h2>
+      <p>Découvrez nos boutiques partenaires prochainement !</p>
+    </div>
+  } @else {
+    <div class="boutiques-grid">
+      @for (boutique of boutiques; track boutique._id) {
+        <div class="boutique-card" (click)="voirProduitsBoutique(boutique)">
+
+          <!-- Header : logo + nom + statut -->
+          <div class="boutique-header">
+            @if (boutique.logo) {
+              <img [src]="boutique.logo" [alt]="boutique.nom" class="boutique-logo">
+            } @else {
+              <div class="boutique-logo-placeholder">
+                <i class="ti ti-building-store"></i>
+              </div>
+            }
+            <div class="boutique-info">
+              <h3>{{ boutique.nom }}</h3>
+              <span class="status-badge" [class.active]="boutique.isActive">
+                {{ boutique.isActive ? 'Ouverte' : 'Fermée' }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Localisation -->
+          @if (boutique.contratlocation?.boxes?.[0]; as box) {
+            <div class="boutique-location">
+              <div class="location-item">
+                <i class="ti ti-hash"></i>
+                <span>Box <strong>{{ box.numRef }}</strong></span>
+              </div>
+              <div class="location-item">
+                <i class="ti ti-building"></i>
+                <span>{{ box.etage }}</span>
+              </div>
+            </div>
+          }
+
+          <!-- Jours d'ouverture -->
+          @if (boutique.contratlocation?.jLocation) {
+            <div class="boutique-jours">
+              <span class="jours-label">
+                <i class="ti ti-calendar"></i> Jours ouverts
+              </span>
+              <div class="jours-list">
+                @for (jour of joursOuverture; track jour.key) {
+                  <span class="jour-badge"
+                        [class.ouvert]="boutique.contratlocation.jLocation[jour.key]"
+                        [class.ferme]="!boutique.contratlocation.jLocation[jour.key]">
+                    {{ jour.label }}
+                  </span>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Contact propriétaire -->
+          @if (boutique.locataire?.[0]?.numtel?.[0]; as phone) {
+            <div class="boutique-contact" (click)="$event.stopPropagation()">
+              <a [href]="'tel:' + phone" class="contact-email">
+                <i class="ti ti-phone"></i> {{ phone }}
+              </a>
+            </div>
+          }
+
+          <!-- Footer -->
+          <div class="boutique-footer">
+            <button class="btn-voir-produits">
+              <i class="ti ti-shopping-cart"></i>
+              Voir les produits
+            </button>
+          </div>
+
+        </div>
+      }
+    </div>
+  }
+</div>

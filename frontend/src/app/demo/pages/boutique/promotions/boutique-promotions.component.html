@@ -1,0 +1,234 @@
+<div class="container-fluid boutique-promotions-page">
+  <div class="row">
+    <div class="col-12">
+      <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+        <h4 class="mb-sm-0">Promotions de ma boutique</h4>
+        <div class="page-title-right">
+          <button type="button" class="btn btn-primary" (click)="openCreateModal()">
+            <i class="ri-add-line me-2"></i>Creer une promotion
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="alert alert-info py-2 mb-3">
+    <i class="ri-lock-line me-1"></i>
+    Seules les promotions creees par votre compte sont affichees ici.
+  </div>
+
+  <div *ngIf="loading" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Chargement...</span>
+    </div>
+  </div>
+
+  <div *ngIf="!loading" class="row mb-3">
+    <div class="col-md-4">
+      <select class="form-select" [(ngModel)]="filters.categorie" (change)="onFilter()" name="filter_categorie">
+        <option value="">Toutes les categories</option>
+        <option value="produit">Produit</option>
+        <option value="acheteur">Acheteur</option>
+      </select>
+    </div>
+  </div>
+
+  <div *ngIf="!loading" class="card">
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-nowrap table-centered mb-0">
+          <thead>
+            <tr>
+              <th>Nom</th>
+              <th>Type</th>
+              <th>Cible</th>
+              <th>Reduction</th>
+              <th>Periode</th>
+              <th>Statut</th>
+              <th>Creee par</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let promotion of promotions">
+              <td>
+                <h6 class="mb-0">{{ promotion.nom }}</h6>
+              </td>
+              <td>
+                <span class="badge bg-{{ getCategorieColor(promotion.categorie) }}">
+                  {{ getCategorieLabel(promotion.categorie) }}
+                </span>
+              </td>
+              <td>
+                <span class="text-muted">{{ getPromotionTargetLabel(promotion) }}</span>
+              </td>
+              <td>
+                <strong>{{ promotion.taux }}%</strong>
+              </td>
+              <td>
+                <small class="text-muted">
+                  Du {{ promotion.dateDebut | date:'dd/MM/yyyy' }}<br>
+                  Au {{ promotion.dateFin | date:'dd/MM/yyyy' }}
+                </small>
+              </td>
+              <td>
+                <span class="badge" [class]="isPromotionActive(promotion) ? 'bg-success' : 'bg-secondary'">
+                  {{ isPromotionActive(promotion) ? 'Active' : 'Inactive' }}
+                </span>
+              </td>
+              <td>
+                <span class="badge bg-soft-primary text-primary">{{ getCreatorLabel(promotion) }}</span>
+              </td>
+              <td>
+                <div class="dropdown">
+                  <button class="btn btn-soft-secondary btn-sm dropdown" type="button" data-bs-toggle="dropdown">
+                    <i class="ri-more-2-fill"></i>
+                  </button>
+                  <ul class="dropdown-menu dropdown-menu-end">
+                    <li>
+                      <button class="dropdown-item" (click)="openEditModal(promotion)">
+                        <i class="ri-edit-line me-2"></i>Modifier
+                      </button>
+                    </li>
+                    <li>
+                      <button class="dropdown-item text-danger" (click)="deletePromotion(promotion._id)">
+                        <i class="ri-delete-bin-line me-2"></i>Supprimer
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+              </td>
+            </tr>
+            <tr *ngIf="promotions.length === 0">
+              <td colspan="8" class="text-center py-4 text-muted">
+                Aucune promotion creee par votre compte.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div *ngIf="pagination.totalPages > 1" class="row mt-3">
+        <div class="col-12">
+          <nav>
+            <ul class="pagination justify-content-center mb-0">
+              <li class="page-item" [class.disabled]="pagination.page <= 1">
+                <button class="page-link" (click)="onPageChange(pagination.page - 1)">Precedent</button>
+              </li>
+              <li *ngFor="let page of getPagesArray()" class="page-item" [class.active]="page === pagination.page">
+                <button class="page-link" (click)="onPageChange(page)">{{ page }}</button>
+              </li>
+              <li class="page-item" [class.disabled]="pagination.page >= pagination.totalPages">
+                <button class="page-link" (click)="onPageChange(pagination.page + 1)">Suivant</button>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div *ngIf="showCreateModal" class="promo-modal-overlay" (click)="closeCreateModal()">
+  <div class="promo-modal-panel" (click)="$event.stopPropagation()">
+    <div class="promo-modal-header">
+      <h5 class="mb-0">Creer une promotion</h5>
+      <button type="button" class="btn-close" aria-label="Close" (click)="closeCreateModal()"></button>
+    </div>
+
+    <div class="promo-modal-body">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Nom</label>
+          <input type="text" class="form-control" [(ngModel)]="createForm.nom" name="create_nom" placeholder="Nom de la promotion">
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Taux (%)</label>
+          <input type="number" class="form-control" min="0" max="100" [(ngModel)]="createForm.taux" name="create_taux">
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Categorie</label>
+          <select class="form-select" [(ngModel)]="createForm.categorie" (change)="onCreateCategorieChange()" name="create_categorie">
+            <option value="produit">Produit</option>
+            <option value="acheteur">Acheteur</option>
+          </select>
+        </div>
+
+        <div class="col-md-6" *ngIf="createForm.categorie === 'produit'">
+          <label class="form-label">Produit cible</label>
+          <select class="form-select" [(ngModel)]="createForm.produitId" name="create_produit">
+            <option value="">Selectionner un produit</option>
+            <option *ngFor="let produit of produits" [value]="produit._id">{{ produit.nom }}</option>
+          </select>
+          <small *ngIf="loadingProduits" class="text-muted">Chargement des produits...</small>
+        </div>
+
+        <div class="col-md-6" *ngIf="createForm.categorie === 'acheteur'">
+          <label class="form-label">ID Acheteur</label>
+          <input type="text" class="form-control" [(ngModel)]="createForm.acheteurId" name="create_acheteur" placeholder="ObjectId de l acheteur">
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Date debut</label>
+          <input type="date" class="form-control" [(ngModel)]="createForm.dateDebut" name="create_date_debut">
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Date fin</label>
+          <input type="date" class="form-control" [(ngModel)]="createForm.dateFin" name="create_date_fin">
+        </div>
+      </div>
+    </div>
+
+    <div class="promo-modal-footer">
+      <button type="button" class="btn btn-light" (click)="closeCreateModal()" [disabled]="creating">Annuler</button>
+      <button type="button" class="btn btn-primary" (click)="createPromotion()" [disabled]="creating">
+        <span *ngIf="!creating">Creer</span>
+        <span *ngIf="creating">Creation...</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div *ngIf="showEditModal" class="promo-modal-overlay" (click)="closeEditModal()">
+  <div class="promo-modal-panel" (click)="$event.stopPropagation()">
+    <div class="promo-modal-header">
+      <h5 class="mb-0">Modifier la promotion</h5>
+      <button type="button" class="btn-close" aria-label="Close" (click)="closeEditModal()"></button>
+    </div>
+
+    <div class="promo-modal-body">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Nom</label>
+          <input type="text" class="form-control" [(ngModel)]="editForm.nom" name="edit_nom">
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Taux (%)</label>
+          <input type="number" class="form-control" min="0" max="100" [(ngModel)]="editForm.taux" name="edit_taux">
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Date debut</label>
+          <input type="date" class="form-control" [(ngModel)]="editForm.dateDebut" name="edit_date_debut">
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Date fin</label>
+          <input type="date" class="form-control" [(ngModel)]="editForm.dateFin" name="edit_date_fin">
+        </div>
+      </div>
+    </div>
+
+    <div class="promo-modal-footer">
+      <button type="button" class="btn btn-light" (click)="closeEditModal()" [disabled]="updating">Annuler</button>
+      <button type="button" class="btn btn-primary" (click)="updatePromotion()" [disabled]="updating">
+        <span *ngIf="!updating">Enregistrer</span>
+        <span *ngIf="updating">Enregistrement...</span>
+      </button>
+    </div>
+  </div>
+</div>
