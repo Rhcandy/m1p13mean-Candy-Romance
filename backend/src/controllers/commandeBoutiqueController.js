@@ -59,7 +59,7 @@ const advancedResults = require('../middlewares/advancedResults');
 exports.getMyBoutiqueCommandes = async (req, res) => {
   try {
     // Récupérer la boutique de l'utilisateur
-    const boutique = await Boutique.findOne({ proprietaire: req.user.userId });
+    const boutique = await Boutique.findOne({ locataire: req.user.userId });
     
     if (!boutique) {
       return res.status(404).json({
@@ -185,7 +185,7 @@ exports.getMyBoutiqueCommandes = async (req, res) => {
 exports.getMyBoutiqueStatistiques = async (req, res) => {
   try {
     // Récupérer la boutique de l'utilisateur
-    const boutique = await Boutique.findOne({ proprietaire: req.user.userId });
+    const boutique = await Boutique.findOne({ locataire: req.user.userId });
     
     if (!boutique) {
       return res.status(404).json({
@@ -421,7 +421,7 @@ exports.getMyBoutiqueStatistiques = async (req, res) => {
 exports.getMyBoutiqueCommandeById = async (req, res) => {
   try {
     // Récupérer la boutique de l'utilisateur
-    const boutique = await Boutique.findOne({ proprietaire: req.user.userId });
+    const boutique = await Boutique.findOne({ locataire: req.user.userId });
     
     if (!boutique) {
       return res.status(404).json({

@@ -7,12 +7,6 @@
     </div>
   </div>
 
-  <!-- Messages -->
-  <div *ngIf="error" class="alert alert-danger alert-dismissible fade show" role="alert">
-    {{ error }}
-    <button type="button" class="btn-close" (click)="error = null"></button>
-  </div>
-
   <div *ngIf="success" class="alert alert-success alert-dismissible fade show" role="alert">
     {{ success }}
     <button type="button" class="btn-close" (click)="success = null"></button>
@@ -25,12 +19,104 @@
     </div>
   </div>
 
-  <!-- Formulaire -->
-  <div *ngIf="!loading && boutique" class="row">
+  <!-- Aucune boutique -->
+  <div *ngIf="!loading && !boutique" class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body text-center py-5">
+          <div class="mb-4">
+            <i class="ri-store-2-line text-primary" style="font-size: 4rem;"></i>
+          </div>
+          <h5 class="card-title mb-3">Vous n'avez pas encore de boutique</h5>
+          <p class="text-muted mb-4">
+            Créez votre boutique pour commencer à vendre vos produits sur la plateforme, chercher votre Box.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Contenu principal -->
+  <div *ngIf="!loading && boutique" class="row g-4">
+
+    <!-- Colonne gauche : Infos + Formulaire -->
     <div class="col-xl-8">
+
+      <!-- Carte : Infos de localisation (lecture seule) -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="card-title mb-0">
+            <i class="ri-map-pin-line me-2 text-primary"></i>Localisation dans le centre
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row g-3" *ngIf="boutique.contratlocation?.boxes?.[0] as box">
+            <div class="col-sm-4">
+              <div class="info-block">
+                <span class="info-label"><i class="ri-hashtag me-1"></i>Numéro Box</span>
+                <span class="info-value fw-semibold text-primary fs-5">{{ box.numRef }}</span>
+              </div>
+            </div>
+            <div class="col-sm-4">
+              <div class="info-block">
+                <span class="info-label"><i class="ri-building-line me-1"></i>Étage</span>
+                <span class="info-value fw-semibold">{{ box.etage }}</span>
+              </div>
+            </div>
+            <div class="col-sm-4">
+              <div class="info-block">
+                <span class="info-label"><i class="ri-ruler-line me-1"></i>Superficie</span>
+                <span class="info-value fw-semibold">{{ box.Superficie }} m²</span>
+              </div>
+            </div>
+          </div>
+
+          <hr class="my-3">
+
+          <!-- Dates de location -->
+          <div class="row g-3" *ngIf="boutique.contratlocation">
+            <div class="col-sm-4">
+              <div class="info-block">
+                <span class="info-label"><i class="ri-calendar-line me-1"></i>Début de location</span>
+                <span class="info-value">{{ boutique.contratlocation.dateDebutLocation | date:'dd/MM/yyyy' }}</span>
+              </div>
+            </div>
+            <div class="col-sm-4">
+              <div class="info-block">
+                <span class="info-label"><i class="ri-calendar-check-line me-1"></i>Fin de location</span>
+                <span class="info-value">{{ boutique.contratlocation.dateFinLocation | date:'dd/MM/yyyy' }}</span>
+              </div>
+            </div>
+            <div class="col-sm-4">
+              <div class="info-block">
+                <span class="info-label"><i class="ri-time-line me-1"></i>Créée le</span>
+                <span class="info-value">{{ boutique.createdAt | date:'dd/MM/yyyy' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <hr class="my-3">
+
+          <!-- Jours d'ouverture -->
+          <div *ngIf="boutique.contratlocation?.jLocation">
+            <span class="info-label d-block mb-2"><i class="ri-door-open-line me-1"></i>Jours d'ouverture</span>
+            <div class="d-flex flex-wrap gap-2">
+              <span *ngFor="let jour of joursOuverture" 
+                    class="badge rounded-pill px-3 py-2"
+                    [ngClass]="boutique.contratlocation.jLocation[jour.key] ? 'badge-jour-ouvert' : 'badge-jour-ferme'">
+                {{ jour.label }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Carte : Formulaire modification -->
       <div class="card">
         <div class="card-header">
-          <h5 class="card-title mb-0">Informations générales</h5>
+          <h5 class="card-title mb-0">
+            <i class="ri-edit-line me-2 text-primary"></i>Modifier les informations
+          </h5>
         </div>
         <div class="card-body">
           <form [formGroup]="boutiqueForm" (ngSubmit)="onSubmit()">
@@ -52,9 +138,9 @@
               </div>
             </div>
 
-            <div class="row mt-4">
+            <div class="row mt-3">
               <div class="col-12">
-                <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                   <button type="submit" 
                           class="btn btn-primary" 
                           [disabled]="saving || boutiqueForm.invalid">
@@ -91,67 +177,43 @@
       </div>
     </div>
 
+    <!-- Colonne droite : Logo + Statut -->
     <div class="col-xl-4">
-      <!-- Logo -->
       <div class="card">
         <div class="card-header">
           <h5 class="card-title mb-0">Logo de la boutique</h5>
         </div>
-        <div class="card-body">
-          <div class="text-center">
-            <div class="avatar-xl bg-light rounded p-1 mb-3">
-              <img [src]="boutique.logo || 'assets/images/boutique-placeholder.png'" 
-                   [alt]="boutique.nom" 
-                   class="img-fluid rounded" 
-                   style="max-height: 120px; max-width: 120px;">
+        <div class="card-body text-center">
+          @if (boutique.logo) {
+            <img [src]="boutique.logo" [alt]="boutique.nom" class="boutique-logo mb-3">
+          } @else {
+            <div class="boutique-logo-placeholder mb-3">
+              <i class="ti ti-building-store"></i>
             </div>
-            <div class="mb-3">
-              <span class="badge" 
-                    [ngClass]="boutique.isActive ? 'bg-success' : 'bg-danger'">
-                {{ boutique.isActive ? 'Active' : 'Inactive' }}
-              </span>
-            </div>
-            <button type="button" 
-                    class="btn btn-soft-primary" 
-                    (click)="document.getElementById('logoInput')?.click()">
-              <i class="ri-image-line me-2"></i>
-              Changer le logo
-            </button>
-            <input type="file" 
-                   id="logoInput" 
-                   style="display: none;" 
-                   accept="image/*" 
-                   (change)="onLogoUpload($event)">
-          </div>
-        </div>
-      </div>
+          }
 
-      <!-- Informations supplémentaires -->
-      <div class="card mt-4">
-        <div class="card-header">
-          <h5 class="card-title mb-0">Informations système</h5>
-        </div>
-        <div class="card-body">
           <div class="mb-3">
-            <label class="form-label text-muted">ID de la boutique</label>
-            <input type="text" class="form-control" [value]="boutique._id" readonly>
+            <span class="badge fs-6 px-3 py-2" 
+                  [ngClass]="boutique.isActive ? 'bg-success' : 'bg-danger'">
+              <i [class]="boutique.isActive ? 'ri-checkbox-circle-line' : 'ri-close-circle-line'" class="me-1"></i>
+              {{ boutique.isActive ? 'Active' : 'Inactive' }}
+            </span>
           </div>
-          <div class="mb-3">
-            <label class="form-label text-muted">Date de création</label>
-            <input type="text" 
-                   class="form-control" 
-                   [value]="boutique.createdAt | date:'dd/MM/yyyy HH:mm'" 
-                   readonly>
-          </div>
-          <div class="mb-3">
-            <label class="form-label text-muted">Dernière mise à jour</label>
-            <input type="text" 
-                   class="form-control" 
-                   [value]="boutique.updatedAt | date:'dd/MM/yyyy HH:mm'" 
-                   readonly>
-          </div>
+
+          <input type="file" 
+                 #logoInput
+                 class="d-none" 
+                 accept="image/*" 
+                 (change)="onLogoUpload($event)">
+          <button type="button" 
+                  class="btn btn-soft-primary w-100" 
+                  (click)="logoInput.click()">
+            <i class="ri-image-line me-2"></i>
+            Changer le logo
+          </button>
         </div>
       </div>
     </div>
+
   </div>
 </div>

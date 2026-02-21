@@ -73,14 +73,7 @@
                           </small>
                         }
 
-                        <!--
-                          CORRECTION BUG STOCK :
-                          On utilise getAvailableStock() qui soustrait les réservations.
-                          Si le résultat est 0 → Rupture
-                          Si > 0 et <= 3 → Stock faible
-                          Si > 3 → Disponible
-                          Le [class.low-stock] et [class.out-of-stock] sont gérés séparément.
-                        -->
+                        
                         <small class="stock-status"
                           [class.low-stock]="getAvailableStock(item.produit) > 0 && getAvailableStock(item.produit) <= 3"
                           [class.out-of-stock]="getAvailableStock(item.produit) === 0">
@@ -131,9 +124,9 @@
                 </td>
 
                 <!-- Supprimer -->
-                <td class="text-center action-cell">
+                <td class="text-center action-cell ">
                   <button
-                    class="btn-remove"
+                    class="btn btn-outline-danger"
                     (click)="removeItem(item)"
                     title="Supprimer cet article">
                     <i class="ti ti-trash"></i>

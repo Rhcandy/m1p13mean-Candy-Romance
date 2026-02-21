@@ -2,19 +2,66 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiService } from './api.service';
 
+export interface PromotionTargetProduit {
+  _id: string;
+  nom: string;
+  photo?: string | null;
+}
+
+export interface PromotionTargetBoutique {
+  _id: string;
+  nom: string;
+  logo?: string | null;
+}
+
+export interface PromotionTargetAcheteur {
+  _id: string;
+  nom: string;
+  email?: string;
+}
+
+export interface PromotionCreator {
+  _id: string;
+  nom?: string;
+  email?: string;
+}
+
 export interface BoutiquePromotion {
   _id: string;
+  nom: string;
+  taux: number;
+  categorie: 'produit' | 'acheteur' | 'boutique';
+  dateDebut: string;
+  dateFin: string;
+  createdBy: string | PromotionCreator;
+  produitId?: string | PromotionTargetProduit | null;
+  boutiqueId?: string | PromotionTargetBoutique | null;
+  acheteurId?: string | PromotionTargetAcheteur | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface BoutiquePromotionQueryParams {
+  page?: number;
+  limit?: number;
+  categorie?: 'produit' | 'acheteur' | 'boutique';
+}
+
+export interface CreateBoutiquePromotionPayload {
   nom: string;
   taux: number;
   categorie: 'produit' | 'acheteur';
   dateDebut: string;
   dateFin: string;
-  createdBy: string;
   produitId?: string;
-  boutiqueId?: string;
   acheteurId?: string;
-  createdAt?: string;
-  updatedAt?: string;
+}
+
+export interface UpdateBoutiquePromotionPayload {
+  nom?: string;
+  taux?: number;
+  dateDebut?: string;
+  dateFin?: string;
 }
 
 export interface PaginationResponse<T> {
@@ -35,21 +82,24 @@ export interface PaginationResponse<T> {
 export class BoutiquePromotionService {
   constructor(private readonly api: ApiService) {}
 
-  getMyBoutiquePromotions(params?: {
-    page?: number;
-    limit?: number;
-    categorie?: 'produit' | 'acheteur';
-  }): Observable<PaginationResponse<BoutiquePromotion>> {
+  private appendQueryParam(queryParams: URLSearchParams, key: string, value: string | number | undefined): void {
+    if (value === undefined || value === null || value === '') {
+      return;
+    }
+    queryParams.append(key, String(value));
+  }
+
+  getMyBoutiquePromotions(params: BoutiquePromotionQueryParams = {}): Observable<PaginationResponse<BoutiquePromotion>> {
     const queryParams = new URLSearchParams();
-    if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.limit) queryParams.append('limit', params.limit.toString());
-    if (params?.categorie) queryParams.append('categorie', params.categorie);
-    
+    this.appendQueryParam(queryParams, 'page', params.page);
+    this.appendQueryParam(queryParams, 'limit', params.limit);
+    this.appendQueryParam(queryParams, 'categorie', params.categorie);
+
     const url = `/promotions/my-boutique${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
     return this.api.get<PaginationResponse<BoutiquePromotion>>(url);
   }
 
-  createMyBoutiquePromotion(promotionData: Partial<BoutiquePromotion>): Observable<{
+  createMyBoutiquePromotion(promotionData: CreateBoutiquePromotionPayload): Observable<{
     success: boolean;
     message: string;
     data: BoutiquePromotion;
@@ -59,7 +109,7 @@ export class BoutiquePromotionService {
 
   updateMyBoutiquePromotion(
     id: string,
-    promotionData: Partial<BoutiquePromotion>
+    promotionData: UpdateBoutiquePromotionPayload
   ): Observable<{
     success: boolean;
     message: string;

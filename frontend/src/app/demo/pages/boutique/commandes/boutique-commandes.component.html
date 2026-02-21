@@ -103,10 +103,10 @@
                 </div>
               </td>
               <td>
-                <strong>{{ commande.totalBoutique | currency:'EUR' }}</strong>
                 <small class="text-muted d-block">
                   ({{ commande.quantiteBoutique }} articles)
                 </small>
+                <strong >{{ commande.totalBoutique | currency:'Ar ' }}</strong>
               </td>
               <td>
                 <span class="badge bg-{{ getStatusColor(commande.statut) }}">
@@ -118,9 +118,9 @@
               </td>
               <td>
                 <button type="button" 
-                        class="btn btn-soft-primary btn-sm" 
+                        class="btn btn-outline-primary btn-sm" 
                         (click)="getCommandeDetails(commande._id)">
-                  <i class="ri-eye-line"></i>
+                  <i class="ti ti-eye"></i>
                 </button>
               </td>
             </tr>
@@ -136,7 +136,7 @@
               <li class="page-item" [class.disabled]="pagination.page <= 1">
                 <button class="page-link" (click)="onPageChange(pagination.page - 1)">Précédent</button>
               </li>
-              <li *ngFor="let page of [].constructor(pagination.totalPages).map((_, i) => i + 1)" 
+              <li *ngFor="let page of getPagesArray()" 
                   class="page-item" 
                   [class.active]="page === pagination.page">
                 <button class="page-link" (click)="onPageChange(page)">{{ page }}</button>

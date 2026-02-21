@@ -1,132 +1,568 @@
 <div class="container-fluid">
-  <div class="row">
+
+  <!-- Header -->
+  <div class="row mb-4">
     <div class="col-12">
       <div class="page-title-box d-sm-flex align-items-center justify-content-between">
         <h4 class="mb-sm-0">Produits de ma Boutique</h4>
-        <div class="page-title-right">
-          <button type="button" class="btn btn-primary">
-            <i class="ri-add-line me-2"></i>Ajouter un produit
-          </button>
-        </div>
+        <button type="button" class="btn btn-primary" (click)="addProduit()">
+          <i class="ri-add-line me-1"></i> Ajouter un produit
+        </button>
       </div>
     </div>
-  </div>
-
-  <!-- Messages d'erreur -->
-  <div *ngIf="error" class="alert alert-danger alert-dismissible fade show" role="alert">
-    {{ error }}
-    <button type="button" class="btn-close" (click)="error = null"></button>
   </div>
 
   <!-- Loading -->
-  <div *ngIf="loading" class="text-center py-5">
-    <div class="spinner-border text-primary" role="status">
-      <span class="visually-hidden">Chargement...</span>
-    </div>
+  <div *ngIf="loading && produits.length === 0" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status"></div>
+    <p class="text-muted mt-2">Chargement des produits...</p>
   </div>
 
-  <!-- Filtres -->
-  <div *ngIf="!loading" class="row mb-3">
-    <div class="col-md-4">
-      <input type="text" 
-             class="form-control" 
-             placeholder="Rechercher par nom..." 
-             [(ngModel)]="filters.nom" 
-             (keyup)="onSearch()">
-    </div>
-    <div class="col-md-4">
-      <select class="form-select" [(ngModel)]="filters.categorieId" (change)="onSearch()">
-        <option value="">Toutes les catégories</option>
-        <!-- Catégories à charger dynamiquement -->
-      </select>
-    </div>
-  </div>
+  <div *ngIf="!loading || produits.length > 0">
 
-  <!-- Tableau des produits -->
-  <div *ngIf="!loading" class="card">
-    <div class="card-body">
-      <div class="table-responsive">
-        <table class="table table-nowrap table-centered mb-0">
-          <thead>
-            <tr>
-              <th>Produit</th>
-              <th>Prix</th>
-              <th>Stock</th>
-              <th>Note</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let produit of produits">
-              <td>
-                <div class="d-flex align-items-center">
-                  <div class="flex-shrink-0">
-                    <img [src]="produit.photo || 'assets/images/product-placeholder.png'" 
-                         [alt]="produit.nom" 
-                         class="avatar-sm rounded">
-                  </div>
-                  <div class="flex-grow-1 ms-2">
-                    <h5 class="mb-0">{{ produit.nom }}</h5>
-                    <p class="text-muted mb-0">{{ produit.description?.substring(0, 50) }}...</p>
-                  </div>
-                </div>
-              </td>
-              <td>
-                {{ produit.prix?.[0]?.prixUnitaire | currency:'EUR' }}
-              </td>
-              <td>
-                {{ produit.variant?.reduce((sum, v) => sum + v.qtt, 0) || 0 }}
-              </td>
-              <td>
-                <div class="d-flex align-items-center">
-                  <span class="me-2">{{ produit.averageRating || 0 }}</span>
-                  <i class="ri-star-fill text-warning"></i>
-                </div>
-              </td>
-              <td>
-                <div class="dropdown">
-                  <button class="btn btn-soft-secondary btn-sm dropdown" type="button" data-bs-toggle="dropdown">
-                    <i class="ri-more-2-fill"></i>
-                  </button>
-                  <ul class="dropdown-menu dropdown-menu-end">
-                    <li>
-                      <button class="dropdown-item">
-                        <i class="ri-edit-line me-2"></i>Modifier
-                      </button>
-                    </li>
-                    <li>
-                      <button class="dropdown-item text-danger" (click)="deleteProduit(produit._id)">
-                        <i class="ri-delete-bin-line me-2"></i>Supprimer
-                      </button>
-                    </li>
-                  </ul>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Pagination -->
-      <div *ngIf="pagination.totalPages > 1" class="row mt-3">
-        <div class="col-12">
-          <nav>
-            <ul class="pagination justify-content-center mb-0">
-              <li class="page-item" [class.disabled]="pagination.page <= 1">
-                <button class="page-link" (click)="onPageChange(pagination.page - 1)">Précédent</button>
-              </li>
-              <li *ngFor="let page of [].constructor(pagination.totalPages).map((_, i) => i + 1)" 
-                  class="page-item" 
-                  [class.active]="page === pagination.page">
-                <button class="page-link" (click)="onPageChange(page)">{{ page }}</button>
-              </li>
-              <li class="page-item" [class.disabled]="pagination.page >= pagination.totalPages">
-                <button class="page-link" (click)="onPageChange(pagination.page + 1)">Suivant</button>
-              </li>
-            </ul>
-          </nav>
+    <!-- Filtres -->
+    <div class="filters-bar mb-4">
+      <div class="row g-3 align-items-center">
+        <div class="col-md-5">
+          <div class="search-input-wrap">
+            <i class="ri-search-line search-icon"></i>
+            <input type="text"
+                   class="form-control search-input"
+                   placeholder="Rechercher un produit..."
+                   [(ngModel)]="filters.nom"
+                   (keyup)="onSearch()">
+          </div>
+        </div>
+        <div class="col-md-4">
+          <select class="form-select" [(ngModel)]="filters.categorieId" (change)="onSearch()">
+            <option value="">Toutes les catégories</option>
+            <option *ngFor="let cat of categories" [value]="cat._id">{{ cat.nom }}</option>
+          </select>
+        </div>
+        <div class="col-md-3 text-end text-muted small">
+          <i class="ri-archive-line me-1"></i>{{ pagination.total }} produit(s)
         </div>
       </div>
+    </div>
+
+    <!-- Tableau -->
+    <div *ngIf="produits.length > 0" class="card shadow-sm border-0">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table produits-table align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th style="width:60px"></th>
+                <th>Produit</th>
+                <th>Catégorie</th>
+                <th>Prix</th>
+                <th>Stock</th>
+                <th style="width:120px" class="text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let produit of produits"
+                  class="produit-row"
+                  (click)="openDetail(produit)">
+
+                <!-- Photo -->
+                <td>
+                  <ng-container *ngIf="produit.photo; else noPhoto">
+                    <img [src]="produit.photo" [alt]="produit.nom" class="produit-thumb">
+                  </ng-container>
+                  <ng-template #noPhoto>
+                    <div class="produit-thumb produit-thumb-placeholder">
+                      <i class="ri-image-line"></i>
+                    </div>
+                  </ng-template>
+                </td>
+
+                <!-- Nom -->
+                <td>
+                  <div class="produit-nom-cell">{{ produit.nom }}</div>
+                  <div *ngIf="produit.description" class="produit-desc-cell">
+                    {{ produit.description | slice:0:55 }}{{ produit.description.length > 55 ? '…' : '' }}
+                  </div>
+                </td>
+
+                <!-- Catégorie -->
+                <td>
+                  <span class="badge bg-info bg-opacity-10 text-dark fw-semibold">
+                    {{ getCategorieNom(produit.categorieId) }}
+                  </span>
+                </td>
+
+                <!-- Prix -->
+                <td class="prix-cell">
+                  {{ produit.prix?.[0]?.prixUnitaire | number }}&nbsp;<span class="currency-label">Ar</span>
+                </td>
+
+                <!-- Stock -->
+                <td>
+                  <span class="badge rounded-pill"
+                        [ngClass]="calculateTotalStock(produit) <= 3 ? 'bg-danger' : 'bg-success'">
+                    {{ calculateTotalStock(produit) }}
+                  </span>
+                </td>
+
+                <!-- Actions -->
+                <td class="text-center" (click)="$event.stopPropagation()">
+                  <button class="btn btn-sm btn-outline-primary me-1"
+                          (click)="editProduit(produit)"
+                          title="Modifier">
+                    <i class="ti ti-pencil"></i>
+                  </button>
+                  <button class="btn btn-sm btn-outline-danger"
+                          (click)="deleteProduit(produit._id)"
+                          title="Supprimer">
+                    <i class="ti ti-trash"></i>
+                  </button>
+                </td>
+
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty state -->
+    <div *ngIf="produits.length === 0 && !loading" class="empty-state">
+      <i class="ri-shopping-bag-line"></i>
+      <h5>Aucun produit trouvé</h5>
+      <p>Ajoutez votre premier produit ou modifiez les filtres.</p>
+      <button class="btn btn-primary mt-2" (click)="addProduit()">
+        <i class="ri-add-line me-1"></i> Ajouter un produit
+      </button>
+    </div>
+
+    <!-- Pagination -->
+    <div *ngIf="pagination.totalPages > 1" class="pagination-wrap mt-4">
+      <nav>
+        <ul class="pagination justify-content-center mb-0">
+          <li class="page-item" [class.disabled]="pagination.page <= 1">
+            <button class="page-link" (click)="onPageChange(pagination.page - 1)">
+              <i class="ri-arrow-left-s-line"></i>
+            </button>
+          </li>
+          <li *ngFor="let p of getPagesArray()" class="page-item" [class.active]="p === pagination.page">
+            <button class="page-link" (click)="onPageChange(p)">{{ p }}</button>
+          </li>
+          <li class="page-item" [class.disabled]="pagination.page >= pagination.totalPages">
+            <button class="page-link" (click)="onPageChange(pagination.page + 1)">
+              <i class="ri-arrow-right-s-line"></i>
+            </button>
+          </li>
+        </ul>
+      </nav>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════
+     OFFCANVAS — FICHE DÉTAIL PRODUIT
+══════════════════════════════════════════════════════ -->
+
+<!-- Backdrop cliquable -->
+<div *ngIf="showDetail" class="detail-backdrop" (click)="closeDetail()"></div>
+
+<div class="detail-offcanvas" [class.detail-offcanvas--open]="showDetail">
+
+  <div class="offcanvas-header border-bottom">
+    <h5 class="offcanvas-title d-flex align-items-center gap-2 mb-0">
+      <i class="ri-file-list-3-line text-primary"></i>
+      Fiche produit
+    </h5>
+    <button type="button" class="btn-close" (click)="closeDetail()"></button>
+  </div>
+
+  <div class="offcanvas-body" *ngIf="selectedProduit">
+
+    <!-- Hero : photo + titre -->
+    <div class="detail-hero mb-4">
+      <div class="detail-photo-wrap">
+        <img *ngIf="selectedProduit.photo"
+             [src]="selectedProduit.photo"
+             [alt]="selectedProduit.nom"
+             class="detail-photo">
+        <div *ngIf="!selectedProduit.photo" class="detail-photo-placeholder">
+          <i class="ri-image-line"></i>
+        </div>
+      </div>
+      <div class="detail-hero-info">
+        <h5 class="mb-1 fw-bold">{{ selectedProduit.nom }}</h5>
+        <span class="badge bg-primary bg-opacity-10 text-primary fw-semibold mb-2">
+          {{ getCategorieNom(selectedProduit.categorieId) }}
+        </span>
+        <!-- Note étoiles -->
+        <div class="d-flex align-items-center gap-1 mt-1" *ngIf="selectedProduit.averageRating > 0">
+          <ng-container *ngFor="let s of [1,2,3,4,5]">
+            <i class="ri-star-fill"
+               [style.color]="s <= selectedProduit.averageRating ? '#f59e0b' : '#e5e7eb'"
+               style="font-size:0.95rem"></i>
+          </ng-container>
+          <span class="ms-1 small text-muted">{{ selectedProduit.averageRating }}/5</span>
+        </div>
+        <div *ngIf="!selectedProduit.averageRating" class="small text-muted mt-1">
+          Pas encore de note
+        </div>
+      </div>
+    </div>
+
+    <!-- Prix & Stock -->
+    <div class="row g-3 mb-4">
+      <div class="col-6">
+        <div class="detail-stat-card">
+          <div class="stat-label">Prix</div>
+          <div class="stat-value text-primary">
+            {{ selectedProduit.prix?.[0]?.prixUnitaire | number }}
+            <span class="stat-unit">Ar</span>
+          </div>
+        </div>
+      </div>
+      <div class="col-6">
+        <div class="detail-stat-card">
+          <div class="stat-label">Stock total</div>
+          <div class="stat-value"
+               [class.text-danger]="calculateTotalStock(selectedProduit) <= 3"
+               [class.text-success]="calculateTotalStock(selectedProduit) > 3">
+            {{ calculateTotalStock(selectedProduit) }}<span class="stat-unit"> unité(s)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Description -->
+    <div *ngIf="selectedProduit.description" class="mb-4">
+      <p class="detail-section-title">Description</p>
+      <p class="text-muted mb-0" style="line-height:1.65">{{ selectedProduit.description }}</p>
+    </div>
+
+    <!-- Variantes -->
+    <div *ngIf="selectedProduit.variant?.length > 0" class="mb-3">
+      <p class="detail-section-title">
+        Variantes
+        <span class="badge bg-secondary ms-1">{{ selectedProduit.variant.length }}</span>
+      </p>
+      <div class="d-flex flex-column gap-2">
+        <div *ngFor="let v of selectedProduit.variant; let i = index"
+             class="variant-detail-card">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="badge bg-primary">{{ i + 1 }}</span>
+            <span class="small fw-semibold"
+                  [class.text-success]="(v.qtt - (v.reserved || 0)) > 2"
+                  [class.text-danger]="(v.qtt - (v.reserved || 0)) <= 2">
+              {{ v.qtt - (v.reserved || 0) }} dispo / {{ v.qtt }} total
+            </span>
+          </div>
+          <div class="d-flex flex-wrap gap-2">
+            <div *ngFor="let attr of getVariantAttrs(v.attributes)" class="variant-attr-chip">
+              <span class="chip-key">{{ attr.key }}</span>
+              <span class="chip-val">{{ attr.value }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="!selectedProduit.variant?.length" class="alert alert-light py-2 small">
+      <i class="ri-information-line me-1"></i>Aucune variante définie.
+    </div>
+
+  </div><!-- /offcanvas-body -->
+
+  <!-- Footer boutons -->
+  <div class="detail-footer border-top" *ngIf="selectedProduit">
+    <button type="button"
+            class="btn btn-danger"
+            (click)="deleteProduit(selectedProduit._id); closeDetail()">
+      <i class="ri-delete-bin-line me-1"></i>Supprimer
+    </button>
+    <button type="button"
+            class="btn btn-primary"
+            (click)="editProduit(selectedProduit); closeDetail()">
+      <i class="ri-edit-line me-1"></i>Modifier
+    </button>
+  </div>
+
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════
+     MODAL AJOUT
+══════════════════════════════════════════════════════ -->
+<div class="modal fade" [class.show]="showAddModal" [class.d-block]="showAddModal"
+     tabindex="-1" [style.background]="showAddModal ? 'rgba(0,0,0,0.5)' : ''">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="ri-add-circle-line text-primary me-2"></i>Ajouter un produit
+        </h5>
+        <button type="button" class="btn-close" (click)="closeAddModal()"></button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Infos générales -->
+        <div class="p-3 bg-light rounded-3 mb-3">
+          <p class="text-uppercase fw-bold text-muted small mb-3">
+            <i class="ri-information-line me-1"></i>Informations générales
+          </p>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Nom du produit <span class="text-danger">*</span></label>
+              <input type="text" class="form-control"
+                     [(ngModel)]="addProduitForm.nom" name="add_nom"
+                     placeholder="Ex: Cherry Blossom Ring">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Prix (Ar) <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <input type="number" class="form-control"
+                       [(ngModel)]="addProduitForm.prix" name="add_prix" min="0" placeholder="0">
+                <span class="input-group-text">Ar</span>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Catégorie <span class="text-danger">*</span></label>
+              <div *ngIf="loadingCategories" class="d-flex align-items-center gap-2">
+                <div class="spinner-border spinner-border-sm text-primary"></div>
+                <small class="text-muted">Chargement...</small>
+              </div>
+              <select *ngIf="!loadingCategories" class="form-select"
+                      [(ngModel)]="addProduitForm.categorieId" name="add_cat">
+                <option value="">Sélectionner une catégorie</option>
+                <option *ngFor="let cat of categories" [value]="cat._id">{{ cat.nom }}</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Photo du produit</label>
+              <input type="file" class="form-control" (change)="onFileSelected($event)" accept="image/*">
+            </div>
+            <div class="col-12">
+              <label class="form-label">Description</label>
+              <textarea class="form-control" rows="2"
+                        [(ngModel)]="addProduitForm.description" name="add_desc"
+                        placeholder="Décrivez votre produit..."></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Variantes -->
+        <div class="p-3 bg-light rounded-3">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <p class="text-uppercase fw-bold text-muted small mb-0">
+              <i class="ri-stack-line me-1"></i>Variantes
+              <span class="fw-normal text-lowercase">(optionnel)</span>
+            </p>
+            <button type="button" class="btn btn-sm btn-outline-primary" (click)="addVariant()">
+              <i class="ti ti-plus"></i>Ajouter
+            </button>
+          </div>
+
+          <div *ngIf="addProduitForm.variant.length === 0" class="alert alert-info py-2 small mb-0">
+            <i class="ti ti-info-circle me-1"></i>
+            Aucune variante. Cliquez "Ajouter" pour définir couleur, taille, etc.
+          </div>
+
+          <div *ngFor="let variant of addProduitForm.variant; let i = index" class="card border mb-2">
+            <div class="card-body p-3">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="badge bg-primary">Variante {{ i + 1 }}</span>
+                <button type="button" class="btn btn-sm btn-outline-danger" (click)="removeVariant(i)">
+                  <i class="ti ti-x"></i>
+                </button>
+              </div>
+
+              <div *ngFor="let attr of variant.attrList; let ai = index"
+                   class="row g-2 mb-2 align-items-center">
+                <div class="col">
+                  <input type="text" class="form-control form-control-sm"
+                         [(ngModel)]="attr.key" [name]="'add_key_'+i+'_'+ai"
+                         placeholder="Attribut (ex: Couleur)">
+                </div>
+                <div class="col">
+                  <input type="text" class="form-control form-control-sm"
+                         [(ngModel)]="attr.value" [name]="'add_val_'+i+'_'+ai"
+                         placeholder="Valeur (ex: Rouge)">
+                </div>
+                <div class="col-auto">
+                  <button type="button" class="btn btn-sm btn-outline-secondary"
+                          (click)="removeAttr(i, ai)">
+                    <i class="ti ti-trash"></i>
+                  </button>
+                </div>
+              </div>
+
+              <button type="button" class="btn btn-sm btn-outline-secondary mb-3"
+                      (click)="addAttr(i)">
+                <i class="ti ti-plus"></i>Ajouter un attribut
+              </button>
+
+              <div class="d-flex align-items-center gap-3 pt-2 border-top">
+                <label class="form-label fw-semibold mb-0">
+                  Quantité <span class="text-danger">*</span>
+                </label>
+                <input type="number" class="form-control form-control-sm" style="width:90px"
+                       [(ngModel)]="variant.qtt" [name]="'add_qtt_'+i" min="1">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeAddModal()">Annuler</button>
+        <button type="button" class="btn btn-primary" (click)="submitNewProduit()" [disabled]="isSubmitting">
+          <span *ngIf="!isSubmitting"><i class="ri-save-line me-1"></i>Ajouter</span>
+          <span *ngIf="isSubmitting">
+            <span class="spinner-border spinner-border-sm me-1"></span>Ajout...
+          </span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════
+     MODAL MODIFICATION
+══════════════════════════════════════════════════════ -->
+<div class="modal fade" [class.show]="showEditModal" [class.d-block]="showEditModal"
+     tabindex="-1" [style.background]="showEditModal ? 'rgba(0,0,0,0.5)' : ''">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="ri-edit-line text-primary me-2"></i>Modifier le produit
+        </h5>
+        <button type="button" class="btn-close" (click)="closeEditModal()"></button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Infos générales -->
+        <div class="p-3 bg-light rounded-3 mb-3">
+          <p class="text-uppercase fw-bold text-muted small mb-3">
+            <i class="ri-information-line me-1"></i>Informations générales
+          </p>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Nom du produit <span class="text-danger">*</span></label>
+              <input type="text" class="form-control"
+                     [(ngModel)]="editProduitForm.nom" name="edit_nom">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Prix (Ar) <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <input type="number" class="form-control"
+                       [(ngModel)]="editProduitForm.prix" name="edit_prix" min="0">
+                <span class="input-group-text">Ar</span>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Catégorie <span class="text-danger">*</span></label>
+              <select class="form-select"
+                      [(ngModel)]="editProduitForm.categorieId" name="edit_cat">
+                <option value="">Sélectionner une catégorie</option>
+                <option *ngFor="let cat of categories" [value]="cat._id">{{ cat.nom }}</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Changer la photo</label>
+              <input type="file" class="form-control"
+                     (change)="onEditFileSelected($event)" accept="image/*">
+              <div *ngIf="editProduitForm.currentPhoto && !editProduitForm.photo" class="mt-2 d-flex align-items-center gap-2">
+                <img [src]="editProduitForm.currentPhoto" [alt]="editProduitForm.nom"
+                     class="rounded" style="width:52px;height:52px;object-fit:cover;border:1px solid #dee2e6">
+                <small class="text-muted">Photo actuelle</small>
+              </div>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Description</label>
+              <textarea class="form-control" rows="2"
+                        [(ngModel)]="editProduitForm.description" name="edit_desc"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Variantes -->
+        <div class="p-3 bg-light rounded-3">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <p class="text-uppercase fw-bold text-muted small mb-0">
+              <i class="ri-stack-line me-1"></i>Variantes
+              <span class="fw-normal text-lowercase">(optionnel)</span>
+            </p>
+            <button type="button" class="btn btn-sm btn-outline-primary" (click)="addEditVariant()">
+              <i class="ti ti-plus"></i>Ajouter
+            </button>
+          </div>
+
+          <div *ngIf="editProduitForm.variant.length === 0" class="alert alert-info py-2 small mb-0">
+            <i class="ti ti-info-circle "></i>Aucune variante définie.
+          </div>
+
+          <div *ngFor="let variant of editProduitForm.variant; let i = index" class="card border mb-2">
+            <div class="card-body p-3">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="badge bg-primary">Variante {{ i + 1 }}</span>
+                <button type="button" class="btn btn-sm btn-outline-danger"
+                        (click)="removeEditVariant(i)">
+                  <i class="ti ti-x "></i>
+                </button>
+              </div>
+
+              <div *ngFor="let attr of variant.attrList; let ai = index"
+                   class="row g-2 mb-2 align-items-center">
+                <div class="col">
+                  <input type="text" class="form-control form-control-sm"
+                         [(ngModel)]="attr.key" [name]="'edit_key_'+i+'_'+ai"
+                         placeholder="Attribut (ex: Couleur)">
+                </div>
+                <div class="col">
+                  <input type="text" class="form-control form-control-sm"
+                         [(ngModel)]="attr.value" [name]="'edit_val_'+i+'_'+ai"
+                         placeholder="Valeur (ex: Rouge)">
+                </div>
+                <div class="col-auto">
+                  <button type="button" class="btn btn-sm btn-outline-secondary"
+                          (click)="removeEditAttr(i, ai)">
+                    <i class="ti ti-trash"></i>
+                  </button>
+                </div>
+              </div>
+
+              <button type="button" class="btn btn-sm btn-outline-secondary mb-3"
+                      (click)="addEditAttr(i)">
+                <i class="ti ti-plus me-1"></i>Ajouter un attribut
+              </button>
+
+              <div class="d-flex align-items-center gap-3 pt-2 border-top">
+                <label class="form-label fw-semibold mb-0">
+                  Quantité <span class="text-danger">*</span>
+                </label>
+                <input type="number" class="form-control form-control-sm" style="width:90px"
+                       [(ngModel)]="variant.qtt" [name]="'edit_qtt_'+i" min="1">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeEditModal()">Annuler</button>
+        <button type="button" class="btn btn-primary" (click)="updateProduit()" [disabled]="isUpdating">
+          <span *ngIf="!isUpdating"><i class="ri-save-line me-1"></i>Enregistrer</span>
+          <span *ngIf="isUpdating">
+            <span class="spinner-border spinner-border-sm me-1"></span>Enregistrement...
+          </span>
+        </button>
+      </div>
+
     </div>
   </div>
 </div>

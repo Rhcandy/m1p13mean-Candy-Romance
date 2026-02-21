@@ -37,6 +37,7 @@ export class LandingComponent implements OnInit, OnDestroy {
   sent        = false;
   currentYear = new Date().getFullYear();
   isAuthenticated = false;
+  isBoutiqueAdmin = false;
 
   contactForm!: FormGroup;
 
@@ -142,6 +143,14 @@ export class LandingComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.isAuthenticated = this.authService.isAuthenticated;
+    this.isBoutiqueAdmin = this.authService.hasRole('admin_boutique');
+    
+    // Rediriger automatiquement les admin_boutique vers leur dashboard
+    if (this.isAuthenticated && this.isBoutiqueAdmin) {
+      this.router.navigate(['/boutique/dashboard']);
+      return;
+    }
+    
     this.contactForm = this.fb.group({
       prenom:  ['', Validators.required],
       nom:     ['', Validators.required],
@@ -187,7 +196,11 @@ export class LandingComponent implements OnInit, OnDestroy {
 
   goToProducts(): void {
     if (this.isAuthenticated) {
-      this.router.navigate(['/produits']);
+      if (this.authService.hasRole('admin_boutique')) {
+        this.router.navigate(['/boutique/produits']);
+      } else {
+        this.router.navigate(['/produits']);
+      }
     } else {
       this.router.navigate(['/login']);
     }
@@ -195,7 +208,11 @@ export class LandingComponent implements OnInit, OnDestroy {
 
   goToDashboard(): void {
     if (this.isAuthenticated) {
-      this.router.navigate(['/default']);
+      if (this.authService.hasRole('admin_boutique')) {
+        this.router.navigate(['/boutique/dashboard']);
+      } else {
+        this.router.navigate(['/default']);
+      }
     } else {
       this.router.navigate(['/login']);
     }
@@ -204,5 +221,6 @@ export class LandingComponent implements OnInit, OnDestroy {
   logout(): void {
     this.authService.logout();
     this.isAuthenticated = false;
+    this.isBoutiqueAdmin = false;
   }
 }

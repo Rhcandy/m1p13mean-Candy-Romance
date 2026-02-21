@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { trigger, transition, style, animate } from '@angular/animations';
 import { AvisService, Avis } from '../../services/avis.service';
 import { forkJoin } from 'rxjs';
+import { NotificationService } from 'src/app/services/notification.service';
 
 interface AvisItem {
   _id: string;
@@ -61,7 +62,10 @@ export class AvisComponent implements OnInit {
     return this.avis.slice(startIndex, endIndex);
   }
 
-  constructor(private readonly avisService: AvisService) {}
+  constructor(
+    private readonly avisService: AvisService,
+    private readonly notificationService: NotificationService
+  ) {}
 
   ngOnInit(): void {
     if (!this.avis || this.avis.length === 0) {
@@ -197,30 +201,29 @@ export class AvisComponent implements OnInit {
   }
 
   openReviewForm(): void {
-    this.reviewError = '';
     if (!this.currentUserId) {
-      this.reviewError = 'Veuillez vous connecter pour laisser un avis.';
+      this.notificationService.warning('Attention !','Veuillez vous connecter pour laisser un avis.');
       return;
     }
     if (!this.canReview) {
-      this.reviewError = 'Vous devez avoir commande ce produit pour laisser un avis.';
+      this.notificationService.warning('Attention !','Vous devez avoir commandé ce produit pour laisser un avis.');
       return;
     }
     if (this.hasReviewed) {
-      this.reviewError = 'Vous avez deja laisse un avis pour ce produit.';
+      this.notificationService.warning('Vous avez déjà laissé un avis pour ce produit.');
       return;
     }
     this.showReviewForm = true;
   }
 
   submitReview(): void {
-    this.reviewError = '';
+      
     if (!this.reviewNote || this.reviewNote < 1 || this.reviewNote > 5) {
-      this.reviewError = 'Veuillez selectionner une note entre 1 et 5.';
+      this.notificationService.warning('Attention !','Veuillez sélectionner une note entre 1 et 5.');
       return;
     }
     if (!this.reviewComment || !this.reviewComment.trim()) {
-      this.reviewError = 'Veuillez ajouter un commentaire.';
+      this.notificationService.warning('Attention !','Veuillez ajouter un commentaire.');
       return;
     }
 

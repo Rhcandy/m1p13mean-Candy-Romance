@@ -46,7 +46,7 @@ export class ProduitsComponent implements OnInit {
   produits: Product[] = [];
   pagination: Pagination | null = null;
   currentPage = 1;
-  pageSize = 5;
+  pageSize = 10;
 
   // Formulaire de filtres
   filterForm!: FormGroup;
@@ -208,7 +208,6 @@ export class ProduitsComponent implements OnInit {
       const sortField = formValues.sortBy === 'prix' ? 'prix.prixUnitaire' : formValues.sortBy;
       params.sort = `${sortOrder}${sortField}`;
     }
-     console.log(params);
     return params;
   }
 
@@ -244,6 +243,12 @@ export class ProduitsComponent implements OnInit {
       this.currentPage = page;
       this.loadProducts();
     }
+  }
+
+  onPageSizeChange(): void {
+    this.pageSize = Number(this.pageSize) || 10;
+    this.currentPage = 1;
+    this.loadProducts();
   }
 
   getPagesArray(): number[] {

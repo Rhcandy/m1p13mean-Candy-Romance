@@ -1,237 +1,218 @@
-<div class="container-fluid">
-  <!-- En-tête avec boutique sélectionnée et bouton de filtre -->
-  <div class="row mb-4">
-    <div class="col-12">
-      @if (selectedBoutiqueName) {
-        <div class="alert alert-info d-flex align-items-center gap-2 mb-3">
-          <i class="ti ti-store"></i>
-          <span>
-            <strong>Boutique sélectionnée:</strong> {{ selectedBoutiqueName }}
-          </span>
-          <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" (click)="clearBoutiqueFilter()">
-            <i class="ti ti-x"></i>
-            Effacer
-          </button>
-        </div>
-      }
-      
-      <div class="d-flex gap-2">
-        <button 
-          type="button" 
-          class="btn btn-outline-primary d-flex align-items-center gap-2"
-          (click)="toggleFilters()"
-          [class.active]="showFilters">
-          <i class="ti ti-filter"></i>
-          Filtres
-          @if (hasActiveFilters()) {
-            <span class="badge bg-primary rounded-pill">{{ getActiveFiltersCount() }}</span>
-          }
-        </button>
-      </div>
-    </div>
-  </div>
+<div class="produits-page-wrapper">
 
-  <!-- Section des filtres -->
-  @if (showFilters) {
-    <div class="row mb-4">
-      <div class="col-12">
-        <div class="card border-0 shadow-sm">
-          <div class="card-body">
-            <h5 class="card-title mb-4">
-              <i class="ti ti-filter me-2"></i>
-              Filtres de recherche
-            </h5>
+  <!-- Contenu principal scrollable -->
+  <div class="produits-page-content">
 
-            <form [formGroup]="filterForm" (ngSubmit)="applyFilters()">
-              <div class="row g-3">
-                <!-- Nom du produit -->
-                <div class="col-md-6 col-lg-3">
-                  <label for="nom" class="form-label">Nom du produit</label>
-                  <div class="input-group">
-                    <span class="input-group-text">
-                      <i class="ti ti-search"></i>
-                    </span>
-                    <input 
-                      type="text" 
-                      class="form-control" 
-                      id="nom" 
-                      placeholder="Rechercher..."
-                      formControlName="nom">
-                  </div>
-                </div>
+    <div class="container-fluid">
 
-                <!-- Catégorie -->
-                <div class="col-md-6 col-lg-3">
-                  <label for="categorieId" class="form-label">Catégorie</label>
-                  <select class="form-select" id="categorieId" formControlName="categorieId">
-                    <option value="">Toutes les catégories</option>
-                    @for (category of filterOptions.categories; track category._id) {
-                      <option [value]="category._id">{{ category.nom }}</option>
-                    }
-                  </select>
-                </div>
-
-                <!-- Boutique -->
-                <div class="col-md-6 col-lg-3">
-                  <label for="boutiqueId" class="form-label">Boutique</label>
-                  <select class="form-select" id="boutiqueId" formControlName="boutiqueId">
-                    <option value="">Toutes les boutiques</option>
-                    @for (boutique of filterOptions.boutiques; track boutique._id) {
-                      <option [value]="boutique._id">{{ boutique.nom }}</option>
-                    }
-                  </select>
-                </div>
-
-                <!-- Prix -->
-                <div class="col-md-6 col-lg-3">
-                  <label class="form-label">Prix (&euro;)</label>
-                  <div class="input-group">
-                    <input 
-                      type="number" 
-                      class="form-control" 
-                      placeholder="Min"
-                      formControlName="prixMin"
-                      min="0">
-                    <span class="input-group-text">-</span>
-                    <input 
-                      type="number" 
-                      class="form-control" 
-                      placeholder="Max"
-                      formControlName="prixMax"
-                      min="0">
-                  </div>
-                </div>
-
-                <!-- Tri -->
-                <div class="col-md-6 col-lg-3">
-                  <label for="sortBy" class="form-label">Trier par</label>
-                  <div class="input-group">
-                    <select class="form-select" id="sortBy" formControlName="sortBy">
-                      <option value="nom">Nom</option>
-                      <option value="createdAt">Date de cr&eacute;ation</option>
-                      <option value="prix">Prix</option>
-                    </select>
-                    <select class="form-select sort-order" formControlName="sortOrder">
-                      <option value="asc">&uarr;</option>
-                      <option value="desc">&darr;</option>
-                    </select>
-                  </div>
-                </div>
-
-                <!-- Boutons d'action -->
-                <div class="col-12">
-                  <div class="d-flex gap-2 justify-content-end">
-                    <button 
-                      type="button" 
-                      class="btn btn-outline-secondary"
-                      (click)="resetFilters()">
-                      <i class="ti ti-refresh me-1"></i>
-                      R&eacute;initialiser
-                    </button>
-                    <button 
-                      type="submit" 
-                      class="btn btn-primary">
-                      <i class="ti ti-search me-1"></i>
-                      Appliquer les filtres
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div>
-  }
-
-  <!-- Contenu principal -->
-  <div class="row">
-    <!-- &Eacute;tat de chargement -->
-    @if (isLoading) {
-      <div class="col-12">
-        <div class="text-center py-5">
-          <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Chargement...</span>
-          </div>
-          <p class="mt-2 text-muted">Chargement des produits...</p>
-        </div>
-      </div>
-    } @else {
-      <!-- Liste des produits -->
-      @if (produits.length > 0) {
-        @for (product of produits; track product._id) {
-          <div class="col-xl-4 col-md-6 mb-4">
-            <app-product-display [product]="product"></app-product-display>
-          </div>
-        }
-      } @else {
+      <!-- En-tête -->
+      <div class="row mb-4">
         <div class="col-12">
-          <div class="text-center py-5">
-            <i class="ti ti-package-off text-muted empty-icon"></i>
-            <h5 class="mt-3 text-muted">Aucun produit trouv&eacute;</h5>
-            <p class="text-muted">Essayez de modifier vos filtres ou crit&egrave;res de recherche</p>
-            <button type="button" class="btn btn-outline-primary" (click)="resetFilters()">
-              R&eacute;initialiser les filtres
+          @if (selectedBoutiqueName) {
+            <div class="alert alert-info d-flex align-items-center gap-2 mb-3">
+              <i class="ti ti-store"></i>
+              <span><strong>Boutique sélectionnée :</strong> {{ selectedBoutiqueName }}</span>
+              <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" (click)="clearBoutiqueFilter()">
+                <i class="ti ti-x"></i> Effacer
+              </button>
+            </div>
+          }
+
+          <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+            <button
+              type="button"
+              class="btn btn-outline-primary d-flex align-items-center gap-2"
+              (click)="toggleFilters()"
+              [class.active]="showFilters">
+              <i class="ti ti-filter"></i>
+              Filtres
+              @if (hasActiveFilters()) {
+                <span class="badge bg-primary rounded-pill">{{ getActiveFiltersCount() }}</span>
+              }
             </button>
+
+            <!-- Sélecteur produits par page -->
+            <div class="d-flex align-items-center gap-2">
+              <label class="form-label mb-0 text-muted small">Produits par page :</label>
+              <select class="form-select form-select-sm per-page-select"
+                      [(ngModel)]="pageSize"
+                      (change)="onPageSizeChange()">
+                <option [value]="6">6</option>
+                <option [value]="10">10</option>
+                <option [value]="20">20</option>
+                <option [value]="50">50</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filtres -->
+      @if (showFilters) {
+        <div class="row mb-4">
+          <div class="col-12">
+            <div class="card border-0 shadow-sm filters-card">
+              <div class="card-body">
+                <h5 class="card-title mb-4">
+                  <i class="ti ti-filter me-2"></i>Filtres de recherche
+                </h5>
+                <form [formGroup]="filterForm" (ngSubmit)="applyFilters()">
+                  <div class="row g-3">
+                    <div class="col-md-6 col-lg-3">
+                      <label for="nom" class="form-label">Nom du produit</label>
+                      <div class="input-group">
+                        <span class="input-group-text"><i class="ti ti-search"></i></span>
+                        <input type="text" class="form-control" id="nom"
+                               placeholder="Rechercher..." formControlName="nom">
+                      </div>
+                    </div>
+
+                    <div class="col-md-6 col-lg-3">
+                      <label for="categorieId" class="form-label">Catégorie</label>
+                      <select class="form-select" id="categorieId" formControlName="categorieId">
+                        <option value="">Toutes les catégories</option>
+                        @for (category of filterOptions.categories; track category._id) {
+                          <option [value]="category._id">{{ category.nom }}</option>
+                        }
+                      </select>
+                    </div>
+
+                    <div class="col-md-6 col-lg-3">
+                      <label for="boutiqueId" class="form-label">Boutique</label>
+                      <select class="form-select" id="boutiqueId" formControlName="boutiqueId">
+                        <option value="">Toutes les boutiques</option>
+                        @for (boutique of filterOptions.boutiques; track boutique._id) {
+                          <option [value]="boutique._id">{{ boutique.nom }}</option>
+                        }
+                      </select>
+                    </div>
+
+                    <div class="col-md-6 col-lg-3">
+                      <label class="form-label">Prix (Ar)</label>
+                      <div class="input-group">
+                        <input type="number" class="form-control" placeholder="Min"
+                               formControlName="prixMin" min="0">
+                        <span class="input-group-text">-</span>
+                        <input type="number" class="form-control" placeholder="Max"
+                               formControlName="prixMax" min="0">
+                      </div>
+                    </div>
+
+                    <div class="col-md-6 col-lg-3">
+                      <label for="sortBy" class="form-label">Trier par</label>
+                      <div class="input-group">
+                        <select class="form-select" id="sortBy" formControlName="sortBy">
+                          <option value="nom">Nom</option>
+                          <option value="createdAt">Date de création</option>
+                          <option value="prix">Prix</option>
+                        </select>
+                        <select class="form-select sort-order" formControlName="sortOrder">
+                          <option value="asc">↑</option>
+                          <option value="desc">↓</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div class="col-12">
+                      <div class="d-flex gap-2 justify-content-end">
+                        <button type="button" class="btn btn-outline-secondary" (click)="resetFilters()">
+                          <i class="ti ti-refresh me-1"></i>Réinitialiser
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                          <i class="ti ti-search me-1"></i>Appliquer les filtres
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            </div>
           </div>
         </div>
       }
-    }
+
+      <!-- Produits -->
+      <div class="row">
+        @if (isLoading) {
+          <div class="col-12">
+            <div class="text-center py-5">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Chargement...</span>
+              </div>
+              <p class="mt-2 text-muted">Chargement des produits...</p>
+            </div>
+          </div>
+        } @else {
+          @if (produits.length > 0) {
+            @for (product of produits; track product._id) {
+              <div class="col-xl-4 col-md-6 mb-4">
+                <app-product-display [product]="product"></app-product-display>
+              </div>
+            }
+          } @else {
+            <div class="col-12">
+              <div class="text-center py-5">
+                <i class="ti ti-package-off text-muted empty-icon"></i>
+                <h5 class="mt-3 text-muted">Aucun produit trouvé</h5>
+                <p class="text-muted">Essayez de modifier vos filtres ou critères de recherche</p>
+                <button type="button" class="btn btn-outline-primary" (click)="resetFilters()">
+                  Réinitialiser les filtres
+                </button>
+              </div>
+            </div>
+          }
+        }
+      </div>
+
+    </div>
   </div>
 
-  <!-- Pagination -->
+  <!-- Pagination fixée en bas -->
   @if (pagination && pagination.totalPages > 1) {
-    <div class="row mt-4">
-      <div class="col-12">
-        <nav aria-label="Pagination des produits">
-          <ul class="pagination justify-content-center align-items-center gap-1">
-            <!-- Bouton Pr&eacute;c&eacute;dent -->
-            <li class="page-item" [class.disabled]="pagination.page <= 1">
-              <a 
-                class="page-link rounded-circle d-flex align-items-center justify-content-center page-nav-btn" 
-                href="#" 
-                (click)="changePage(pagination.page - 1); $event.preventDefault()" 
-                aria-label="Page pr&eacute;c&eacute;dente">
-                <i class="ti ti-chevron-left"></i>
-              </a>
-            </li>
+    <div class="produits-pagination-bar">
+      <div class="container-fluid">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
 
-            <!-- Num&eacute;ros de page -->
-            @for (page of getPagesArray(); track page) {
-              <li class="page-item" [class.active]="page === pagination.page">
-                <a 
-                  class="page-link rounded-circle d-flex align-items-center justify-content-center fw-semibold page-nav-btn" 
-                  href="#" 
-                  (click)="changePage(page); $event.preventDefault()" 
-                  aria-label="Page {{ page }}">
-                  {{ page }}
+          <!-- Boutons pagination -->
+          <nav aria-label="Pagination des produits">
+            <ul class="pagination mb-0 align-items-center gap-1">
+              <li class="page-item" [class.disabled]="pagination.page <= 1">
+                <a class="page-link rounded-circle d-flex align-items-center justify-content-center page-nav-btn"
+                   href="#"
+                   (click)="changePage(pagination.page - 1); $event.preventDefault()"
+                   aria-label="Page précédente">
+                  <i class="ti ti-chevron-left"></i>
                 </a>
               </li>
-            }
 
-            <!-- Bouton Suivant -->
-            <li class="page-item" [class.disabled]="pagination.page >= pagination.totalPages">
-              <a 
-                class="page-link rounded-circle d-flex align-items-center justify-content-center page-nav-btn" 
-                href="#" 
-                (click)="changePage(pagination.page + 1); $event.preventDefault()" 
-                aria-label="Page suivante">
-                <i class="ti ti-chevron-right"></i>
-              </a>
-            </li>
-          </ul>
-        </nav>
+              @for (page of getPagesArray(); track page) {
+                <li class="page-item" [class.active]="page === pagination.page">
+                  <a class="page-link rounded-circle d-flex align-items-center justify-content-center fw-semibold page-nav-btn"
+                     href="#"
+                     (click)="changePage(page); $event.preventDefault()"
+                     aria-label="Page {{ page }}">
+                    {{ page }}
+                  </a>
+                </li>
+              }
 
-        <!-- Informations sur les r&eacute;sultats -->
-        <div class="text-center text-muted mt-3">
-          <small>
-            Page {{ pagination.page }} sur {{ pagination.totalPages }}
-            @if (pagination.totalDocs) {
-              ({{ pagination.totalDocs }} produit{{ pagination.totalDocs > 1 ? 's' : '' }})
-            }
-          </small>
+              <li class="page-item" [class.disabled]="pagination.page >= pagination.totalPages">
+                <a class="page-link rounded-circle d-flex align-items-center justify-content-center page-nav-btn"
+                   href="#"
+                   (click)="changePage(pagination.page + 1); $event.preventDefault()"
+                   aria-label="Page suivante">
+                  <i class="ti ti-chevron-right"></i>
+                </a>
+              </li>
+            </ul>
+          </nav>
+
+          <!-- Placeholder pour équilibrer le flex -->
+          <div style="min-width: 120px;"></div>
+
         </div>
       </div>
     </div>
   }
+
 </div>

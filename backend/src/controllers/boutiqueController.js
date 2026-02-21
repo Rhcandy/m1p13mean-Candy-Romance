@@ -3,6 +3,7 @@ const Box = require('../models/Box');
 const TypeBox = require('../models/TypeBox');
 const advancedResults = require('../middlewares/advancedResults');
 const boutiqueService = require('../services/boutiqueService');
+const authService = require('../services/authService');
 
 /**
  * @swagger
@@ -15,7 +16,7 @@ const boutiqueService = require('../services/boutiqueService');
  *         - dateDebutLocation
  *         - dateFinLocation
  *         - nom
- *         - proprietaire
+ *         - locataire
  *       properties:
  *         _id:
  *           type: string
@@ -304,7 +305,7 @@ exports.createBoutique = async (req, res) => {
  *           enum: [ouverte, fermee, en_attente]
  *         description: Filtrer par statut
  *       - in: query
- *         name: proprietaire
+ *         name: locataire
  *         schema:
  *           type: string
  *         description: Filtrer par propriétaire ID
@@ -359,7 +360,6 @@ exports.createBoutique = async (req, res) => {
  *         description: Erreur serveur
  */
 exports.getAllBoutiques = async (req, res, next) => {
-  // Ajouter un filtre pour ne montrer que les boutiques actives par défaut
   if (!req.query.isActive) {
     req.query.isActive = true;
   }
@@ -373,9 +373,9 @@ exports.getBoutiquesResults = async (req, res) => {
   try {
     // Populer les résultats avec les bons chemins
     const populatedResults = await Boutique.populate(res.advancedResults.items, [
-      { path: 'proprietaire', select: 'nom email' },
+      { path: 'locataire', select: 'nom email numtel' },
       { path: 'contratlocation.boxes', select: 'Superficie etage numRef isDisponible' },
-      { path: 'locataire', select: 'nom email' }
+      { path: 'locataire', select: 'nom email numtel' }
     ]);
 
     res.status(200).json({
@@ -784,7 +784,8 @@ exports.deleteBoutique = async (req, res) => {
  */
 exports.getMyBoutique = async (req, res) => {
   try {
-    const boutique = await Boutique.findOne({ proprietaire: req.user.id })
+    const userId =await authService.getUserIdByToken(req);
+    const boutique = await Boutique.findOne({ locataire: userId })
       .populate('contratlocation.boxes', 'Superficie etage numRef isDisponible typeBoxId')
       .populate('locataire', 'nom email');
 
@@ -828,7 +829,8 @@ exports.getMyBoutique = async (req, res) => {
  */
 exports.updateMyBoutique = async (req, res) => {
   try {
-    const boutique = await Boutique.findOne({ proprietaire: req.user.id });
+     const userId =await authService.getUserIdByToken(req);
+    const boutique = await Boutique.findOne({ locataire: userId });
     
     if (!boutique) {
       return res.status(404).json({
@@ -887,7 +889,8 @@ exports.updateMyBoutique = async (req, res) => {
  */
 exports.deactivateMyBoutique = async (req, res) => {
   try {
-    const boutique = await Boutique.findOne({ proprietaire: req.user.id });
+    const userId =await authService.getUserIdByToken(req);
+    const boutique = await Boutique.findOne({ locataire: userId });
     
     if (!boutique) {
       return res.status(404).json({
@@ -932,7 +935,8 @@ exports.deactivateMyBoutique = async (req, res) => {
  */
 exports.activateMyBoutique = async (req, res) => {
   try {
-    const boutique = await Boutique.findOne({ proprietaire: req.user.id });
+    const userId =await authService.getUserIdByToken(req);
+    const boutique = await Boutique.findOne({ locataire: userId });
     
     if (!boutique) {
       return res.status(404).json({

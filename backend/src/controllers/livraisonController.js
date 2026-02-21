@@ -190,7 +190,7 @@ exports.getCentresDistribution = async (req, res) => {
 exports.getCentreDistributionById = async (req, res) => {
   try {
     const { id } = req.params;
-    const centre = await Centre.findById(id).populate('proprietaire', 'nom email');
+    const centre = await Centre.findById(id).populate('locataire', 'nom email');
 
     if (!centre) {
       return res.status(404).json({
@@ -215,7 +215,7 @@ exports.getCentreDistributionById = async (req, res) => {
 };
 
 /**
- * Mettre a jour les frais de livraison d'un centre (proprietaire ou admin centre)
+ * Mettre a jour les frais de livraison d'un centre (locataire ou admin centre)
  */
 exports.updateCentreFraisLivraison = async (req, res) => {
   try {
@@ -233,8 +233,8 @@ exports.updateCentreFraisLivraison = async (req, res) => {
     const userId = req.user?.userId;
     const roleName = req.user?.roleName;
     const isAdmin = ['admin_centre', 'super_admin'].includes(roleName);
-    const isOwner = Array.isArray(centre.proprietaire)
-      && centre.proprietaire.some((ownerId) => ownerId.toString() === userId);
+    const isOwner = Array.isArray(centre.locataire)
+      && centre.locataire.some((ownerId) => ownerId.toString() === userId);
 
     if (!isAdmin && !isOwner) {
       return res.status(403).json({

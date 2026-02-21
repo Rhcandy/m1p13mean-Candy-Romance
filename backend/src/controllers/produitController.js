@@ -613,7 +613,7 @@ exports.deleteProduit = async (req, res) => {
 exports.getMyBoutiqueProduits = async (req, res) => {
   try {
     // Récupérer la boutique de l'utilisateur
-    const boutique = await Boutique.findOne({ proprietaire: req.user.id });
+    const boutique = await Boutique.findOne({ locataire: req.user.id });
     
     if (!boutique) {
       return res.status(404).json({
@@ -724,7 +724,7 @@ exports.getMyBoutiqueProduits = async (req, res) => {
 exports.createMyBoutiqueProduit = async (req, res) => {
   try {
     // Récupérer la boutique de l'utilisateur
-    const boutique = await Boutique.findOne({ proprietaire: req.user.id });
+    const boutique = await Boutique.findOne({ locataire: req.user.id });
     
     if (!boutique) {
       return res.status(404).json({
@@ -782,7 +782,7 @@ exports.createMyBoutiqueProduit = async (req, res) => {
 exports.updateMyBoutiqueProduit = async (req, res) => {
   try {
     // Récupérer la boutique de l'utilisateur
-    const boutique = await Boutique.findOne({ proprietaire: req.user.id });
+    const boutique = await Boutique.findOne({ locataire: req.user.id });
     
     if (!boutique) {
       return res.status(404).json({
@@ -850,7 +850,7 @@ exports.updateMyBoutiqueProduit = async (req, res) => {
 exports.deleteMyBoutiqueProduit = async (req, res) => {
   try {
     // Récupérer la boutique de l'utilisateur
-    const boutique = await Boutique.findOne({ proprietaire: req.user.id });
+    const boutique = await Boutique.findOne({ locataire: req.user.id });
     
     if (!boutique) {
       return res.status(404).json({

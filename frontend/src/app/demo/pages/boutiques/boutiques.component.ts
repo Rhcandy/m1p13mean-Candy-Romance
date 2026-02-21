@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { BoutiqueService, Boutique } from '../../../services/boutique.service';
+import { BoutiqueService, Boutique, JLocation } from '../../../services/boutique.service';
 import { NotificationService } from '../../../services/notification.service';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -16,6 +16,15 @@ import { takeUntil } from 'rxjs/operators';
 export class BoutiquesComponent implements OnInit, OnDestroy {
   boutiques: Boutique[] = [];
   loading = false;
+  readonly joursOuverture: Array<{ key: keyof JLocation; label: string }> = [
+    { key: 'lundi', label: 'Lun' },
+    { key: 'mardi', label: 'Mar' },
+    { key: 'mercredi', label: 'Mer' },
+    { key: 'jeudi', label: 'Jeu' },
+    { key: 'vendredi', label: 'Ven' },
+    { key: 'samedi', label: 'Sam' },
+    { key: 'dimanche', label: 'Dim' }
+  ];
   private readonly destroy$ = new Subject<void>();
   private readonly cdr = inject(ChangeDetectorRef);
 

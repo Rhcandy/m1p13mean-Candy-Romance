@@ -19,9 +19,13 @@
       @if (!isAuthenticated) {
         <button class="btn-nav-cta" (click)="goToLogin()">Se connecter</button>
         <button class="btn-nav-cta-secondary" (click)="goToRegister()">S'inscrire</button>
+      } @else if (isBoutiqueAdmin) {
+        <button class="btn-nav-cta" (click)="goToProducts()">Mes produits</button>
+        <button class="btn-nav-cta-secondary" (click)="goToDashboard()">Dashboard</button>
+        <button class="btn-nav-cta-danger" (click)="logout()">Se déconnecter</button>
       } @else {
         <button class="btn-nav-cta" (click)="goToProducts()">Voir les produits</button>
-        <button class="btn-nav-cta-secondary" (click)="goToDashboard()">Tableau de bord</button>
+        <button class="btn-nav-cta-secondary" (click)="goToDashboard()">Mon profil</button>
         <button class="btn-nav-cta-danger" (click)="logout()">Se déconnecter</button>
       }
     </div>
@@ -74,14 +78,23 @@
             <i class="ti ti-user"></i>
             <span>Se connecter</span>
           </button>
+        } @else if (isBoutiqueAdmin) {
+          <button class="btn-primary-hero" (click)="goToProducts()">
+            <i class="ti ti-package"></i>
+            <span>Gérer mes produits</span>
+          </button>
+          <button class="btn-secondary-hero" (click)="goToDashboard()">
+            <i class="ti ti-chart-bar"></i>
+            <span>Dashboard</span>
+          </button>
         } @else {
           <button class="btn-primary-hero" (click)="goToProducts()">
             <i class="ti ti-sparkles"></i>
             <span>Voir les produits</span>
           </button>
           <button class="btn-secondary-hero" (click)="goToDashboard()">
-            <i class="ti ti-dashboard"></i>
-            <span>Tableau de bord</span>
+            <i class="ti ti-user"></i>
+            <span>Mon profil</span>
           </button>
         }
       </div>

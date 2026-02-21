@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { CurrencyPipe, DecimalPipe } from '@angular/common';
+import { CommonModule, CurrencyPipe, DecimalPipe } from '@angular/common';
 import { BoutiqueService, Boutique } from '../../../../services/boutique.service';
 import { BoutiqueCommandeService, BoutiqueStats as CommandeStats } from '../../../../services/boutique-commande.service';
 
@@ -7,6 +7,8 @@ import { BoutiqueCommandeService, BoutiqueStats as CommandeStats } from '../../.
   selector: 'app-boutique-dashboard',
   templateUrl: './boutique-dashboard.component.html',
   styleUrls: ['./boutique-dashboard.component.scss'],
+  standalone: true,
+  imports: [CommonModule, CurrencyPipe, DecimalPipe],
   providers: [CurrencyPipe, DecimalPipe]
 })
 export class BoutiqueDashboardComponent implements OnInit {

@@ -35,7 +35,7 @@ export function getNavigationItems(): NavigationItem[] {
           title: 'Dashboard',
           type: 'item',
           classes: 'nav-item',
-          url: '/boutique/dashboard',
+          url: '/default',
           icon: 'ti ti-dashboard',
           breadcrumbs: false
         },
@@ -46,7 +46,7 @@ export function getNavigationItems(): NavigationItem[] {
           classes: 'nav-item',
           url: '/boutique/informations',
           icon: 'ti ti-info-circle',
-          breadcrumbs: false
+          breadcrumbs: true
         },
         {
           id: 'produits-boutique',
@@ -55,7 +55,7 @@ export function getNavigationItems(): NavigationItem[] {
           classes: 'nav-item',
           url: '/boutique/produits',
           icon: 'ti ti-package',
-          breadcrumbs: false
+          breadcrumbs: true
         },
         {
           id: 'promotions',
@@ -64,7 +64,7 @@ export function getNavigationItems(): NavigationItem[] {
           classes: 'nav-item',
           url: '/boutique/promotions',
           icon: 'ti ti-discount',
-          breadcrumbs: false
+          breadcrumbs: true
         },
         {
           id: 'commandes-boutique',
@@ -73,7 +73,7 @@ export function getNavigationItems(): NavigationItem[] {
           classes: 'nav-item',
           url: '/boutique/commandes',
           icon: 'ti ti-receipt',
-          breadcrumbs: false
+          breadcrumbs: true
         },
       ]
     },
@@ -115,8 +115,8 @@ export function getNavigationItems(): NavigationItem[] {
       url: '/panier',
       breadcrumbs: true
     },
-    
-    
-    
+
+
+
   ];
 }

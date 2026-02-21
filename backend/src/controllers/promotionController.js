@@ -4,6 +4,7 @@ const Produit = require('../models/Produit');
 const Boutique = require('../models/Boutique');
 const User = require('../models/User');
 const { cleanupExpiredPromotions } = require('../services/promotionService');
+const authService = require('../services/authService');
 
 const parseDate = (value) => {
   const date = new Date(value);
@@ -35,8 +36,8 @@ exports.createPromotion = async (req, res) => {
         message: 'categorie doit etre produit, boutique ou acheteur'
       });
     }
-
-    const createdBy = req.user?.userId;
+    const userId =await authService.getUserIdByToken(req);
+    const createdBy = userId;
     if (!createdBy) {
       return res.status(401).json({
         success: false,
@@ -384,7 +385,7 @@ exports.getPromotionsByAcheteur = async (req, res) => {
 exports.getMyBoutiquePromotions = async (req, res) => {
   try {
     // Récupérer la boutique de l'utilisateur
-    const boutique = await Boutique.findOne({ proprietaire: req.user.userId });
+    const boutique = await Boutique.findOne({ locataire: req.user.userId });
     
     if (!boutique) {
       return res.status(404).json({
@@ -499,8 +500,9 @@ exports.getMyBoutiquePromotions = async (req, res) => {
  */
 exports.createMyBoutiquePromotion = async (req, res) => {
   try {
+     const userId =await authService.getUserIdByToken(req);
     // Récupérer la boutique de l'utilisateur
-    const boutique = await Boutique.findOne({ proprietaire: req.user.userId });
+    const boutique = await Boutique.findOne({ locataire:userId });
     
     if (!boutique) {
       return res.status(404).json({
@@ -628,7 +630,7 @@ exports.createMyBoutiquePromotion = async (req, res) => {
 exports.updateMyBoutiquePromotion = async (req, res) => {
   try {
     // Récupérer la boutique de l'utilisateur
-    const boutique = await Boutique.findOne({ proprietaire: req.user.userId });
+    const boutique = await Boutique.findOne({ locataire: req.user.userId });
     
     if (!boutique) {
       return res.status(404).json({
@@ -720,7 +722,7 @@ exports.updateMyBoutiquePromotion = async (req, res) => {
 exports.deleteMyBoutiquePromotion = async (req, res) => {
   try {
     // Récupérer la boutique de l'utilisateur
-    const boutique = await Boutique.findOne({ proprietaire: req.user.userId });
+    const boutique = await Boutique.findOne({ locataire: req.user.userId });
     
     if (!boutique) {
       return res.status(404).json({

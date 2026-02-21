@@ -1,10 +1,15 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
 import { BoutiqueCommandeService, BoutiqueCommande, PaginationResponse } from '../../../../services/boutique-commande.service';
+import { NotificationService } from 'src/app/services/notification.service';
 
 @Component({
   selector: 'app-boutique-commandes',
   templateUrl: './boutique-commandes.component.html',
-  styleUrls: ['./boutique-commandes.component.scss']
+  styleUrls: ['./boutique-commandes.component.scss'],
+  standalone: true,
+  imports: [FormsModule, CommonModule, CurrencyPipe, DatePipe]
 })
 export class BoutiqueCommandesComponent implements OnInit {
   commandes: BoutiqueCommande[] = [];
@@ -22,8 +27,13 @@ export class BoutiqueCommandesComponent implements OnInit {
     dateFin: '',
     isPaye: undefined as boolean | undefined
   };
+  
 
-  constructor(private boutiqueCommandeService: BoutiqueCommandeService) {}
+  constructor(
+    private boutiqueCommandeService: BoutiqueCommandeService,
+    private readonly cdr: ChangeDetectorRef,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   ngOnInit(): void {
     this.loadCommandes();
@@ -44,16 +54,23 @@ export class BoutiqueCommandesComponent implements OnInit {
         if (response.success) {
           this.commandes = response.data;
           this.pagination = response.pagination;
+          this.loading = false;
+          this.cdr.detectChanges();
         } else {
           this.error = response.message;
+         this.notificationService.error('Erreur', 'Erreur lors du chargement de la boutique');
+            this.loading = false;
+            this.cdr.detectChanges();
         }
       },
       error: (err) => {
         this.error = 'Erreur lors du chargement des commandes';
-        console.error('Erreur commandes:', err);
+        this.notificationService.error('Erreur', 'Erreur lors du chargement des commandes');
+        this.cdr.detectChanges(); 
       },
       complete: () => {
         this.loading = false;
+        this.cdr.detectChanges();
       }
     });
   }
@@ -95,5 +112,9 @@ export class BoutiqueCommandesComponent implements OnInit {
       'annule': 'Annulée'
     };
     return labels[statut] || statut;
+  }
+
+  getPagesArray(): number[] {
+    return Array.from({ length: this.pagination.totalPages }, (_, i) => i + 1);
   }
 }

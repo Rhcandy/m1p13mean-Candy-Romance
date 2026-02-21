@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiService } from './api.service';
+import { AuthService } from './auth.service';
 
 export interface BoutiqueProduit {
   _id: string;
@@ -21,7 +22,7 @@ export interface BoutiqueProduit {
 export interface PaginationResponse<T> {
   success: boolean;
   message: string;
-  data: T[];
+  items: T[];
   pagination: {
     total: number;
     page: number;
@@ -30,26 +31,62 @@ export interface PaginationResponse<T> {
   };
 }
 
+type QueryPrimitive = string | number | boolean;
+type QueryValue =
+  | QueryPrimitive
+  | QueryValue[]
+  | { [key: string]: QueryValue }
+  | null
+  | undefined;
+
+export interface BoutiqueProduitQueryParams {
+  page?: number | string;
+  limit?: number | string;
+  nom?: string | { regex?: string; options?: string };
+  categorieId?: string;
+  boutiqueId?: string;
+  sort?: string;
+  [key: string]: QueryValue;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class BoutiqueProduitService {
-  constructor(private readonly api: ApiService) {}
+  constructor(
+    private readonly api: ApiService,
+  ) {}
 
-  getMyBoutiqueProduits(params?: {
-    page?: number;
-    limit?: number;
-    nom?: string;
-    categorieId?: string;
-  }): Observable<PaginationResponse<BoutiqueProduit>> {
+  private appendQueryParam(queryParams: URLSearchParams, key: string, value: QueryValue): void {
+    if (value === undefined || value === null || value === '') {
+      return;
+    }
+
+    if (Array.isArray(value)) {
+      value.forEach((item) => this.appendQueryParam(queryParams, key, item));
+      return;
+    }
+
+    if (typeof value === 'object') {
+      Object.entries(value).forEach(([nestedKey, nestedValue]) => {
+        this.appendQueryParam(queryParams, `${key}[${nestedKey}]`, nestedValue);
+      });
+      return;
+    }
+
+    queryParams.append(key, String(value));
+  }
+
+  getMyBoutiqueProduits(params: BoutiqueProduitQueryParams = {}): Observable<PaginationResponse<BoutiqueProduit>> {
     const queryParams = new URLSearchParams();
-    if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.limit) queryParams.append('limit', params.limit.toString());
-    if (params?.nom) queryParams.append('nom', params.nom);
-    if (params?.categorieId) queryParams.append('categorieId', params.categorieId);
-    
-    const url = `/produits/my-boutique${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+
+    Object.entries(params).forEach(([key, value]) => {
+      this.appendQueryParam(queryParams, key, value);
+    });
+
+    const url = `/produits${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
     return this.api.get<PaginationResponse<BoutiqueProduit>>(url);
+
   }
 
   createMyBoutiqueProduit(produitData: FormData): Observable<{
@@ -57,7 +94,7 @@ export class BoutiqueProduitService {
     message: string;
     data: BoutiqueProduit;
   }> {
-    return this.api.post('/produits/my-boutique', produitData);
+    return this.api.postFile('/produits', produitData);
   }
 
   updateMyBoutiqueProduit(
@@ -68,13 +105,13 @@ export class BoutiqueProduitService {
     message: string;
     data: BoutiqueProduit;
   }> {
-    return this.api.put(`/produits/my-boutique/${id}`, produitData);
+    return this.api.putFile(`/produits/${id}`, produitData);
   }
 
   deleteMyBoutiqueProduit(id: string): Observable<{
     success: boolean;
     message: string;
   }> {
-    return this.api.delete(`/produits/my-boutique/${id}`);
+    return this.api.delete(`/produits/${id}`);
   }
 }

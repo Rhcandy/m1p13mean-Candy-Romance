@@ -34,7 +34,7 @@ const centreSchema = new mongoose.Schema({
       min: 0
     }
   },
-  proprietaire: [{
+  locataire: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   }]

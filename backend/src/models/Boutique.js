@@ -59,7 +59,7 @@ const boutiqueSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
-  proprietaire: {
+  locataire: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
