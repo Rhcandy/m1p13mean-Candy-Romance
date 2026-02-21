@@ -24,6 +24,26 @@ const promotionSchema = new mongoose.Schema({
   dateFin: {
     type: Date,
     required: true
+  },
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  produitId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Produit',
+    default: null
+  },
+  boutiqueId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Boutique',
+    default: null
+  },
+  acheteurId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
   }
 }, {
   timestamps: true,

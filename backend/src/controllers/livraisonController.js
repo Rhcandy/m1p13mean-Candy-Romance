@@ -1,5 +1,23 @@
 const Centre = require('../models/Centre');
 
+const DEFAULT_FRAIS_LIVRAISON = {
+  baseFrais: 3000,
+  coutParKm: 2,
+  kmGratuits: 3
+};
+
+const normalizeFraisLivraison = (frais) => {
+  const baseFrais = Number(frais?.baseFrais);
+  const coutParKm = Number(frais?.coutParKm);
+  const kmGratuits = Number(frais?.kmGratuits);
+
+  return {
+    baseFrais: Number.isFinite(baseFrais) ? baseFrais : DEFAULT_FRAIS_LIVRAISON.baseFrais,
+    coutParKm: Number.isFinite(coutParKm) ? coutParKm : DEFAULT_FRAIS_LIVRAISON.coutParKm,
+    kmGratuits: Number.isFinite(kmGratuits) ? kmGratuits : DEFAULT_FRAIS_LIVRAISON.kmGratuits
+  };
+};
+
 /**
  * @swagger
  * /api/livraison/calculer-frais:
@@ -82,10 +100,8 @@ exports.calculerFraisLivraison = async (req, res) => {
       Number(adresseLivraison.longitude)
     );
 
-    // Calculer les frais: 3000 FCFA de base + 2 FCFA par km au-dela des premiers km
-    const baseFrais = 3000;
-    const coutParKm = 2;
-    const kmGratuits = 3; // premiers 3 km inclus dans la base
+    const fraisConfig = normalizeFraisLivraison(centre.fraisLivraison);
+    const { baseFrais, coutParKm, kmGratuits } = fraisConfig;
 
     let fraisLivraison = baseFrais;
     if (distance > kmGratuits) {
@@ -105,7 +121,8 @@ exports.calculerFraisLivraison = async (req, res) => {
         dateLivraison: dateLivraison.toISOString().split('T')[0],
         centreDistribution: {
           nom: centre.nom,
-          adresse: centre.adresse
+          adresse: centre.adresse,
+          fraisLivraison: fraisConfig
         }
       }
     });
@@ -150,7 +167,7 @@ function calculerDistanceKm(lat1, lon1, lat2, lon2) {
  */
 exports.getCentresDistribution = async (req, res) => {
   try {
-    const centres = await Centre.find().select('nom adresse telephone email');
+    const centres = await Centre.find().select('nom adresse telephone email fraisLivraison');
 
     res.status(200).json({
       success: true,
@@ -162,6 +179,99 @@ exports.getCentresDistribution = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Erreur lors de la recuperation des centres',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Recuperer un centre de distribution par ID
+ */
+exports.getCentreDistributionById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const centre = await Centre.findById(id).populate('proprietaire', 'nom email');
+
+    if (!centre) {
+      return res.status(404).json({
+        success: false,
+        message: 'Centre non trouve'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Centre recupere avec succes',
+      data: centre
+    });
+  } catch (error) {
+    console.error('Erreur recuperation centre:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la recuperation du centre',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Mettre a jour les frais de livraison d'un centre (proprietaire ou admin centre)
+ */
+exports.updateCentreFraisLivraison = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { baseFrais, coutParKm, kmGratuits } = req.body || {};
+
+    const centre = await Centre.findById(id);
+    if (!centre) {
+      return res.status(404).json({
+        success: false,
+        message: 'Centre non trouve'
+      });
+    }
+
+    const userId = req.user?.userId;
+    const roleName = req.user?.roleName;
+    const isAdmin = ['admin_centre', 'super_admin'].includes(roleName);
+    const isOwner = Array.isArray(centre.proprietaire)
+      && centre.proprietaire.some((ownerId) => ownerId.toString() === userId);
+
+    if (!isAdmin && !isOwner) {
+      return res.status(403).json({
+        success: false,
+        message: 'Acces refuse'
+      });
+    }
+
+    const current = normalizeFraisLivraison(centre.fraisLivraison);
+    const nextFrais = {
+      baseFrais: baseFrais != null ? Number(baseFrais) : current.baseFrais,
+      coutParKm: coutParKm != null ? Number(coutParKm) : current.coutParKm,
+      kmGratuits: kmGratuits != null ? Number(kmGratuits) : current.kmGratuits
+    };
+
+    if (!Number.isFinite(nextFrais.baseFrais) || nextFrais.baseFrais < 0
+      || !Number.isFinite(nextFrais.coutParKm) || nextFrais.coutParKm < 0
+      || !Number.isFinite(nextFrais.kmGratuits) || nextFrais.kmGratuits < 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Les frais de livraison doivent etre des nombres valides >= 0'
+      });
+    }
+
+    centre.fraisLivraison = nextFrais;
+    await centre.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Frais de livraison mis a jour avec succes',
+      data: centre
+    });
+  } catch (error) {
+    console.error('Erreur mise a jour frais livraison:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la mise a jour des frais de livraison',
       error: error.message
     });
   }

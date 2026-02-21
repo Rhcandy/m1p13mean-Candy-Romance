@@ -17,20 +17,25 @@ export interface FraisLivraisonResponse {
   centreDistribution: {
     nom: string;
     adresse: any;
+    fraisLivraison?: {
+      baseFrais: number;
+      coutParKm: number;
+      kmGratuits: number;
+    };
   };
 }
 
 export interface CentreDistribution {
   _id: string;
   nom: string;
-  adresse: {
-    rue: string;
-    ville: string;
-    codePostal: string;
-    pays: string;
-  };
+  adresse: any;
   telephone?: string;
   email?: string;
+  fraisLivraison?: {
+    baseFrais: number;
+    coutParKm: number;
+    kmGratuits: number;
+  };
 }
 
 @Injectable({
@@ -55,6 +60,18 @@ export class LivraisonService {
    */
   getCentresDistribution(): Observable<CentreDistribution[]> {
     return this.apiService.get<{data: CentreDistribution[]}>(`${this.endpoint}/centres`).pipe(
+      map(response => response.data)
+    );
+  }
+
+  getCentreDistributionById(id: string): Observable<CentreDistribution> {
+    return this.apiService.get<{data: CentreDistribution}>(`${this.endpoint}/centres/${id}`).pipe(
+      map(response => response.data)
+    );
+  }
+
+  updateCentreFraisLivraison(id: string, fraisLivraison: { baseFrais?: number; coutParKm?: number; kmGratuits?: number }): Observable<CentreDistribution> {
+    return this.apiService.put<{data: CentreDistribution}>(`${this.endpoint}/centres/${id}/frais`, fraisLivraison).pipe(
       map(response => response.data)
     );
   }

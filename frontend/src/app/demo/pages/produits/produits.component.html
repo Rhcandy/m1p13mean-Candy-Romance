@@ -1,20 +1,33 @@
 <div class="container-fluid">
-  <!-- En-tête avec bouton de filtre -->
+  <!-- En-tête avec boutique sélectionnée et bouton de filtre -->
   <div class="row mb-4">
     <div class="col-12">
-        <div class="d-flex gap-2">
-          <button 
-            type="button" 
-            class="btn btn-outline-primary d-flex align-items-center gap-2"
-            (click)="toggleFilters()"
-            [class.active]="showFilters">
-            <i class="ti ti-filter"></i>
-            Filtres
-            @if (hasActiveFilters()) {
-              <span class="badge bg-primary rounded-pill">{{ getActiveFiltersCount() }}</span>
-            }
+      @if (selectedBoutiqueName) {
+        <div class="alert alert-info d-flex align-items-center gap-2 mb-3">
+          <i class="ti ti-store"></i>
+          <span>
+            <strong>Boutique sélectionnée:</strong> {{ selectedBoutiqueName }}
+          </span>
+          <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" (click)="clearBoutiqueFilter()">
+            <i class="ti ti-x"></i>
+            Effacer
           </button>
         </div>
+      }
+      
+      <div class="d-flex gap-2">
+        <button 
+          type="button" 
+          class="btn btn-outline-primary d-flex align-items-center gap-2"
+          (click)="toggleFilters()"
+          [class.active]="showFilters">
+          <i class="ti ti-filter"></i>
+          Filtres
+          @if (hasActiveFilters()) {
+            <span class="badge bg-primary rounded-pill">{{ getActiveFiltersCount() }}</span>
+          }
+        </button>
+      </div>
     </div>
   </div>
 

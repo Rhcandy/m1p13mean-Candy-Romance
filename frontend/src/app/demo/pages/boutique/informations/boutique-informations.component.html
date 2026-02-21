@@ -1,0 +1,157 @@
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-12">
+      <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+        <h4 class="mb-sm-0">Informations de ma Boutique</h4>
+      </div>
+    </div>
+  </div>
+
+  <!-- Messages -->
+  <div *ngIf="error" class="alert alert-danger alert-dismissible fade show" role="alert">
+    {{ error }}
+    <button type="button" class="btn-close" (click)="error = null"></button>
+  </div>
+
+  <div *ngIf="success" class="alert alert-success alert-dismissible fade show" role="alert">
+    {{ success }}
+    <button type="button" class="btn-close" (click)="success = null"></button>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="loading" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Chargement...</span>
+    </div>
+  </div>
+
+  <!-- Formulaire -->
+  <div *ngIf="!loading && boutique" class="row">
+    <div class="col-xl-8">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="card-title mb-0">Informations générales</h5>
+        </div>
+        <div class="card-body">
+          <form [formGroup]="boutiqueForm" (ngSubmit)="onSubmit()">
+            <div class="row">
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label for="nom" class="form-label">Nom de la boutique</label>
+                  <input type="text" 
+                         class="form-control" 
+                         id="nom" 
+                         formControlName="nom"
+                         [ngClass]="{ 'is-invalid': nom?.invalid && nom?.touched }"
+                         placeholder="Entrez le nom de votre boutique">
+                  <div *ngIf="nom?.invalid && nom?.touched" class="invalid-feedback">
+                    <div *ngIf="nom?.errors?.['required']">Le nom est requis</div>
+                    <div *ngIf="nom?.errors?.['maxlength']">Le nom ne doit pas dépasser 100 caractères</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="row mt-4">
+              <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                  <button type="submit" 
+                          class="btn btn-primary" 
+                          [disabled]="saving || boutiqueForm.invalid">
+                    <span *ngIf="!saving" class="d-flex align-items-center">
+                      <i class="ri-save-line me-2"></i>
+                      Enregistrer les modifications
+                    </span>
+                    <span *ngIf="saving" class="d-flex align-items-center">
+                      <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                      Enregistrement...
+                    </span>
+                  </button>
+
+                  <button type="button" 
+                          class="btn" 
+                          [ngClass]="boutique.isActive ? 'btn-danger' : 'btn-success'"
+                          [disabled]="saving"
+                          (click)="toggleBoutiqueStatus()">
+                    <span *ngIf="!saving" class="d-flex align-items-center">
+                      <i [ngClass]="boutique.isActive ? 'ri-pause-circle-line' : 'ri-play-circle-line'" 
+                         class="me-2"></i>
+                      {{ boutique.isActive ? 'Désactiver la boutique' : 'Activer la boutique' }}
+                    </span>
+                    <span *ngIf="saving" class="d-flex align-items-center">
+                      <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                      Traitement...
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-4">
+      <!-- Logo -->
+      <div class="card">
+        <div class="card-header">
+          <h5 class="card-title mb-0">Logo de la boutique</h5>
+        </div>
+        <div class="card-body">
+          <div class="text-center">
+            <div class="avatar-xl bg-light rounded p-1 mb-3">
+              <img [src]="boutique.logo || 'assets/images/boutique-placeholder.png'" 
+                   [alt]="boutique.nom" 
+                   class="img-fluid rounded" 
+                   style="max-height: 120px; max-width: 120px;">
+            </div>
+            <div class="mb-3">
+              <span class="badge" 
+                    [ngClass]="boutique.isActive ? 'bg-success' : 'bg-danger'">
+                {{ boutique.isActive ? 'Active' : 'Inactive' }}
+              </span>
+            </div>
+            <button type="button" 
+                    class="btn btn-soft-primary" 
+                    (click)="document.getElementById('logoInput')?.click()">
+              <i class="ri-image-line me-2"></i>
+              Changer le logo
+            </button>
+            <input type="file" 
+                   id="logoInput" 
+                   style="display: none;" 
+                   accept="image/*" 
+                   (change)="onLogoUpload($event)">
+          </div>
+        </div>
+      </div>
+
+      <!-- Informations supplémentaires -->
+      <div class="card mt-4">
+        <div class="card-header">
+          <h5 class="card-title mb-0">Informations système</h5>
+        </div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label text-muted">ID de la boutique</label>
+            <input type="text" class="form-control" [value]="boutique._id" readonly>
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-muted">Date de création</label>
+            <input type="text" 
+                   class="form-control" 
+                   [value]="boutique.createdAt | date:'dd/MM/yyyy HH:mm'" 
+                   readonly>
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-muted">Dernière mise à jour</label>
+            <input type="text" 
+                   class="form-control" 
+                   [value]="boutique.updatedAt | date:'dd/MM/yyyy HH:mm'" 
+                   readonly>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

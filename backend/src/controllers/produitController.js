@@ -570,3 +570,320 @@ exports.deleteProduit = async (req, res) => {
     });
   }
 };
+
+/**
+ * @swagger
+ * /api/produits/my-boutique:
+ *   get:
+ *     summary: Récupérer les produits de la boutique de l'utilisateur connecté
+ *     tags: [Produit]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Numéro de page
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Nombre d'éléments par page
+ *       - in: query
+ *         name: nom
+ *         schema:
+ *           type: string
+ *         description: Filtrer par nom
+ *       - in: query
+ *         name: categorieId
+ *         schema:
+ *           type: string
+ *         description: Filtrer par catégorie
+ *     responses:
+ *       200:
+ *         description: Produits récupérés avec succès
+ *       404:
+ *         description: Boutique non trouvée
+ *       500:
+ *         description: Erreur serveur
+ */
+exports.getMyBoutiqueProduits = async (req, res) => {
+  try {
+    // Récupérer la boutique de l'utilisateur
+    const boutique = await Boutique.findOne({ proprietaire: req.user.id });
+    
+    if (!boutique) {
+      return res.status(404).json({
+        success: false,
+        message: 'Boutique non trouvée'
+      });
+    }
+
+    // Construire le filtre pour les produits de cette boutique
+    const filter = { boutiqueId: boutique._id };
+    
+    // Ajouter les filtres optionnels
+    if (req.query.nom) {
+      filter.nom = { $regex: req.query.nom, $options: 'i' };
+    }
+    if (req.query.categorieId) {
+      filter.categorieId = req.query.categorieId;
+    }
+
+    // Pagination
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const produits = await Produit.find(filter)
+      .populate('categorieId', 'nom')
+      .populate('promotions')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const total = await Produit.countDocuments(filter);
+
+    res.status(200).json({
+      success: true,
+      message: 'Produits récupérés avec succès',
+      data: produits,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Erreur récupération produits boutique:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * @swagger
+ * /api/produits/my-boutique:
+ *   post:
+ *     summary: Créer un produit dans la boutique de l'utilisateur connecté
+ *     tags: [Produit]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - nom
+ *               - categorieId
+ *               - prix
+ *               - variant
+ *             properties:
+ *               nom:
+ *                 type: string
+ *                 description: Nom du produit
+ *               categorieId:
+ *                 type: string
+ *                 description: ID de la catégorie
+ *               description:
+ *                 type: string
+ *                 description: Description du produit
+ *               prix:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     prixUnitaire:
+ *                       type: number
+ *               variant:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     attributes:
+ *                       type: object
+ *                     qtt:
+ *                       type: number
+ *     responses:
+ *       201:
+ *         description: Produit créé avec succès
+ *       404:
+ *         description: Boutique non trouvée
+ *       500:
+ *         description: Erreur serveur
+ */
+exports.createMyBoutiqueProduit = async (req, res) => {
+  try {
+    // Récupérer la boutique de l'utilisateur
+    const boutique = await Boutique.findOne({ proprietaire: req.user.id });
+    
+    if (!boutique) {
+      return res.status(404).json({
+        success: false,
+        message: 'Boutique non trouvée'
+      });
+    }
+
+    // Ajouter l'ID de la boutique aux données du produit
+    req.body.boutiqueId = boutique._id;
+
+    // Utiliser le service existant pour créer le produit
+    const produit = await produitService.createProduit(req.body, req.file);
+
+    res.status(201).json({
+      success: true,
+      message: 'Produit créé avec succès',
+      data: produit
+    });
+  } catch (error) {
+    console.error('Erreur création produit boutique:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * @swagger
+ * /api/produits/my-boutique/{id}:
+ *   put:
+ *     summary: Mettre à jour un produit de la boutique de l'utilisateur connecté
+ *     tags: [Produit]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID du produit
+ *     responses:
+ *       200:
+ *         description: Produit mis à jour avec succès
+ *       404:
+ *         description: Produit ou boutique non trouvée
+ *       403:
+ *         description: Non autorisé à modifier ce produit
+ *       500:
+ *         description: Erreur serveur
+ */
+exports.updateMyBoutiqueProduit = async (req, res) => {
+  try {
+    // Récupérer la boutique de l'utilisateur
+    const boutique = await Boutique.findOne({ proprietaire: req.user.id });
+    
+    if (!boutique) {
+      return res.status(404).json({
+        success: false,
+        message: 'Boutique non trouvée'
+      });
+    }
+
+    // Vérifier que le produit appartient à la boutique de l'utilisateur
+    const produit = await Produit.findOne({ 
+      _id: req.params.id, 
+      boutiqueId: boutique._id 
+    });
+
+    if (!produit) {
+      return res.status(404).json({
+        success: false,
+        message: 'Produit non trouvé ou n\'appartient pas à votre boutique'
+      });
+    }
+
+    // Utiliser le service existant pour mettre à jour le produit
+    const updatedProduit = await produitService.updateProduit(req.params.id, req.body, req.file);
+
+    res.status(200).json({
+      success: true,
+      message: 'Produit mis à jour avec succès',
+      data: updatedProduit
+    });
+  } catch (error) {
+    console.error('Erreur mise à jour produit boutique:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * @swagger
+ * /api/produits/my-boutique/{id}:
+ *   delete:
+ *     summary: Supprimer un produit de la boutique de l'utilisateur connecté
+ *     tags: [Produit]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID du produit
+ *     responses:
+ *       200:
+ *         description: Produit supprimé avec succès
+ *       404:
+ *         description: Produit ou boutique non trouvée
+ *       403:
+ *         description: Non autorisé à supprimer ce produit
+ *       500:
+ *         description: Erreur serveur
+ */
+exports.deleteMyBoutiqueProduit = async (req, res) => {
+  try {
+    // Récupérer la boutique de l'utilisateur
+    const boutique = await Boutique.findOne({ proprietaire: req.user.id });
+    
+    if (!boutique) {
+      return res.status(404).json({
+        success: false,
+        message: 'Boutique non trouvée'
+      });
+    }
+
+    // Vérifier que le produit appartient à la boutique de l'utilisateur
+    const produit = await Produit.findOne({ 
+      _id: req.params.id, 
+      boutiqueId: boutique._id 
+    });
+
+    if (!produit) {
+      return res.status(404).json({
+        success: false,
+        message: 'Produit non trouvé ou n\'appartient pas à votre boutique'
+      });
+    }
+
+    await Produit.findByIdAndDelete(req.params.id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Produit supprimé avec succès'
+    });
+  } catch (error) {
+    console.error('Erreur suppression produit boutique:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur',
+      error: error.message
+    });
+  }
+};

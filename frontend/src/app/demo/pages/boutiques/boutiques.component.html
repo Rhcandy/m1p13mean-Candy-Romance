@@ -1,0 +1,40 @@
+<div class="boutiques-container">
+  @if (loading) {
+    <div class="loading-state">
+      <div class="spinner-border text-primary"></div>
+      <p>Chargement des boutiques...</p>
+    </div>
+  } @else if (boutiques.length === 0) {
+    <div class="empty-state">
+      <i class="ti ti-store"></i>
+      <h2>Aucune boutique disponible</h2>
+      <p>Découvrez nos boutiques partenaires prochainement !</p>
+    </div>
+  } @else {
+    <div class="boutiques-grid">
+      @for (boutique of boutiques; track boutique._id) {
+        <div class="boutique-card" (click)="voirProduitsBoutique(boutique)">
+          <div class="boutique-header">
+            @if (boutique.logo) {
+              <img [src]="boutique.logo" [alt]="boutique.nom" class="boutique-logo">
+            } @else {
+              <div class="boutique-logo-placeholder">
+                <i class="ti ti-building-store"></i>
+              </div>
+            }
+            <div class="boutique-info">
+              <h3>{{ boutique.nom }}</h3>
+            </div>
+          </div>
+          
+          <div class="boutique-footer">
+            <button class="btn btn-primary btn-sm">
+              <i class="ti ti-shopping-cart"></i>
+              Voir les produits
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

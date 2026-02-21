@@ -40,6 +40,7 @@ export interface Panier {
   islivre: boolean;
   produitsBoutique?: ProduitAchete[];
   sousTotalBoutique?: number;
+  remiseAcheteur?:number;
   totalBoutique?: number;
   expiresAt?: string; // Date d'expiration du panier
   datePaiement?: Date;

@@ -67,6 +67,10 @@ const userSchema = new mongoose.Schema({
   favoris: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Produit'
+  }],
+  promotions: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Promotion'
   }]
 }, {
   timestamps: true,

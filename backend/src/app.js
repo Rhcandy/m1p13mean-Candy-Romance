@@ -9,6 +9,8 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
+// Enable nested query parsing (e.g. nom[regex]=x, prix.prixUnitaire[gte]=10)
+app.set('query parser', 'extended');
 app.use(express.json());
 
 // Connexion à MongoDB
@@ -73,6 +75,7 @@ const avisRoutes = require('./routes/avisRoutes');
 const livraisonRoutes = require('./routes/livraisonRoutes');
 const favorisRoutes = require('./routes/favorisRoutes');
 const promotionRoutes = require('./routes/promotionRoutes');
+const commandeBoutiqueRoutes = require('./routes/commandeBoutiqueRoutes');
 
 // Routes API
 app.use('/api/auth', authRoutes);
@@ -88,6 +91,7 @@ app.use('/api/avis', avisRoutes);
 app.use('/api/livraison', livraisonRoutes);
 app.use('/api/favoris', favorisRoutes);
 app.use('/api/promotions', promotionRoutes);
+app.use('/api/commandes-boutique', commandeBoutiqueRoutes);
 
 
 /**

@@ -17,6 +17,23 @@ const centreSchema = new mongoose.Schema({
       required: true
     }
   },
+  fraisLivraison: {
+    baseFrais: {
+      type: Number,
+      default: 3000,
+      min: 0
+    },
+    coutParKm: {
+      type: Number,
+      default: 2,
+      min: 0
+    },
+    kmGratuits: {
+      type: Number,
+      default: 3,
+      min: 0
+    }
+  },
   proprietaire: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'

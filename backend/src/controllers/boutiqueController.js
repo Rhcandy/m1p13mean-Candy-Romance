@@ -358,7 +358,13 @@ exports.createBoutique = async (req, res) => {
  *       500:
  *         description: Erreur serveur
  */
-exports.getAllBoutiques = advancedResults(Boutique);
+exports.getAllBoutiques = async (req, res, next) => {
+  // Ajouter un filtre pour ne montrer que les boutiques actives par défaut
+  if (!req.query.isActive) {
+    req.query.isActive = true;
+  }
+  next();
+};
 
 // @desc    Récupérer les résultats des boutiques (middleware advancedResults)
 // @route   GET /api/boutiques
@@ -367,6 +373,7 @@ exports.getBoutiquesResults = async (req, res) => {
   try {
     // Populer les résultats avec les bons chemins
     const populatedResults = await Boutique.populate(res.advancedResults.items, [
+      { path: 'proprietaire', select: 'nom email' },
       { path: 'contratlocation.boxes', select: 'Superficie etage numRef isDisponible' },
       { path: 'locataire', select: 'nom email' }
     ]);
@@ -751,6 +758,199 @@ exports.deleteBoutique = async (req, res) => {
     });
   } catch (error) {
     console.error('Erreur suppression boutique:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * @swagger
+ * /api/boutiques/my-boutique:
+ *   get:
+ *     summary: Récupérer la boutique de l'utilisateur connecté
+ *     tags: [Boutique]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Boutique de l'utilisateur récupérée avec succès
+ *       404:
+ *         description: Boutique non trouvée
+ *       500:
+ *         description: Erreur serveur
+ */
+exports.getMyBoutique = async (req, res) => {
+  try {
+    const boutique = await Boutique.findOne({ proprietaire: req.user.id })
+      .populate('contratlocation.boxes', 'Superficie etage numRef isDisponible typeBoxId')
+      .populate('locataire', 'nom email');
+
+    if (!boutique) {
+      return res.status(404).json({
+        success: false,
+        message: 'Boutique non trouvée'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Boutique récupérée avec succès',
+      data: boutique
+    });
+  } catch (error) {
+    console.error('Erreur récupération boutique utilisateur:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * @swagger
+ * /api/boutiques/my-boutique:
+ *   put:
+ *     summary: Mettre à jour la boutique de l'utilisateur connecté
+ *     tags: [Boutique]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Boutique mise à jour avec succès
+ *       404:
+ *         description: Boutique non trouvée
+ *       500:
+ *         description: Erreur serveur
+ */
+exports.updateMyBoutique = async (req, res) => {
+  try {
+    const boutique = await Boutique.findOne({ proprietaire: req.user.id });
+    
+    if (!boutique) {
+      return res.status(404).json({
+        success: false,
+        message: 'Boutique non trouvée'
+      });
+    }
+
+    // Mettre à jour uniquement les champs autorisés pour le propriétaire
+    const allowedFields = ['nom', 'logo'];
+    const updateData = {};
+    
+    allowedFields.forEach(field => {
+      if (req.body[field] !== undefined) {
+        updateData[field] = req.body[field];
+      }
+    });
+
+    const updatedBoutique = await Boutique.findByIdAndUpdate(
+      boutique._id,
+      updateData,
+      { new: true, runValidators: true }
+    ).populate('contratlocation.boxes', 'Superficie etage numRef isDisponible typeBoxId')
+     .populate('locataire', 'nom email');
+
+    res.status(200).json({
+      success: true,
+      message: 'Boutique mise à jour avec succès',
+      data: updatedBoutique
+    });
+  } catch (error) {
+    console.error('Erreur mise à jour boutique utilisateur:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * @swagger
+ * /api/boutiques/my-boutique/deactivate:
+ *   patch:
+ *     summary: Désactiver la boutique de l'utilisateur connecté
+ *     tags: [Boutique]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Boutique désactivée avec succès
+ *       404:
+ *         description: Boutique non trouvée
+ *       500:
+ *         description: Erreur serveur
+ */
+exports.deactivateMyBoutique = async (req, res) => {
+  try {
+    const boutique = await Boutique.findOne({ proprietaire: req.user.id });
+    
+    if (!boutique) {
+      return res.status(404).json({
+        success: false,
+        message: 'Boutique non trouvée'
+      });
+    }
+
+    boutique.isActive = false;
+    await boutique.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Boutique désactivée avec succès',
+      data: boutique
+    });
+  } catch (error) {
+    console.error('Erreur désactivation boutique:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * @swagger
+ * /api/boutiques/my-boutique/activate:
+ *   patch:
+ *     summary: Activer la boutique de l'utilisateur connecté
+ *     tags: [Boutique]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Boutique activée avec succès
+ *       404:
+ *         description: Boutique non trouvée
+ *       500:
+ *         description: Erreur serveur
+ */
+exports.activateMyBoutique = async (req, res) => {
+  try {
+    const boutique = await Boutique.findOne({ proprietaire: req.user.id });
+    
+    if (!boutique) {
+      return res.status(404).json({
+        success: false,
+        message: 'Boutique non trouvée'
+      });
+    }
+
+    boutique.isActive = true;
+    await boutique.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Boutique activée avec succès',
+      data: boutique
+    });
+  } catch (error) {
+    console.error('Erreur activation boutique:', error);
     res.status(500).json({
       success: false,
       message: 'Erreur serveur',
