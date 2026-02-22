@@ -1,5 +1,6 @@
 import { inject } from '@angular/core';
 import { AuthService } from '../../../../services/auth.service';
+import { BoutiqueService } from '../../../../services/boutique.service';
 
 export interface NavigationItem {
   id: string;
@@ -20,15 +21,44 @@ export interface NavigationItem {
 
 export function getNavigationItems(): NavigationItem[] {
   const authService = inject(AuthService);
+  const boutiqueService = inject(BoutiqueService);
+
   const isUser = authService.hasRole('user');
-  const isBoutiqueOwner = !authService.hasRole('user') && !authService.hasRole('admin_center');
+  const isAdminBoutique = authService.hasRole('admin_boutique')|| authService.hasRole('super_admin');
+
+  const boutiqueStatus = boutiqueService.getCachedBoutiqueStatus();
+  const hasBoutique = isAdminBoutique && boutiqueStatus.hasBoutique;
+
+  const hasActiveBoutique = isAdminBoutique && boutiqueStatus.hasBoutique && boutiqueStatus.isActive;
+  console.log('Navigation - Boutique Status:',boutiqueStatus);
+
   return [
+    {
+      id: 'BoxesDisponibles',
+      title: 'Boxes disponibles',
+      type: 'item',
+      icon: 'ti ti-home-search',
+      classes: 'nav-item',
+      url: '/boutique/boxes',
+      breadcrumbs: true,
+      hidden: !isAdminBoutique || hasBoutique
+    },
+    {
+      id: 'BoutiquePending',
+      title: 'Boutique en attente',
+      type: 'item',
+      icon: 'ti ti-hourglass-high',
+      classes: 'nav-item',
+      url: '/boutique/informations',
+      breadcrumbs: true,
+      hidden: !(isAdminBoutique && hasBoutique && !boutiqueStatus.isActive)
+    },
     {
       id: 'Ma boutique',
       title: 'Ma boutique',
       type: 'collapse',
       icon: 'icon-navigation',
-      hidden: authService.hasRole('user') || authService.hasRole('admin_center'),
+      hidden: !hasActiveBoutique,
       children: [
         {
           id: 'dashboard-boutique',
@@ -74,7 +104,7 @@ export function getNavigationItems(): NavigationItem[] {
           url: '/boutique/commandes',
           icon: 'ti ti-receipt',
           breadcrumbs: true
-        },
+        }
       ]
     },
     {
@@ -114,9 +144,6 @@ export function getNavigationItems(): NavigationItem[] {
       classes: 'nav-item',
       url: '/panier',
       breadcrumbs: true
-    },
-
-
-
+    }
   ];
 }

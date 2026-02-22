@@ -21,6 +21,7 @@ interface VariantAttributes {
 interface Variant {
   attributes: VariantAttributes;
   qtt: number;
+  reserved?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -123,7 +124,7 @@ export class ProductDisplayComponent implements OnInit {
 
   // Vérifier si le produit a du stock
   hasStock(): boolean {
-    return (this.product.variant[0]?.qtt || 0) > 0;
+    return this.getStockQuantity() > 0;
   }
 
   // Gestionnaire du clic sur "Order Now"
@@ -163,7 +164,12 @@ export class ProductDisplayComponent implements OnInit {
 
   // Obtenir la quantité en stock
   getStockQuantity(): number {
-    return this.product?.variant?.[0]?.qtt || 0;
+    if (!Array.isArray(this.product?.variant)) return 0;
+    return this.product.variant.reduce((sum, variant) => {
+      const qtt = Number(variant?.qtt) || 0;
+      const reserved = Number(variant?.reserved) || 0;
+      return sum + Math.max(0, qtt - reserved);
+    }, 0);
   }
 
   // Générer les étoiles de rating
@@ -190,17 +196,41 @@ export class ProductDisplayComponent implements OnInit {
     return this.product.averageRating && this.product.averageRating > 0;
   }
 
-  getActivePromotion(): Promotion | null {
-    if (!this.product?.promotions?.length) return null;
+  getActivePromotions(): Promotion[] {
+    if (!this.product?.promotions?.length) return [];
     const now = new Date();
-    return this.product.promotions.find((promo) => this.isPromotionActive(promo, now)) || null;
+    return this.product.promotions.filter((promo) => this.isPromotionActive(promo, now));
+  }
+
+  hasActivePromotions(): boolean {
+    return this.getActivePromotions().length > 0;
+  }
+
+  getTotalPromotionTaux(): number {
+    const total = this.getActivePromotions().reduce((sum, promo) => sum + (Number(promo.taux) || 0), 0);
+    return Math.min(100, total);
+  }
+
+  getBasePrice(): number {
+    return Number(this.product?.prix?.[0]?.prixUnitaire) || 0;
+  }
+
+  getDiscountedPrice(): number {
+    const basePrice = this.getBasePrice();
+    const totalTaux = this.getTotalPromotionTaux();
+    const discounted = basePrice * (1 - totalTaux / 100);
+    return Math.max(0, Math.round(discounted));
+  }
+
+  getPromotionDetailsText(): string {
+    return this.getActivePromotions()
+      .map((promo) => `${promo.nom} (-${promo.taux}%)`)
+      .join(', ');
   }
 
   getPromotionBadgeText(): string {
-    const promo = this.getActivePromotion();
-    if (!promo) return '';
-    const taux = Number.isFinite(promo.taux) ? promo.taux : 0;
-    return `-${taux}%`;
+    const taux = this.getTotalPromotionTaux();
+    return taux > 0 ? `-${taux}%` : '';
   }
 
   private isPromotionActive(promo: Promotion, now: Date): boolean {

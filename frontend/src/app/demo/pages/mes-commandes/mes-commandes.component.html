@@ -62,6 +62,13 @@
               Détails
             </button>
 
+            @if (canPayerCommande(commande)) {
+              <button class="btn btn-outline-success btn-sm" (click)="payerCommande(commande)">
+                <i class="ti ti-credit-card"></i>
+                Payer
+              </button>
+            }
+
             @if (commande.isPaye) {
               <button class="btn btn-outline-secondary btn-sm" (click)="telechargerFacture(commande)">
                 <i class="ti ti-download"></i>

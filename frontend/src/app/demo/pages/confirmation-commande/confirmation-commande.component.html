@@ -51,6 +51,9 @@
                 <div class="product-item">
                   <div class="product-info">
                     <div class="product-name">{{ produit.produit?.nom || 'Produit' }}</div>
+                    @if (produit.produit?.boutiqueId?.nom) {
+                      <div class="product-details">Boutique: {{ produit.produit?.boutiqueId?.nom }}</div>
+                    }
                     <div class="product-details">
                       Quantité: {{ produit.qtt }} x {{ formatPrice(produit.prixUnitaire) }}
                     </div>
@@ -107,8 +110,12 @@
                 <div class="address">
                   @if (facture.livraison.adresse.nomEndroit) {
                     <div>{{ facture.livraison.adresse.nomEndroit }}</div>
-                  } @else if (facture.livraison.adresse.latitude != null && facture.livraison.adresse.longitude != null) {
-                    <div>{{ facture.livraison.adresse.latitude }}, {{ facture.livraison.adresse.longitude }}</div>
+                  }
+                  @if (facture.livraison.adresse.latitude != null) {
+                    <div>Latitude: {{ facture.livraison.adresse.latitude }}</div>
+                  }
+                  @if (facture.livraison.adresse.longitude != null) {
+                    <div>Longitude: {{ facture.livraison.adresse.longitude }}</div>
                   }
                   @if (facture.livraison.adresse.telephone) {
                     <div>Tel: {{ facture.livraison.adresse.telephone }}</div>

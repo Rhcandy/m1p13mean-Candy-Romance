@@ -114,4 +114,15 @@ export class BoutiqueProduitService {
   }> {
     return this.api.delete(`/produits/${id}`);
   }
+
+  updateProduitPromotions(
+    id: string,
+    promotionIds: string[]
+  ): Observable<{
+    success: boolean;
+    message: string;
+    data: BoutiqueProduit;
+  }> {
+    return this.api.put(`/produits/${id}/promotions`, { promotionIds });
+  }
 }

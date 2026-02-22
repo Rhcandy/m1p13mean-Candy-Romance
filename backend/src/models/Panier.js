@@ -152,13 +152,16 @@ const panierSchema = new mongoose.Schema({
 // Index pour optimiser les requêtes
 panierSchema.index({ userId: 1, statut: 1 });
 panierSchema.index({ createdAt: -1 });
-// TTL index uniquement pour les paniers actifs (statut "panier")
+// TTL index pour supprimer uniquement les commandes temporaires non finalisées.
+// - panier: panier actif non payé
+// - en_attente: commande en attente de paiement
+// Les commandes confirmées (confirmee, preparation, expedie, livre) ne doivent pas expirer.
 panierSchema.index({ 
   expiresAt: 1 
 }, { 
   expireAfterSeconds: 0,
   partialFilterExpression: {
-    statut: 'panier' // Prendre en compte expiresAt uniquement pour les paniers actifs
+    statut: { $in: ['panier', 'en_attente'] }
   }
 });
 

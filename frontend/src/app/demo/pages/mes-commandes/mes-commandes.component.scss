@@ -332,6 +332,17 @@
       color: white;
     }
   }
+
+  &.btn-outline-success {
+    background: transparent;
+    color: #28a745;
+    border: 1px solid #28a745;
+
+    &:hover {
+      background: #28a745;
+      color: white;
+    }
+  }
 }
 
 .spinner-border {

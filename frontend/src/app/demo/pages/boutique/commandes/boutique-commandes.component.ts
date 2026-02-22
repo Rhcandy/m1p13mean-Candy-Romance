@@ -1,6 +1,7 @@
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
+import { Router } from '@angular/router';
 import { BoutiqueCommandeService, BoutiqueCommande, PaginationResponse } from '../../../../services/boutique-commande.service';
 import { NotificationService } from 'src/app/services/notification.service';
 
@@ -27,12 +28,12 @@ export class BoutiqueCommandesComponent implements OnInit {
     dateFin: '',
     isPaye: undefined as boolean | undefined
   };
-  
 
   constructor(
     private boutiqueCommandeService: BoutiqueCommandeService,
+    private readonly router: Router,
     private readonly cdr: ChangeDetectorRef,
-    private readonly notificationService: NotificationService,
+    private readonly notificationService: NotificationService
   ) {}
 
   ngOnInit(): void {
@@ -58,15 +59,15 @@ export class BoutiqueCommandesComponent implements OnInit {
           this.cdr.detectChanges();
         } else {
           this.error = response.message;
-         this.notificationService.error('Erreur', 'Erreur lors du chargement de la boutique');
-            this.loading = false;
-            this.cdr.detectChanges();
+          this.notificationService.error('Erreur', 'Erreur lors du chargement de la boutique');
+          this.loading = false;
+          this.cdr.detectChanges();
         }
       },
-      error: (err) => {
+      error: () => {
         this.error = 'Erreur lors du chargement des commandes';
         this.notificationService.error('Erreur', 'Erreur lors du chargement des commandes');
-        this.cdr.detectChanges(); 
+        this.cdr.detectChanges();
       },
       complete: () => {
         this.loading = false;
@@ -86,30 +87,36 @@ export class BoutiqueCommandesComponent implements OnInit {
   }
 
   getCommandeDetails(id: string): void {
-    // Navigation vers la page de détails de la commande
-    console.log('Afficher les détails de la commande:', id);
+    if (!id) {
+      this.notificationService.warning('Commande introuvable');
+      return;
+    }
+
+    this.router.navigate(['/commande', id], {
+      queryParams: { scope: 'boutique' }
+    });
   }
 
   getStatusColor(statut: string): string {
     const colors: { [key: string]: string } = {
-      'en_attente': 'warning',
-      'confirmee': 'info',
-      'preparation': 'primary',
-      'expedie': 'secondary',
-      'livre': 'success',
-      'annule': 'danger'
+      en_attente: 'warning',
+      confirmee: 'info',
+      preparation: 'primary',
+      expedie: 'secondary',
+      livre: 'success',
+      annule: 'danger'
     };
     return colors[statut] || 'secondary';
   }
 
   getStatusLabel(statut: string): string {
     const labels: { [key: string]: string } = {
-      'en_attente': 'En attente',
-      'confirmee': 'Confirmée',
-      'preparation': 'En préparation',
-      'expedie': 'Expédiée',
-      'livre': 'Livrée',
-      'annule': 'Annulée'
+      en_attente: 'En attente',
+      confirmee: 'Confirmee',
+      preparation: 'En preparation',
+      expedie: 'Expediee',
+      livre: 'Livree',
+      annule: 'Annulee'
     };
     return labels[statut] || statut;
   }

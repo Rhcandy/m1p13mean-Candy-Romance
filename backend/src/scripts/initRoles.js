@@ -39,7 +39,8 @@ async function initializeRoles() {
         nom: 'Royal City',
         adresse: {
           type: 'Point',
-          coordinates: [-18.952783162227885, 47.528457818843464]
+          // GeoJSON format: [longitude, latitude]
+          coordinates: [47.528457818843464, -18.952783162227885]
         },
         locataire: []
       });

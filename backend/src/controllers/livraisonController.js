@@ -18,6 +18,68 @@ const normalizeFraisLivraison = (frais) => {
   };
 };
 
+const calculerDistanceDepuisCentre = (centreCoordinates, latitude, longitude) => {
+  if (!Array.isArray(centreCoordinates) || centreCoordinates.length < 2) return null;
+
+  const c0 = Number(centreCoordinates[0]);
+  const c1 = Number(centreCoordinates[1]);
+  const lat = Number(latitude);
+  const lng = Number(longitude);
+
+  if (!Number.isFinite(c0) || !Number.isFinite(c1) || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return null;
+  }
+
+  // Format normal GeoJSON: [lng, lat]
+  const distanceGeoJson = calculerDistanceKm(c1, c0, lat, lng);
+  // Fallback pour anciennes donnees [lat, lng]
+  const distanceLegacy = calculerDistanceKm(c0, c1, lat, lng);
+
+  return Math.min(distanceGeoJson, distanceLegacy);
+};
+
+const calculerFraisDepuisDistance = (distance, fraisConfig) => {
+  const { baseFrais, coutParKm, kmGratuits } = fraisConfig;
+  if (!Number.isFinite(distance) || distance <= kmGratuits) return 0;
+
+  const kmReference = Number(coutParKm);
+  if (!Number.isFinite(kmReference) || kmReference <= 0) {
+    return Math.round(baseFrais);
+  }
+
+  // Regle de trois:
+  // coutParKm km => baseFrais Ar
+  // distance km => x Ar
+  return Math.round((distance * baseFrais) / kmReference);
+};
+
+const DELIVERY_START_HOUR = 6;
+const DELIVERY_END_HOUR = 18;
+
+/**
+ * Regle metier:
+ * 1) La livraison est estimee a J+1 (meme heure).
+ * 2) Si cette heure est hors plage 06h-18h, on la decale sur le prochain creneau valide.
+ */
+const calculerDateLivraisonEstimee = (baseDate = new Date()) => {
+  const date = new Date(baseDate);
+  date.setDate(date.getDate() + 1);
+
+  const hour = date.getHours();
+  if (hour < DELIVERY_START_HOUR) {
+    date.setHours(DELIVERY_START_HOUR, 0, 0, 0);
+    return date;
+  }
+
+  if (hour >= DELIVERY_END_HOUR) {
+    date.setDate(date.getDate() + 1);
+    date.setHours(DELIVERY_START_HOUR, 0, 0, 0);
+    return date;
+  }
+
+  return date;
+};
+
 /**
  * @swagger
  * /api/livraison/calculer-frais:
@@ -92,25 +154,22 @@ exports.calculerFraisLivraison = async (req, res) => {
       });
     }
 
-    const [centreLng, centreLat] = centre.adresse.coordinates;
-    const distance = calculerDistanceKm(
-      centreLat,
-      centreLng,
-      Number(adresseLivraison.latitude),
-      Number(adresseLivraison.longitude)
+    const distance = calculerDistanceDepuisCentre(
+      centre.adresse?.coordinates,
+      adresseLivraison.latitude,
+      adresseLivraison.longitude
     );
-
-    const fraisConfig = normalizeFraisLivraison(centre.fraisLivraison);
-    const { baseFrais, coutParKm, kmGratuits } = fraisConfig;
-
-    let fraisLivraison = baseFrais;
-    if (distance > kmGratuits) {
-      fraisLivraison += (distance - kmGratuits) * coutParKm;
+    if (!Number.isFinite(distance)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Coordonnees de livraison invalides.'
+      });
     }
 
-    // Date de livraison: 1 jour apres paiement
-    const dateLivraison = new Date();
-    dateLivraison.setDate(dateLivraison.getDate() + 1);
+    const fraisConfig = normalizeFraisLivraison(centre.fraisLivraison);
+    const fraisLivraison = calculerFraisDepuisDistance(distance, fraisConfig);
+
+    const dateLivraison = calculerDateLivraisonEstimee(new Date());
 
     res.status(200).json({
       success: true,
@@ -118,7 +177,7 @@ exports.calculerFraisLivraison = async (req, res) => {
       data: {
         fraisLivraison,
         distance: Math.round(distance * 100) / 100, // arrondi a 2 decimales
-        dateLivraison: dateLivraison.toISOString().split('T')[0],
+        dateLivraison: dateLivraison.toISOString(),
         centreDistribution: {
           nom: centre.nom,
           adresse: centre.adresse,

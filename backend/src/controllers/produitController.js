@@ -1,6 +1,8 @@
+const mongoose = require('mongoose');
 const Produit = require('../models/Produit');
 const Boutique = require('../models/Boutique');
 const CategorieProduit = require('../models/CategorieProduit');
+const Promotion = require('../models/Promotion');
 const produitService = require('../services/produitService');
 const Devise = require('../models/Devise');
 const advancedResults = require('../middlewares/advancedResults');
@@ -815,6 +817,105 @@ exports.updateMyBoutiqueProduit = async (req, res) => {
   } catch (error) {
     console.error('Erreur mise à jour produit boutique:', error);
     res.status(500).json({
+      success: false,
+      message: 'Erreur serveur',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * @desc    Associer plusieurs promotions a un produit de la boutique
+ * @route   PUT /api/produits/:id/promotions
+ * @access  Private (admin_boutique/admin_centre/super_admin)
+ */
+exports.updateProduitPromotions = async (req, res) => {
+  try {
+    const productId = req.params.id;
+    const userId = req.user?.userId || req.user?.id;
+    const roleName = req.user?.roleName;
+    const promotionIdsRaw = Array.isArray(req.body?.promotionIds) ? req.body.promotionIds : [];
+
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID produit invalide'
+      });
+    }
+
+    const produit = await Produit.findById(productId);
+    if (!produit) {
+      return res.status(404).json({
+        success: false,
+        message: 'Produit non trouve'
+      });
+    }
+
+    // Les admins boutique ne peuvent modifier que les produits de leur boutique
+    let boutique = null;
+    if (roleName === 'admin_boutique') {
+      boutique = await Boutique.findOne({ locataire: userId }).select('_id');
+      if (!boutique) {
+        return res.status(404).json({
+          success: false,
+          message: 'Boutique non trouvee'
+        });
+      }
+      if (String(produit.boutiqueId) !== String(boutique._id)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Acces refuse pour ce produit'
+        });
+      }
+    }
+
+    const uniquePromotionIds = [...new Set(
+      promotionIdsRaw
+        .map((id) => (id != null ? String(id).trim() : ''))
+        .filter((id) => mongoose.Types.ObjectId.isValid(id))
+    )];
+
+    let promotionFilter = {
+      _id: { $in: uniquePromotionIds },
+      categorie: 'produit'
+    };
+
+    if (roleName === 'admin_boutique') {
+      promotionFilter = {
+        ...promotionFilter,
+        createdBy: userId,
+        boutiqueId: boutique._id
+      };
+    } else {
+      promotionFilter = {
+        ...promotionFilter,
+        boutiqueId: produit.boutiqueId
+      };
+    }
+
+    const promotions = uniquePromotionIds.length
+      ? await Promotion.find(promotionFilter).select('_id')
+      : [];
+
+    if (promotions.length !== uniquePromotionIds.length) {
+      return res.status(400).json({
+        success: false,
+        message: 'Certaines promotions sont invalides ou non autorisees'
+      });
+    }
+
+    produit.promotions = promotions.map((promotion) => promotion._id);
+    await produit.save();
+    await produit.populate('promotions', 'nom taux dateDebut dateFin categorie');
+
+    return res.status(200).json({
+      success: true,
+      message: 'Promotions associees au produit avec succes',
+      data: produit
+    });
+  } catch (error) {
+    console.error('Erreur association promotions produit:', error);
+    return res.status(500).json({
       success: false,
       message: 'Erreur serveur',
       error: error.message

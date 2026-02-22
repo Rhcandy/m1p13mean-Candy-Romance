@@ -1,11 +1,17 @@
-﻿const mongoose = require('mongoose');
+const mongoose = require('mongoose');
 const Panier = require('../models/Panier');
 const Product = require('../models/Produit');
 const Boutique = require('../models/Boutique');
 const Promotion = require('../models/Promotion');
+const Centre = require('../models/Centre');
 const authService = require('../services/authService');
 
 const roundCurrency = (value) => Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+const DEFAULT_FRAIS_LIVRAISON = {
+  baseFrais: 3000,
+  coutParKm: 2,
+  kmGratuits: 3
+};
 
 const getIdValue = (value) => {
   if (!value) return null;
@@ -20,6 +26,108 @@ const getLatestPrixUnitaire = (produit, fallback = 0) => {
     }
   }
   return Number(fallback) || 0;
+};
+
+const normalizeFraisLivraison = (frais) => {
+  const baseFrais = Number(frais?.baseFrais);
+  const coutParKm = Number(frais?.coutParKm);
+  const kmGratuits = Number(frais?.kmGratuits);
+
+  return {
+    baseFrais: Number.isFinite(baseFrais) ? baseFrais : DEFAULT_FRAIS_LIVRAISON.baseFrais,
+    coutParKm: Number.isFinite(coutParKm) ? coutParKm : DEFAULT_FRAIS_LIVRAISON.coutParKm,
+    kmGratuits: Number.isFinite(kmGratuits) ? kmGratuits : DEFAULT_FRAIS_LIVRAISON.kmGratuits
+  };
+};
+
+const calculerDistanceKm = (lat1, lon1, lat2, lon2) => {
+  const toRad = (value) => (value * Math.PI) / 180;
+  const r = 6371;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return r * c;
+};
+
+const calculerDistanceDepuisCentre = (centreCoordinates, latitude, longitude) => {
+  if (!Array.isArray(centreCoordinates) || centreCoordinates.length < 2) return null;
+
+  const c0 = Number(centreCoordinates[0]);
+  const c1 = Number(centreCoordinates[1]);
+  const lat = Number(latitude);
+  const lng = Number(longitude);
+
+  if (!Number.isFinite(c0) || !Number.isFinite(c1) || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return null;
+  }
+
+  // Mode standard GeoJSON [lng, lat]
+  const distanceGeoJson = calculerDistanceKm(c1, c0, lat, lng);
+  // Fallback pour anciennes donnees [lat, lng]
+  const distanceLegacy = calculerDistanceKm(c0, c1, lat, lng);
+
+  return Math.min(distanceGeoJson, distanceLegacy);
+};
+
+const calculerFraisLivraisonDepuisDistance = (distance, fraisConfig) => {
+  const { baseFrais, coutParKm, kmGratuits } = fraisConfig;
+  if (!Number.isFinite(distance) || distance <= kmGratuits) return 0;
+
+  // Regle de trois demandee:
+  // coutParKm km => baseFrais Ar
+  // distance km => x Ar
+  const kmReference = Number(coutParKm);
+  if (!Number.isFinite(kmReference) || kmReference <= 0) {
+    return Math.round(baseFrais);
+  }
+
+  return Math.round((distance * baseFrais) / kmReference);
+};
+
+const calculerFraisLivraisonCommande = async (adresseLivraison) => {
+  if (!adresseLivraison || adresseLivraison.latitude == null || adresseLivraison.longitude == null) {
+    return 0;
+  }
+
+  const centre = await Centre.findOne().select('adresse fraisLivraison').lean();
+  if (!centre?.adresse?.coordinates) return 0;
+
+  const distance = calculerDistanceDepuisCentre(
+    centre.adresse.coordinates,
+    adresseLivraison.latitude,
+    adresseLivraison.longitude
+  );
+
+  if (!Number.isFinite(distance)) return 0;
+  const fraisConfig = normalizeFraisLivraison(centre.fraisLivraison);
+  return calculerFraisLivraisonDepuisDistance(distance, fraisConfig);
+};
+
+const DELIVERY_START_HOUR = 6;
+const DELIVERY_END_HOUR = 18;
+
+// Date estimee: J+1 puis ajustement dans la plage 06h-18h.
+const calculerDateLivraisonEstimee = (baseDate = new Date()) => {
+  const date = new Date(baseDate);
+  date.setDate(date.getDate() + 1);
+
+  const hour = date.getHours();
+  if (hour < DELIVERY_START_HOUR) {
+    date.setHours(DELIVERY_START_HOUR, 0, 0, 0);
+    return date;
+  }
+
+  if (hour >= DELIVERY_END_HOUR) {
+    date.setDate(date.getDate() + 1);
+    date.setHours(DELIVERY_START_HOUR, 0, 0, 0);
+    return date;
+  }
+
+  return date;
 };
 
 const applyPromotionsToPanier = async (panier, options = {}) => {
@@ -49,7 +157,7 @@ const applyPromotionsToPanier = async (panier, options = {}) => {
   }
 
   let productsQuery = Product.find({ _id: { $in: productIds } })
-    .select('prix boutiqueId')
+    .select('prix boutiqueId promotions')
     .lean();
   if (session) {
     productsQuery = productsQuery.session(session);
@@ -57,25 +165,63 @@ const applyPromotionsToPanier = async (panier, options = {}) => {
   const produits = await productsQuery;
   const produitById = new Map(produits.map((produit) => [produit._id.toString(), produit]));
 
-  let productPromosQuery = Promotion.find({
+  const promotionIds = [...new Set(
+    produits.flatMap((produit) => (produit.promotions || [])
+      .map((promotionId) => getIdValue(promotionId))
+      .filter(Boolean))
+  )];
+
+  let promotionsActivesById = new Map();
+  if (promotionIds.length) {
+    let promotionsQuery = Promotion.find({
+      _id: { $in: promotionIds },
+      categorie: 'produit',
+      dateDebut: { $lte: now },
+      dateFin: { $gte: now }
+    }).select('_id taux').lean();
+    if (session) {
+      promotionsQuery = promotionsQuery.session(session);
+    }
+
+    const promotionsActives = await promotionsQuery;
+    promotionsActivesById = new Map(
+      promotionsActives.map((promotion) => [promotion._id.toString(), Number(promotion.taux) || 0])
+    );
+  }
+
+  let legacyTauxByProduit = new Map();
+  const legacyFilter = {
     categorie: 'produit',
     produitId: { $in: productIds },
     dateDebut: { $lte: now },
     dateFin: { $gte: now }
-  }).select('taux produitId').lean();
-  if (session) {
-    productPromosQuery = productPromosQuery.session(session);
+  };
+  if (promotionIds.length) {
+    legacyFilter._id = { $nin: promotionIds };
   }
-  const promotionsProduit = await productPromosQuery;
-  const tauxByProduit = new Map();
-  promotionsProduit.forEach((promotion) => {
+
+  let legacyPromotionsQuery = Promotion.find(legacyFilter).select('produitId taux').lean();
+  if (session) {
+    legacyPromotionsQuery = legacyPromotionsQuery.session(session);
+  }
+  const legacyPromotions = await legacyPromotionsQuery;
+  legacyPromotions.forEach((promotion) => {
     const produitId = getIdValue(promotion.produitId);
     if (!produitId) return;
     const taux = Number(promotion.taux) || 0;
-    const existing = tauxByProduit.get(produitId) || 0;
-    if (taux > existing) {
-      tauxByProduit.set(produitId, taux);
-    }
+    legacyTauxByProduit.set(produitId, (legacyTauxByProduit.get(produitId) || 0) + taux);
+  });
+
+  const tauxByProduit = new Map();
+  produits.forEach((produit) => {
+    const produitId = produit._id.toString();
+    const totalTauxFromLinks = (produit.promotions || []).reduce((sum, promotionId) => {
+      const promoId = getIdValue(promotionId);
+      if (!promoId) return sum;
+      return sum + (promotionsActivesById.get(promoId) || 0);
+    }, 0);
+    const totalTaux = totalTauxFromLinks + (legacyTauxByProduit.get(produitId) || 0);
+    tauxByProduit.set(produitId, Math.min(100, totalTaux));
   });
 
   let sousTotal = 0;
@@ -172,8 +318,8 @@ const applyPromotionsToPanier = async (panier, options = {}) => {
   return panier;
 };
 /**
- * GET - RÃ©cupÃ©rer le panier actif de l'utilisateur
- * Le panier actif est celui Ã  l'Ã©tat "panier" ET qui n'a pas Ã©tÃ© payÃ©
+ * GET - R??cup??rer le panier actif de l'utilisateur
+ * Le panier actif est celui ?? l'??tat "panier" ET qui n'a pas ??t?? pay??
  */
 exports.getPanier = async (req, res) => {
   try {
@@ -186,13 +332,13 @@ exports.getPanier = async (req, res) => {
       });
     }
 
-    // Chercher le panier actif (non validÃ©, non payÃ©)
+    // Chercher le panier actif (non valid??, non pay??)
     // IMPORTANT : statut 'panier' ET isActive: true, ignore expiresAt
     let panier = await Panier.findOne({
       userId,
       statut: 'panier',
       isActive: true
-    }).populate('produitsachete.produit', 'nom photo prix');
+    }).populate({ path: 'produitsachete.produit', select: 'nom photo prix boutiqueId', populate: { path: 'boutiqueId', select: 'nom' } });
 
     // Si aucun panier, retourner un panier virtuel vide
     if (!panier) {
@@ -213,19 +359,19 @@ exports.getPanier = async (req, res) => {
     } else {
       await applyPromotionsToPanier(panier);
       await panier.save();
-      await panier.populate('produitsachete.produit', 'nom photo prix');
+      await panier.populate({ path: 'produitsachete.produit', select: 'nom photo prix boutiqueId', populate: { path: 'boutiqueId', select: 'nom' } });
     }
 
     res.status(200).json({
       success: true,
-      message: 'Panier rÃ©cupÃ©rÃ© avec succÃ¨s',
+      message: 'Panier r??cup??r?? avec succ??s',
       data: panier
     });
   } catch (error) {
     console.error('Erreur getPanier:', error);
     res.status(500).json({
       success: false,
-      message: 'Erreur lors de la rÃ©cupÃ©ration du panier',
+      message: 'Erreur lors de la r??cup??ration du panier',
       error: error.message
     });
   }
@@ -242,37 +388,37 @@ exports.getCommande = async (req, res) => {
       });
     }
 
-    // Chercher le panier actif (non validÃ©, non payÃ©)
+    // Chercher le panier actif (non valid??, non pay??)
     // Pour le statut "panier", on ignore expiresAt (pas d'expiration)
     let panier = await Panier.findOne({
       userId,
       statut: 'en_attente',
       isActive: false
-    }).populate('produitsachete.produit', 'nom photo prix');
+    }).populate({ path: 'produitsachete.produit', select: 'nom photo prix boutiqueId', populate: { path: 'boutiqueId', select: 'nom' } });
 
     if (panier) {
       await applyPromotionsToPanier(panier);
       await panier.save();
-      await panier.populate('produitsachete.produit', 'nom photo prix');
+      await panier.populate({ path: 'produitsachete.produit', select: 'nom photo prix boutiqueId', populate: { path: 'boutiqueId', select: 'nom' } });
     }
     res.status(200).json({
       success: true,
-      message: 'Commande rÃ©cupÃ©rÃ© avec succÃ¨s',
+      message: 'Commande r??cup??r?? avec succ??s',
       data: panier
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Erreur lors de la rÃ©cupÃ©ration du commande',
+      message: 'Erreur lors de la r??cup??ration du commande',
       error: error.message
     });
   }
 };
 
 /**
- * POST - Ajouter un produit au panier (ou Ã  un panier existant)
- * Si un panier actif existe dÃ©jÃ , on ajoute le produit dedans
- * Si le produit existe dÃ©jÃ  dans le panier, on augmente la quantitÃ©
+ * POST - Ajouter un produit au panier (ou ?? un panier existant)
+ * Si un panier actif existe d??j??, on ajoute le produit dedans
+ * Si le produit existe d??j?? dans le panier, on augmente la quantit??
  */
 exports.addToPanier = async (req, res) => {
   const session = await mongoose.startSession();
@@ -296,11 +442,11 @@ exports.addToPanier = async (req, res) => {
       session.endSession();
       return res.status(400).json({
         success: false,
-        message: 'La quantitÃ© doit Ãªtre au moins 1'
+        message: 'La quantit?? doit ??tre au moins 1'
       });
     }
 
-    // RÃ©cupÃ©rer le produit
+    // R??cup??rer le produit
     const produit = await Product.findById(productId).session(session);
     if (!produit) {
       await session.abortTransaction();
@@ -311,7 +457,7 @@ exports.addToPanier = async (req, res) => {
       });
     }
 
-    // Trouver la variante appropriÃ©e
+    // Trouver la variante appropri??e
     let variant = produit.variant && produit.variant.length > 0 ? produit.variant[0] : null;
     
     if (!variant) {
@@ -323,23 +469,23 @@ exports.addToPanier = async (req, res) => {
       });
     }
 
-    // VÃ©rifier le stock disponible
+    // V??rifier le stock disponible
     const availableStock = (variant.qtt || 0) - (variant.reserved || 0);
     if (availableStock < quantity) {
       await session.abortTransaction();
       session.endSession();
       return res.status(400).json({
         success: false,
-        message: `Stock insuffisant. Disponible: ${availableStock}, DemandÃ©: ${quantity}`
+        message: `Stock insuffisant. Disponible: ${availableStock}, Demand??: ${quantity}`
       });
     }
 
-    // RÃ©server le stock
+    // R??server le stock
     variant.reserved = (variant.reserved || 0) + quantity;
     await produit.save({ session });
 
     // Chercher le panier actif de l'utilisateur
-    // IMPORTANT : statut 'panier' ET isActive: true pour rÃ©cupÃ©rer le bon panier
+    // IMPORTANT : statut 'panier' ET isActive: true pour r??cup??rer le bon panier
     let panier = await Panier.findOne({
       userId,
       statut: 'panier',
@@ -347,13 +493,13 @@ exports.addToPanier = async (req, res) => {
       isPaye: false
     }).session(session);
 
-    // RÃ©cupÃ©rer le prix du produit
+    // R??cup??rer le prix du produit
     const prixUnitaire = produit.prix && produit.prix.length > 0 
       ? produit.prix[produit.prix.length - 1].prixUnitaire 
       : 0;
 
     if (!panier) {
-      // CrÃ©er un nouveau panier avec numÃ©ro de commande
+      // Cr??er un nouveau panier avec num??ro de commande
       const count = await Panier.countDocuments().session(session);
       const numeroCommande = `CMD-${Date.now()}-${String(count + 1).padStart(4, '0')}`;
       
@@ -369,13 +515,13 @@ exports.addToPanier = async (req, res) => {
       });
     }
 
-    // VÃ©rifier si le produit existe dÃ©jÃ  dans le panier
+    // V??rifier si le produit existe d??j?? dans le panier
     const existingItemIndex = panier.produitsachete.findIndex(
       item => item.produit.toString() === productId
     );
 
     if (existingItemIndex !== -1) {
-      // Produit existe : augmenter la quantitÃ©
+      // Produit existe : augmenter la quantit??
       const oldQuantity = panier.produitsachete[existingItemIndex].qtt;
       panier.produitsachete[existingItemIndex].qtt = oldQuantity + quantity;
       panier.produitsachete[existingItemIndex].sousTotal = 
@@ -396,12 +542,12 @@ exports.addToPanier = async (req, res) => {
     await session.commitTransaction();
     session.endSession();
 
-    // Repeupler les produits pour la rÃ©ponse
-    await panier.populate('produitsachete.produit', 'nom photo prix');
+    // Repeupler les produits pour la r??ponse
+    await panier.populate({ path: 'produitsachete.produit', select: 'nom photo prix boutiqueId', populate: { path: 'boutiqueId', select: 'nom' } });
 
     res.status(200).json({
       success: true,
-      message: `Produit ajoutÃ© au panier avec succÃ¨s (quantitÃ©: ${quantity})`,
+      message: `Produit ajout?? au panier avec succ??s (quantit??: ${quantity})`,
       data: panier
     });
 
@@ -418,7 +564,7 @@ exports.addToPanier = async (req, res) => {
 };
 
 /**
- * PUT - Mettre Ã  jour la quantitÃ© d'un produit dans le panier
+ * PUT - Mettre ?? jour la quantit?? d'un produit dans le panier
  */
 exports.updateQuantite = async (req, res) => {
   try {
@@ -499,7 +645,7 @@ exports.updateQuantite = async (req, res) => {
     await applyPromotionsToPanier(panier);
 
     await panier.save();
-    await panier.populate('produitsachete.produit', 'nom photo prix');
+    await panier.populate({ path: 'produitsachete.produit', select: 'nom photo prix boutiqueId', populate: { path: 'boutiqueId', select: 'nom' } });
 
     res.status(200).json({
       success: true,
@@ -578,7 +724,7 @@ exports.removeFromPanier = async (req, res) => {
     await applyPromotionsToPanier(panier);
 
     await panier.save();
-    await panier.populate('produitsachete.produit', 'nom photo prix');
+    await panier.populate({ path: 'produitsachete.produit', select: 'nom photo prix boutiqueId', populate: { path: 'boutiqueId', select: 'nom' } });
 
     res.status(200).json({
       success: true,
@@ -608,7 +754,7 @@ exports.viderPanier = async (req, res) => {
       });
     }
 
-    // RÃ©cupÃ©rer le panier actif
+    // R??cup??rer le panier actif
     const panier = await Panier.findOne({
       userId,
       statut: 'panier',
@@ -618,11 +764,11 @@ exports.viderPanier = async (req, res) => {
     if (!panier) {
       return res.status(404).json({
         success: false,
-        message: 'Panier non trouvÃ©'
+        message: 'Panier non trouv??'
       });
     } 
     
-    // LibÃ©rer le stock pour tous les produits
+    // Lib??rer le stock pour tous les produits
     for (const item of panier.produitsachete) {
       const produit = await Product.findById(item.produit);
       if (produit && produit.variant && produit.variant.length > 0) {
@@ -637,7 +783,7 @@ exports.viderPanier = async (req, res) => {
     
     res.status(200).json({
       success: true,
-      message: 'Panier vidÃ© et supprimÃ© avec succÃ¨s',
+      message: 'Panier vid?? et supprim?? avec succ??s',
       data: null
     });
   } catch (error) {
@@ -651,7 +797,7 @@ exports.viderPanier = async (req, res) => {
 };
 
 /**
- * POST - Valider/Confirmer la commande (passer de "panier" Ã  "en_attente")
+ * POST - Valider/Confirmer la commande (passer de "panier" ?? "en_attente")
  */
 exports.validerPanier = async (req, res) => {
   try {
@@ -663,7 +809,7 @@ exports.validerPanier = async (req, res) => {
       });
     }
 
-    // RÃ©cupÃ©rer le panier actif
+    // R??cup??rer le panier actif
     const panier = await Panier.findOne({
       userId,
       statut: 'panier',
@@ -673,7 +819,7 @@ exports.validerPanier = async (req, res) => {
     if (!panier) {
       return res.status(404).json({
         success: false,
-        message: 'Panier non trouvÃ© ou vide'
+        message: 'Panier non trouv?? ou vide'
       });
     }
 
@@ -686,16 +832,16 @@ exports.validerPanier = async (req, res) => {
 
     await applyPromotionsToPanier(panier);
     
-    // Changer le statut Ã  "en_attente" (commande confirmÃ©e, en attente de paiement)
+    // Changer le statut ?? "en_attente" (commande confirm??e, en attente de paiement)
     panier.statut = 'en_attente';
-    panier.isActive = false; // Marquer le panier comme non-actif (fin de l'Ã©dition)
+    panier.isActive = false; // Marquer le panier comme non-actif (fin de l'??dition)
     
     await panier.save();
-    await panier.populate('produitsachete.produit', 'nom photo prix');
+    await panier.populate({ path: 'produitsachete.produit', select: 'nom photo prix boutiqueId', populate: { path: 'boutiqueId', select: 'nom' } });
     
     res.status(200).json({
       success: true,
-      message: 'Commande validÃ©e avec succÃ¨s. En attente de paiement.',
+      message: 'Commande valid??e avec succ??s. En attente de paiement.',
       data: panier
     });
   } catch (error) {
@@ -709,7 +855,7 @@ exports.validerPanier = async (req, res) => {
 };
 
 /**
- * POST - Mettre Ã  jour la commande avec adresse et mÃ©thode de paiement
+ * POST - Mettre ?? jour la commande avec adresse et m??thode de paiement
  */
 exports.mettreAJourCommande = async (req, res) => {
   try {
@@ -723,7 +869,7 @@ exports.mettreAJourCommande = async (req, res) => {
       });
     }
 
-    // RÃ©cupÃ©rer la commande en attente
+    // R??cup??rer la commande en attente
     const panier = await Panier.findOne({
       userId,
       statut: 'en_attente'
@@ -732,13 +878,14 @@ exports.mettreAJourCommande = async (req, res) => {
     if (!panier) {
       return res.status(404).json({
         success: false,
-        message: 'Commande en attente non trouvÃ©e'
+        message: 'Commande en attente non trouv??e'
       });
     }
 
-    // Mettre Ã  jour les informations
+    // Mettre ?? jour les informations
     if (adresseLivraison === null) {
       panier.adresseLivraison = null;
+      panier.fraisLivraison = 0;
     } else if (adresseLivraison) {
       panier.adresseLivraison = {
         nomEndroit: adresseLivraison.nomEndroit || '',
@@ -746,6 +893,7 @@ exports.mettreAJourCommande = async (req, res) => {
         longitude: adresseLivraison.longitude,
         telephone: adresseLivraison.telephone || ''
       };
+      panier.fraisLivraison = await calculerFraisLivraisonCommande(panier.adresseLivraison);
     }
 
     if (methodePaiement) {
@@ -753,25 +901,96 @@ exports.mettreAJourCommande = async (req, res) => {
     }
 
     await panier.save();
-    await panier.populate('produitsachete.produit', 'nom photo prix');
+    await panier.populate({ path: 'produitsachete.produit', select: 'nom photo prix boutiqueId', populate: { path: 'boutiqueId', select: 'nom' } });
     
     res.status(200).json({
       success: true,
-      message: 'Commande mise Ã  jour avec succÃ¨s',
+      message: 'Commande mise ?? jour avec succ??s',
       data: panier
     });
   } catch (error) {
     console.error('Erreur miseAJourCommande:', error);
     res.status(500).json({
       success: false,
-      message: 'Erreur lors de la mise Ã  jour de la commande',
+      message: 'Erreur lors de la mise ?? jour de la commande',
       error: error.message
     });
   }
 };
 
 /**
- * POST - Payer la commande (passer de "en_attente" Ã  "confirmee")
+ * POST - Mettre a jour une commande specifique en attente (adresse, paiement)
+ */
+exports.mettreAJourCommandeById = async (req, res) => {
+  try {
+    const userId = req.body.userId || req.user?.userId || req.user?.id;
+    const { id } = req.params;
+    const { adresseLivraison, methodePaiement } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID utilisateur requis'
+      });
+    }
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID commande requis'
+      });
+    }
+
+    const panier = await Panier.findOne({
+      _id: id,
+      userId,
+      statut: 'en_attente'
+    });
+
+    if (!panier) {
+      return res.status(404).json({
+        success: false,
+        message: 'Commande en attente non trouvee'
+      });
+    }
+
+    if (adresseLivraison === null) {
+      panier.adresseLivraison = null;
+      panier.fraisLivraison = 0;
+    } else if (adresseLivraison) {
+      panier.adresseLivraison = {
+        nomEndroit: adresseLivraison.nomEndroit || '',
+        latitude: adresseLivraison.latitude,
+        longitude: adresseLivraison.longitude,
+        telephone: adresseLivraison.telephone || ''
+      };
+      panier.fraisLivraison = await calculerFraisLivraisonCommande(panier.adresseLivraison);
+    }
+
+    if (methodePaiement) {
+      panier.methodePaiement = methodePaiement;
+    }
+
+    await panier.save();
+    await panier.populate({ path: 'produitsachete.produit', select: 'nom photo prix boutiqueId', populate: { path: 'boutiqueId', select: 'nom' } });
+
+    res.status(200).json({
+      success: true,
+      message: 'Commande mise a jour avec succes',
+      data: panier
+    });
+  } catch (error) {
+    console.error('Erreur mettreAJourCommandeById:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la mise a jour de la commande',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * POST - Payer la commande (passer de "en_attente" ?? "confirmee")
  */
 exports.payerCommande = async (req, res) => {
   try {
@@ -785,7 +1004,7 @@ exports.payerCommande = async (req, res) => {
       });
     }
 
-    // RÃ©cupÃ©rer la commande en attente
+    // R??cup??rer la commande en attente
     const panier = await Panier.findOne({
       userId,
       statut: 'en_attente'
@@ -794,11 +1013,11 @@ exports.payerCommande = async (req, res) => {
     if (!panier) {
       return res.status(404).json({
         success: false,
-        message: 'Commande en attente non trouvÃ©e'
+        message: 'Commande en attente non trouv??e'
       });
     }
 
-    // VÃ©rifier que l'adresse de livraison est dÃ©finie
+    // V??rifier que l'adresse de livraison est d??finie
     if (panier.adresseLivraison) {
       const { latitude, longitude } = panier.adresseLivraison;
       if (latitude == null || longitude == null) {
@@ -807,6 +1026,9 @@ exports.payerCommande = async (req, res) => {
           message: 'Adresse de livraison requise avant le paiement'
         });
       }
+      panier.fraisLivraison = await calculerFraisLivraisonCommande(panier.adresseLivraison);
+    } else {
+      panier.fraisLivraison = 0;
     }
 
     await applyPromotionsToPanier(panier);
@@ -817,27 +1039,25 @@ exports.payerCommande = async (req, res) => {
     if (!paiementReussi) {
       return res.status(400).json({
         success: false,
-        message: 'Ã‰chec du paiement'
+        message: '??chec du paiement'
       });
     }
 
-    // Mettre Ã  jour le statut
+    // Mettre ?? jour le statut
     panier.statut = 'confirmee';
     panier.isPaye = true;
     panier.datePaiement = new Date();
     panier.methodePaiement=paiementDetails.methode;
     
-    // Calculer la date de livraison (1 jour aprÃ¨s paiement)
-    const dateLivraison = new Date();
-    dateLivraison.setDate(dateLivraison.getDate() + 1);
-    panier.dateLivraison = dateLivraison;
+    // Calculer la date de livraison (1 jour apr??s paiement)
+    panier.dateLivraison = calculerDateLivraisonEstimee(new Date());
     
     await panier.save();
-    await panier.populate('produitsachete.produit', 'nom photo prix');
+    await panier.populate({ path: 'produitsachete.produit', select: 'nom photo prix boutiqueId', populate: { path: 'boutiqueId', select: 'nom' } });
     
     res.status(200).json({
       success: true,
-      message: 'Paiement effectuÃ© avec succÃ¨s. Commande confirmÃ©e.',
+      message: 'Paiement effectu?? avec succ??s. Commande confirm??e.',
       data: {
         commande: panier,
         facture: genererFacture(panier)
@@ -845,6 +1065,94 @@ exports.payerCommande = async (req, res) => {
     });
   } catch (error) {
     console.error('Erreur payerCommande:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors du paiement',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * POST - Payer une commande specifique (en_attente -> confirmee)
+ */
+exports.payerCommandeById = async (req, res) => {
+  try {
+    const userId = req.body.userId || req.user?.userId || req.user?.id;
+    const { id } = req.params;
+    const { paiementDetails } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID utilisateur requis'
+      });
+    }
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID commande requis'
+      });
+    }
+
+    const panier = await Panier.findOne({
+      _id: id,
+      userId,
+      statut: 'en_attente'
+    });
+
+    if (!panier) {
+      return res.status(404).json({
+        success: false,
+        message: 'Commande en attente non trouvee'
+      });
+    }
+
+    if (panier.adresseLivraison) {
+      const { latitude, longitude } = panier.adresseLivraison;
+      if (latitude == null || longitude == null) {
+        return res.status(400).json({
+          success: false,
+          message: 'Adresse de livraison requise avant le paiement'
+        });
+      }
+      panier.fraisLivraison = await calculerFraisLivraisonCommande(panier.adresseLivraison);
+    } else {
+      panier.fraisLivraison = 0;
+    }
+
+    await applyPromotionsToPanier(panier);
+    await panier.save();
+
+    const paiementReussi = await traiterPaiement(paiementDetails, panier.total);
+    if (!paiementReussi) {
+      return res.status(400).json({
+        success: false,
+        message: 'Echec du paiement'
+      });
+    }
+
+    panier.statut = 'confirmee';
+    panier.isPaye = true;
+    panier.datePaiement = new Date();
+    panier.methodePaiement = paiementDetails?.methode || panier.methodePaiement;
+
+    panier.dateLivraison = calculerDateLivraisonEstimee(new Date());
+
+    await panier.save();
+    await panier.populate({ path: 'produitsachete.produit', select: 'nom photo prix boutiqueId', populate: { path: 'boutiqueId', select: 'nom' } });
+
+    res.status(200).json({
+      success: true,
+      message: 'Paiement effectue avec succes. Commande confirmee.',
+      data: {
+        commande: panier,
+        facture: genererFacture(panier)
+      }
+    });
+  } catch (error) {
+    console.error('Erreur payerCommandeById:', error);
     res.status(500).json({
       success: false,
       message: 'Erreur lors du paiement',
@@ -868,7 +1176,7 @@ exports.annulerCommande = async (req, res) => {
       });
     }
 
-    // RÃ©cupÃ©rer la commande (panier ou en_attente)
+    // R??cup??rer la commande (panier ou en_attente)
     const panier = await Panier.findOne({
       userId,
       statut: { $in: ['panier', 'en_attente'] }
@@ -877,11 +1185,11 @@ exports.annulerCommande = async (req, res) => {
     if (!panier) {
       return res.status(404).json({
         success: false,
-        message: 'Commande Ã  annuler non trouvÃ©e'
+        message: 'Commande ?? annuler non trouv??e'
       });
     }
 
-    // LibÃ©rer le stock rÃ©servÃ©
+    // Lib??rer le stock r??serv??
     for (const item of panier.produitsachete) {
       const produit = await Product.findById(item.produit);
       if (produit && produit.variant && produit.variant.length > 0) {
@@ -891,7 +1199,7 @@ exports.annulerCommande = async (req, res) => {
       }
     }
 
-    // Mettre Ã  jour le statut
+    // Mettre ?? jour le statut
     panier.statut = 'annule';
     panier.dateAnnulation = new Date();
     if (motif) {
@@ -903,7 +1211,7 @@ exports.annulerCommande = async (req, res) => {
     
     res.status(200).json({
       success: true,
-      message: 'Commande annulÃ©e avec succÃ¨s',
+      message: 'Commande annul??e avec succ??s',
       data: panier
     });
   } catch (error) {
@@ -917,7 +1225,7 @@ exports.annulerCommande = async (req, res) => {
 };
 
 /**
- * GET - RÃ©cupÃ©rer l'historique des commandes d'un utilisateur
+ * GET - R??cup??rer l'historique des commandes d'un utilisateur
  */
 exports.getHistoriqueCommandes = async (req, res) => {
   try {
@@ -934,26 +1242,26 @@ exports.getHistoriqueCommandes = async (req, res) => {
       userId,
       statut: { $ne: 'panier' } // Exclure les paniers actifs
     })
-    .populate('produitsachete.produit', 'nom photo')
+    .populate({ path: 'produitsachete.produit', select: 'nom photo boutiqueId', populate: { path: 'boutiqueId', select: 'nom' } })
     .sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
-      message: 'Historique des commandes rÃ©cupÃ©rÃ© avec succÃ¨s',
+      message: 'Historique des commandes r??cup??r?? avec succ??s',
       data: commandes
     });
   } catch (error) {
     console.error('Erreur getHistoriqueCommandes:', error);
     res.status(500).json({
       success: false,
-      message: 'Erreur lors de la rÃ©cupÃ©ration de l\'historique',
+      message: 'Erreur lors de la r??cup??ration de l\'historique',
       error: error.message
     });
   }
 };
 
 /**
- * GET - RÃ©cupÃ©rer une commande par ID
+ * GET - R??cup??rer une commande par ID
  */
 exports.getCommandeById = async (req, res) => {
   try {
@@ -969,13 +1277,13 @@ exports.getCommandeById = async (req, res) => {
     }
 
     const commande = await Panier.findById(id)
-      .populate('produitsachete.produit', 'nom photo prix')
+      .populate({ path: 'produitsachete.produit', select: 'nom photo prix boutiqueId', populate: { path: 'boutiqueId', select: 'nom' } })
       .populate('userId', 'nom email');
 
     if (!commande) {
       return res.status(404).json({
         success: false,
-        message: 'Commande non trouvÃ©e'
+        message: 'Commande non trouv??e'
       });
     }
 
@@ -985,20 +1293,20 @@ exports.getCommandeById = async (req, res) => {
     if (!isAdmin && ownerId && ownerId !== userId) {
       return res.status(403).json({
         success: false,
-        message: 'AccÃ¨s refusÃ©'
+        message: 'Acc??s refus??'
       });
     }
 
     res.status(200).json({
       success: true,
-      message: 'Commande rÃ©cupÃ©rÃ©e avec succÃ¨s',
+      message: 'Commande r??cup??r??e avec succ??s',
       data: commande
     });
   } catch (error) {
     console.error('Erreur getCommandeById:', error);
     res.status(500).json({
       success: false,
-      message: 'Erreur lors de la rÃ©cupÃ©ration de la commande',
+      message: 'Erreur lors de la r??cup??ration de la commande',
       error: error.message
     });
   }
@@ -1044,7 +1352,7 @@ exports.getCommandesBoutique = async (req, res) => {
       'produitsachete.produit': { $in: produitIds }
     })
       .populate('userId', 'nom email')
-      .populate('produitsachete.produit', 'nom photo prix boutiqueId')
+      .populate({ path: 'produitsachete.produit', select: 'nom photo prix boutiqueId', populate: { path: 'boutiqueId', select: 'nom' } })
       .sort({ createdAt: -1 });
 
     const boutiqueIdSet = new Set(boutiqueIds.map(id => id.toString()));
@@ -1085,7 +1393,6 @@ exports.getCommandesBoutique = async (req, res) => {
 
 // Fonctions utilitaires
 async function traiterPaiement(paiementDetails, montant) {
-  console.log('Traitement paiement:', { paiementDetails, montant });
   await new Promise(resolve => setTimeout(resolve, 1000));
   return Math.random() > 0.1;
 }
@@ -1116,5 +1423,6 @@ function genererFacture(panier) {
     }
   };
 }
+
 
 

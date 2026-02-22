@@ -105,6 +105,10 @@ const routes: Routes = [
             loadComponent: () => import('./demo/pages/boutique/informations/boutique-informations.component').then((c) => c.BoutiqueInformationsComponent)
           },
           {
+            path: 'boxes',
+            loadComponent: () => import('./demo/pages/boutique/boxes-disponibles/boxes-disponibles.component').then((c) => c.BoxesDisponiblesComponent)
+          },
+          {
             path: 'produits',
             loadComponent: () => import('./demo/pages/boutique/produits/boutique-produits.component').then((c) => c.BoutiqueProduitsComponent)
           },

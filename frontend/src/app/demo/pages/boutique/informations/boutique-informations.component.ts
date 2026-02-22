@@ -1,6 +1,7 @@
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormControl } from '@angular/forms';
 import { CommonModule, DatePipe } from '@angular/common';
+import { Router } from '@angular/router';
 import { BoutiqueService, Boutique } from '../../../../services/boutique.service';
 import { NotificationService } from '../../../../services/notification.service';
 
@@ -32,6 +33,7 @@ export class BoutiqueInformationsComponent implements OnInit {
   constructor(
     private readonly fb: FormBuilder,
     private readonly boutiqueService: BoutiqueService,
+    private readonly router: Router,
     private readonly cdr: ChangeDetectorRef,
     private readonly notificationService: NotificationService
   ) {
@@ -53,7 +55,7 @@ export class BoutiqueInformationsComponent implements OnInit {
           this.boutique = response.data;
           this.boutiqueForm.patchValue({ nom: response.data.nom });
         } else {
-          this.notificationService.info('Info', 'Aucune boutique trouvée pour votre compte. Veuillez en créer une.');
+          this.notificationService.info('Info', 'Aucune boutique trouvÃ©e pour votre compte. Veuillez en crÃ©er une.');
         }
         this.loading = false;
         this.cdr.detectChanges();
@@ -83,7 +85,7 @@ export class BoutiqueInformationsComponent implements OnInit {
       next: (response) => {
         if (response.success) {
           this.boutique = response.data;
-          this.notificationService.success('Informations mises à jour avec succès');
+          this.notificationService.success('Informations mises a jour avec succes');
           this.boutiqueForm.patchValue({ nom: response.data.nom });
         } else {
           this.notificationService.error('Erreur', response.message);
@@ -92,8 +94,8 @@ export class BoutiqueInformationsComponent implements OnInit {
         this.cdr.detectChanges();
       },
       error: (err) => {
-        this.notificationService.error('Erreur', 'Erreur lors de la mise à jour');
-        console.error('Erreur mise à jour:', err);
+        this.notificationService.error('Erreur', 'Erreur lors de la mise Ã  jour');
+        console.error('Erreur mise Ã  jour:', err);
         this.saving = false;
         this.cdr.detectChanges();
       }
@@ -108,8 +110,9 @@ export class BoutiqueInformationsComponent implements OnInit {
       this.boutiqueService.uploadLogo(this.boutique._id, file).subscribe({
         next: (response) => {
           if (response.success) {
-            this.boutique = response.data;
-            this.notificationService.success('Logo mis à jour avec succès');
+            const payload: any = response.data;
+            this.boutique = payload?.boutique || payload;
+            this.notificationService.success('Logo mis a jour avec succes');
           } else {
             this.notificationService.error('Erreur', response.message);
           }
@@ -117,7 +120,7 @@ export class BoutiqueInformationsComponent implements OnInit {
           this.cdr.detectChanges();
         },
         error: (err) => {
-          this.notificationService.error('Erreur', 'Erreur lors du téléchargement du logo');
+          this.notificationService.error('Erreur', 'Erreur lors du tÃ©lÃ©chargement du logo');
           console.error('Erreur logo:', err);
           this.saving = false;
           this.cdr.detectChanges();
@@ -128,6 +131,10 @@ export class BoutiqueInformationsComponent implements OnInit {
 
   toggleBoutiqueStatus(): void {
     if (!this.boutique) return;
+    if (!this.boutique.isActive && this.boutique.isPendingFirstActivation) {
+      this.notificationService.info('Activation en attente', 'La premiere activation doit etre faite par admin centre.');
+      return;
+    }
 
     this.saving = true;
     const action = this.boutique.isActive
@@ -138,7 +145,7 @@ export class BoutiqueInformationsComponent implements OnInit {
       next: (response) => {
         if (response.success) {
           this.boutique = response.data;
-          this.notificationService.success(`Boutique ${response.data.isActive ? 'activée' : 'désactivée'} avec succès`);
+          this.notificationService.success(`Boutique ${response.data.isActive ? 'activÃ©e' : 'dÃ©sactivÃ©e'} avec succÃ¨s`);
         } else {
           this.notificationService.error('Erreur', response.message);
         }
@@ -153,4 +160,44 @@ export class BoutiqueInformationsComponent implements OnInit {
       }
     });
   }
+
+  goToChangeBox(): void {
+    this.router.navigate(['/boutique/boxes'], { queryParams: { mode: 'change' } });
+  }
+
+  goToBoxesList(): void {
+    this.router.navigate(['/boutique/boxes']);
+  }
+
+  quitterCentre(): void {
+    if (!this.boutique) return;
+
+    const confirmed = confirm(
+      'Quitter le centre supprimera la boutique et liberera la box. ' +
+      'Condition: tous les produits doivent etre supprimes avant. Continuer ?'
+    );
+    if (!confirmed) return;
+
+    this.saving = true;
+    this.boutiqueService.quitterCentre().subscribe({
+      next: (response) => {
+        if (response.success) {
+          this.notificationService.success('Centre quitte avec succes');
+          this.boutique = null;
+          this.router.navigate(['/boutique/boxes']);
+        } else {
+          this.notificationService.error('Erreur', response.message);
+        }
+      },
+      error: (err) => {
+        const message = err?.error?.message || 'Impossible de quitter le centre.';
+        this.notificationService.error('Erreur', message);
+      },
+      complete: () => {
+        this.saving = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
 }
+

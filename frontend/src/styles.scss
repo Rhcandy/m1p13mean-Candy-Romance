@@ -37,8 +37,17 @@ File: style.css
 @import 'scss/themes/customizer';
 @import 'scss/style-preset.scss';
 
-// Leaflet maps
+// Leaflet maps (fallback for dev sessions without angular.json restart)
 @import 'node_modules/leaflet/dist/leaflet.css';
+
+// Prevent global img rules from breaking Leaflet tiles.
+.leaflet-container img,
+.leaflet-container .leaflet-tile,
+.leaflet-container .leaflet-marker-icon,
+.leaflet-container .leaflet-marker-shadow {
+  max-width: none !important;
+  max-height: none !important;
+}
 
 // fonts
 @import url('scss/fonts/berry/berry-icons.css'); /** custom font icons - berry **/

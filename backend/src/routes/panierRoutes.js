@@ -31,9 +31,11 @@ router.post('/valider', panierController.validerPanier);
 
 // POST - Mettre à jour la commande (adresse, paiement)
 router.post('/mettre-a-jour', panierController.mettreAJourCommande);
+router.post('/:id/mettre-a-jour', panierController.mettreAJourCommandeById);
 
 // POST - Payer la commande
 router.post('/payer', panierController.payerCommande);
+router.post('/:id/payer', panierController.payerCommandeById);
 
 // POST - Annuler une commande
 router.post('/annuler', panierController.annulerCommande);
