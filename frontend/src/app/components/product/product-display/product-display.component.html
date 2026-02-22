@@ -3,7 +3,7 @@
   <div class="product-card clickable-card" (click)="onProductClick()" (keydown)="onProductClick()" tabindex="0" role="button" [attr.aria-label]="'Voir les détails du produit ' + product.nom">
     <!-- Section Image avec background coloré et prix flottant -->
     <div class="image-section">
-      @if (getActivePromotion()) {
+      @if (hasActivePromotions()) {
         <div class="promo-badge">
           Promo {{ getPromotionBadgeText() }}
         </div>
@@ -11,8 +11,13 @@
       <!-- Prix badge en haut à droite -->
       <div class="price-badge">
         <span class="price-text">
-          {{ formatPrice(product.prix[0].prixUnitaire) }}
+          {{ formatPrice(hasActivePromotions() ? getDiscountedPrice() : getBasePrice()) }}
         </span>
+        @if (hasActivePromotions()) {
+          <small class="d-block text-muted text-decoration-line-through">
+            {{ formatPrice(getBasePrice()) }}
+          </small>
+        }
       </div>
 
       <!-- Image du produit -->
@@ -61,6 +66,12 @@
 
       @if (product.description) {
         <p class="product-description">{{ product.description }}</p>
+      }
+
+      @if (hasActivePromotions()) {
+        <div class="small text-success mb-2">
+          {{ getPromotionDetailsText() }}
+        </div>
       }
 
       <!-- Tags/Chips -->

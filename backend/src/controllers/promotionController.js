@@ -536,13 +536,6 @@ exports.createMyBoutiquePromotion = async (req, res) => {
       });
     }
 
-    if (categorie === 'produit' && !produitId) {
-      return res.status(400).json({
-        success: false,
-        message: 'produitId est requis pour une promotion produit'
-      });
-    }
-
     if (categorie === 'acheteur' && !acheteurId) {
       return res.status(400).json({
         success: false,
@@ -550,8 +543,25 @@ exports.createMyBoutiquePromotion = async (req, res) => {
       });
     }
 
+    const tauxNumber = Number(taux);
+    if (!Number.isFinite(tauxNumber) || tauxNumber < 0 || tauxNumber > 100) {
+      return res.status(400).json({
+        success: false,
+        message: 'taux doit etre un nombre entre 0 et 100'
+      });
+    }
+
+    const parsedDateDebut = parseDate(dateDebut);
+    const parsedDateFin = parseDate(dateFin);
+    if (!parsedDateDebut || !parsedDateFin || parsedDateFin <= parsedDateDebut) {
+      return res.status(400).json({
+        success: false,
+        message: 'dateDebut/dateFin invalides (dateFin doit etre apres dateDebut)'
+      });
+    }
+
     // Vérifier que le produit appartient à la boutique si c'est une promotion produit
-    if (categorie === 'produit') {
+    if (categorie === 'produit' && produitId) {
       const produit = await Produit.findOne({ 
         _id: produitId, 
         boutiqueId: boutique._id 
@@ -568,9 +578,9 @@ exports.createMyBoutiquePromotion = async (req, res) => {
     // Créer la promotion
     const promotionData = {
       nom,
-      taux: Number(taux),
-      dateDebut: parseDate(dateDebut),
-      dateFin: parseDate(dateFin),
+      taux: tauxNumber,
+      dateDebut: parsedDateDebut,
+      dateFin: parsedDateFin,
       categorie,
       createdBy: req.user.userId,
       boutiqueId: boutique._id
@@ -746,6 +756,12 @@ exports.deleteMyBoutiquePromotion = async (req, res) => {
         message: 'Promotion non trouvée ou n\'appartient pas à votre boutique'
       });
     }
+
+    // Nettoyer les liaisons produit -> promotions
+    await Produit.updateMany(
+      { promotions: promotion._id },
+      { $pull: { promotions: promotion._id } }
+    );
 
     await Promotion.findByIdAndDelete(req.params.id);
 

@@ -50,7 +50,7 @@
         <span>Sous-total</span>
         <span>{{ formatPrice(getCommandeSousTotal(commande)) }}</span>
       </div>
-      @if (!isAdminBoutique) {
+      @if (getFraisLivraison(commande) > 0) {
         <div class="summary-row">
           <span>Frais de livraison</span>
           <span>{{ formatPrice(getFraisLivraison(commande)) }}</span>

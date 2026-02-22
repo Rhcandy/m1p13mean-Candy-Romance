@@ -1,4 +1,4 @@
-﻿import { AfterViewInit, Component, ElementRef, EventEmitter, Input, OnDestroy, Output, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import * as L from 'leaflet';
 
@@ -9,7 +9,7 @@ import * as L from 'leaflet';
   templateUrl: './leaflet-map.component.html',
   styleUrls: ['./leaflet-map.component.css']
 })
-export class LeafletMapComponent implements AfterViewInit, OnDestroy {
+export class LeafletMapComponent implements AfterViewInit, OnDestroy, OnChanges {
   /** explicit center input (existing) */
   @Input() center: [number, number] = [0, 0];
   @Input() zoom = 13;
@@ -28,12 +28,39 @@ export class LeafletMapComponent implements AfterViewInit, OnDestroy {
   map?: L.Map;
   private marker?: L.Marker;
   private defaultIcon?: L.Icon;
+  private readonly onWindowResize = () => {
+    this.map?.invalidateSize();
+  };
 
   ngAfterViewInit(): void {
     this.initIconDefaults();
     this.initMap();
     // After initializing the map, attempt to apply initialPosition or use geolocation
     this.applyInitialPositionIfNeeded();
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (!this.map) return;
+
+    if (changes['initialPosition'] && this.initialPosition && this.initialPosition.length >= 2) {
+      const [lat, lng] = this.initialPosition;
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        this.setMapView([lat, lng], this.zoom, this.autoSetMarker);
+        return;
+      }
+    }
+
+    if (changes['center'] && this.center && this.center.length >= 2) {
+      const [lat, lng] = this.center;
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        this.setMapView([lat, lng], this.zoom);
+        return;
+      }
+    }
+
+    if (changes['zoom'] && Number.isFinite(this.zoom)) {
+      this.map.setZoom(this.zoom);
+    }
   }
 
   private initIconDefaults() {
@@ -65,7 +92,7 @@ export class LeafletMapComponent implements AfterViewInit, OnDestroy {
     this.map = L.map(this.mapContainer.nativeElement).setView(this.center, this.zoom);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: 'Â© OpenStreetMap contributors'
+      attribution: '&copy; OpenStreetMap contributors'
     }).addTo(this.map);
 
     // Force invalidation de la taille apres un court delai
@@ -76,6 +103,9 @@ export class LeafletMapComponent implements AfterViewInit, OnDestroy {
     };
     setTimeout(invalidate, 100);
     setTimeout(invalidate, 350);
+    setTimeout(invalidate, 700);
+    this.map.whenReady(invalidate);
+    window.addEventListener('resize', this.onWindowResize);
 
     this.map.on('click', (e: L.LeafletMouseEvent) => {
       const { lat, lng } = e.latlng;
@@ -140,6 +170,7 @@ export class LeafletMapComponent implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    window.removeEventListener('resize', this.onWindowResize);
     if (this.map) {
       this.map.off();
       this.map.remove();

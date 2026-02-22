@@ -39,6 +39,8 @@ interface Panier {
   styleUrls: ['./checkout.component.scss']
 })
 export class CheckoutComponent implements OnInit, OnDestroy {
+  private readonly deliveryStartHour = 6;
+  private readonly deliveryEndHour = 18;
   private readonly destroy$ = new Subject<void>();
 
   panier: Panier | null = null;
@@ -54,8 +56,11 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   modeLivraison: 'retrait' | 'livraison' = 'retrait';
   currentUser: any = null;
   userTelephone = '';
+  mapZoom = 16;
+  private readonly defaultMapCenter: [number, number] = [-18.952783162227885, 47.528457818843464];
   selectedMapLocation: { lat: number; lng: number } | null = null;
-  mapInitialPosition: [number, number] | null = null;
+  mapInitialPosition: [number, number] | null = this.defaultMapCenter;
+  private targetCommandeId: string | null = null;
 
   constructor(
     private readonly router: Router,
@@ -87,6 +92,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.authService.ensureUserExists();
+    this.targetCommandeId = this.route.snapshot.queryParamMap.get('commandeId');
     this.loadUser();
     this.refreshUserProfile();
     this.loadPanier();
@@ -140,15 +146,29 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
   loadPanier(): void {
     this.loading = true;
+    const source$ = this.targetCommandeId
+      ? this.panierService.getCommandeById(this.targetCommandeId)
+      : this.panierService.getCommande();
 
-    this.panierService.getCommande().pipe(takeUntil(this.destroy$)).subscribe({
+    source$.pipe(takeUntil(this.destroy$)).subscribe({
       next: (response) => {
         this.panier = response.data;
         if (!this.panier || (this.panier.produitsachete.length === 0 && this.panier.statut !== 'en_attente')) {
           this.notificationService.warning('Votre panier est vide');
+          this.loading = false;
+          this.cdr.detectChanges();
           return;
         }
 
+        if (this.panier.statut !== 'en_attente') {
+          this.notificationService.warning('Cette commande n\'est plus en attente de paiement');
+          this.router.navigate(['/commandes']);
+          this.loading = false;
+          this.cdr.detectChanges();
+          return;
+        }
+
+        this.applyCommandeAddress();
         this.calculerFraisLivraison();
         this.loading = false;
         this.cdr.detectChanges();
@@ -163,7 +183,38 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     });
   }
 
+  private applyCommandeAddress(): void {
+    const adresse = this.panier?.adresseLivraison;
+    if (!adresse) return;
+
+    const latitude = adresse.latitude ?? null;
+    const longitude = adresse.longitude ?? null;
+    const nomEndroit = adresse.nomEndroit || '';
+    const telephone = adresse.telephone || this.userTelephone || '';
+
+    const hasDeliveryData = !!nomEndroit || latitude != null || longitude != null;
+    if (hasDeliveryData) {
+      this.checkoutForm.patchValue({
+        modeLivraison: 'livraison',
+        nomEndroit,
+        latitude,
+        longitude,
+        telephone
+      });
+      this.onModeLivraisonChange();
+    }
+
+    if (latitude != null && longitude != null) {
+      this.mapInitialPosition = [Number(latitude), Number(longitude)];
+      this.selectedMapLocation = { lat: Number(latitude), lng: Number(longitude) };
+    }
+  }
+
   loadUserAddress(): void {
+    if (this.targetCommandeId && this.panier?.adresseLivraison) {
+      return;
+    }
+
     const user = this.authService.currentUser;
     if (user && 'adresse' in user && user.adresse) {
       const adresse = user.adresse as any;
@@ -230,7 +281,10 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     this.livraisonService.calculerFraisLivraison(adresse).pipe(takeUntil(this.destroy$)).subscribe({
       next: (response) => {
         this.fraisLivraison = response.fraisLivraison;
-        this.dateLivraisonEstimee = new Date(response.dateLivraison);
+        const parsedDate = response.dateLivraison ? new Date(response.dateLivraison) : null;
+        this.dateLivraisonEstimee = parsedDate && !Number.isNaN(parsedDate.getTime())
+          ? parsedDate
+          : this.calculerDateLivraisonEstimee();
         if (response.centreDistribution?.fraisLivraison) {
           this.centreFraisLivraison = response.centreDistribution.fraisLivraison;
         }
@@ -249,19 +303,62 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     const { baseFrais, coutParKm, kmGratuits } = frais;
 
     const distance = 5;
-    this.fraisLivraison = baseFrais;
-    if (distance > kmGratuits) {
-      this.fraisLivraison += (distance - kmGratuits) * coutParKm;
+    if (distance <= kmGratuits) {
+      this.fraisLivraison = 0;
+    } else if (coutParKm > 0) {
+      this.fraisLivraison = Math.round((distance * baseFrais) / coutParKm);
+    } else {
+      this.fraisLivraison = Math.round(baseFrais);
     }
 
-    this.dateLivraisonEstimee = new Date();
-    this.dateLivraisonEstimee.setDate(this.dateLivraisonEstimee.getDate() + 1);
+    this.dateLivraisonEstimee = this.calculerDateLivraisonEstimee();
+  }
+
+  private calculerDateLivraisonEstimee(baseDate: Date = new Date()): Date {
+    const date = new Date(baseDate);
+    date.setDate(date.getDate() + 1);
+
+    const heure = date.getHours();
+    if (heure < this.deliveryStartHour) {
+      date.setHours(this.deliveryStartHour, 0, 0, 0);
+      return date;
+    }
+
+    if (heure >= this.deliveryEndHour) {
+      date.setDate(date.getDate() + 1);
+      date.setHours(this.deliveryStartHour, 0, 0, 0);
+      return date;
+    }
+
+    return date;
+  }
+
+  formatDateLivraisonFr(date: Date | null): string {
+    if (!date) return '';
+    return date.toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
   }
 
   updateTotal(): void {
     if (!this.panier) return;
     this.panier.fraisLivraison = this.fraisLivraison;
     this.panier.total = this.panier.sousTotal + this.fraisLivraison;
+  }
+
+  private setDefaultMapLocationIfEmpty(): void {
+    if (this.hasCoordonneesLivraison()) return;
+
+    const [lat, lng] = this.defaultMapCenter;
+    this.mapInitialPosition = [lat, lng];
+    this.selectedMapLocation = { lat, lng };
+    this.checkoutForm.patchValue({
+      latitude: lat,
+      longitude: lng
+    }, { emitEvent: false });
   }
 
   onModeLivraisonChange(): void {
@@ -272,13 +369,14 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     const longitudeControl = this.checkoutForm.get('longitude');
     const telephoneControl = this.checkoutForm.get('telephone');
 
-    const telephoneValidators = [Validators.required, Validators.pattern('^[0-9]{10,14}$')];
+    const telephoneValidators = [Validators.required, Validators.pattern('^[0-9]{10,13}$')];
 
     if (this.modeLivraison === 'livraison') {
       nomEndroitControl?.setValidators([Validators.required]);
       latitudeControl?.setValidators([Validators.required]);
       longitudeControl?.setValidators([Validators.required]);
       telephoneControl?.setValidators(telephoneValidators);
+      this.setDefaultMapLocationIfEmpty();
     } else {
       nomEndroitControl?.clearValidators();
       latitudeControl?.clearValidators();
@@ -406,10 +504,17 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       };
     }
 
-    this.panierService.mettreAJourCommande({
-      adresseLivraison,
-      methodePaiement: this.checkoutForm.get('methodePaiement')?.value
-    }).pipe(takeUntil(this.destroy$)).subscribe({
+    const updateRequest$ = this.targetCommandeId
+      ? this.panierService.mettreAJourCommandeById(this.targetCommandeId, {
+          adresseLivraison,
+          methodePaiement: this.checkoutForm.get('methodePaiement')?.value
+        })
+      : this.panierService.mettreAJourCommande({
+          adresseLivraison,
+          methodePaiement: this.checkoutForm.get('methodePaiement')?.value
+        });
+
+    updateRequest$.pipe(takeUntil(this.destroy$)).subscribe({
       next: (response) => {
         this.panier = response.data;
       },
@@ -437,7 +542,11 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       };
     }
 
-    this.panierService.payerCommande(paiementDetails).pipe(takeUntil(this.destroy$)).subscribe({
+    const paymentRequest$ = this.targetCommandeId
+      ? this.panierService.payerCommandeById(this.targetCommandeId, paiementDetails)
+      : this.panierService.payerCommande(paiementDetails);
+
+    paymentRequest$.pipe(takeUntil(this.destroy$)).subscribe({
       next: (response) => {
         this.processingPayment = false;
         this.notificationService.success('Paiement effectue avec succes !');
@@ -496,7 +605,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
     if (errors['required']) return 'Ce champ est requis';
     if (errors['pattern']) {
-      if (fieldName === 'telephone') return 'Numero de telephone invalide (10 a 14 chiffres)';
+      if (fieldName === 'telephone') return 'Numero de telephone invalide (10 a 13 chiffres)';
       if (fieldName === 'carteNumero') return 'Numero de carte invalide (16 chiffres)';
       if (fieldName === 'carteExpiry') return 'Date d\'expiration invalide (MM/AA)';
       if (fieldName === 'carteCVV') return 'CVV invalide (3-4 chiffres)';

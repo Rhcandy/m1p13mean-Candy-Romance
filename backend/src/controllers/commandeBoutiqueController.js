@@ -110,18 +110,20 @@ exports.getMyBoutiqueCommandes = async (req, res) => {
       .limit(limit);
 
     // Filtrer pour ne montrer que les produits de la boutique dans chaque commande
-    const commandesFiltrees = commandes.map(commande => {
-      const produitsBoutiqueOnly = commande.produitsachete.filter(item => 
-        produitIds.some(id => id.toString() === item.produit._id.toString())
-      );
-      
-      return {
-        ...commande.toObject(),
-        produitsachete: produitsBoutiqueOnly,
-        totalBoutique: produitsBoutiqueOnly.reduce((sum, item) => sum + item.sousTotal, 0),
-        quantiteBoutique: produitsBoutiqueOnly.reduce((sum, item) => sum + item.qtt, 0)
-      };
-    });
+	    const commandesFiltrees = commandes.map(commande => {
+	      const produitsBoutiqueOnly = commande.produitsachete.filter(item => 
+	        produitIds.some(id => id.toString() === item.produit._id.toString())
+	      );
+	      const sousTotalBoutique = produitsBoutiqueOnly.reduce((sum, item) => sum + item.sousTotal, 0);
+	      
+	      return {
+	        ...commande.toObject(),
+	        produitsachete: produitsBoutiqueOnly,
+	        sousTotalBoutique,
+	        totalBoutique: sousTotalBoutique,
+	        quantiteBoutique: produitsBoutiqueOnly.reduce((sum, item) => sum + item.qtt, 0)
+	      };
+	    });
 
     const total = await Panier.countDocuments(filter);
 
@@ -463,12 +465,13 @@ exports.getMyBoutiqueCommandeById = async (req, res) => {
       produitIds.some(id => id.toString() === item.produit._id.toString())
     );
 
-    const commandeFiltree = {
-      ...commande.toObject(),
-      produitsachete: produitsBoutiqueOnly,
-      totalBoutique: produitsBoutiqueOnly.reduce((sum, item) => sum + item.sousTotal, 0),
-      quantiteBoutique: produitsBoutiqueOnly.reduce((sum, item) => sum + item.qtt, 0)
-    };
+	    const commandeFiltree = {
+	      ...commande.toObject(),
+	      produitsachete: produitsBoutiqueOnly,
+	      sousTotalBoutique: produitsBoutiqueOnly.reduce((sum, item) => sum + item.sousTotal, 0),
+	      totalBoutique: produitsBoutiqueOnly.reduce((sum, item) => sum + item.sousTotal, 0),
+	      quantiteBoutique: produitsBoutiqueOnly.reduce((sum, item) => sum + item.qtt, 0)
+	    };
 
     res.status(200).json({
       success: true,

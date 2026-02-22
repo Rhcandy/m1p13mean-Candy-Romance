@@ -59,6 +59,10 @@ const boutiqueSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  isPendingFirstActivation: {
+    type: Boolean,
+    default: false
+  },
   locataire: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

@@ -3,9 +3,9 @@ const Box = require('../models/Box');
 const TypeBox = require('../models/TypeBox');
 
 /**
- * Valider les données d'une boutique
- * @param {Object} boutiqueData - Données de la boutique
- * @returns {Object} - Résultat de la validation
+ * Valider les donn??es d'une boutique
+ * @param {Object} boutiqueData - Donn??es de la boutique
+ * @returns {Object} - R??sultat de la validation
  */
 const validateBoutiqueData = async (boutiqueData) => {
   const { contratlocation } = boutiqueData;
@@ -61,12 +61,12 @@ const validateBoutiqueData = async (boutiqueData) => {
       };
     }
 
-    // Valider que chaque valeur est un booléen
+    // Valider que chaque valeur est un bool??en
     for (const [jour, valeur] of Object.entries(jLocation)) {
       if (typeof valeur !== 'boolean') {
         return {
           isValid: false,
-          error: `La valeur pour ${jour} doit être un booléen`,
+          error: `La valeur pour ${jour} doit ??tre un bool??en`,
           statusCode: 400
         };
       }
@@ -77,22 +77,22 @@ const validateBoutiqueData = async (boutiqueData) => {
 };
 
 /**
- * Vérifier la disponibilité des boxes
- * @param {Array} boxIds - IDs des boxes à vérifier
- * @returns {Object} - Résultat de la vérification
+ * V??rifier la disponibilit?? des boxes
+ * @param {Array} boxIds - IDs des boxes ?? v??rifier
+ * @returns {Object} - R??sultat de la v??rification
  */
 const checkBoxesAvailability = async (boxIds) => {
-  // Vérifier que toutes les boxes existent
+  // V??rifier que toutes les boxes existent
   const boxes = await Box.find({ _id: { $in: boxIds } });
   if (boxes.length !== boxIds.length) {
     return {
       areAvailable: false,
-      error: ' Boxes non trouvées',
+      error: ' Boxes non trouv??es',
       statusCode: 400
     };
   }
 
-  // Vérifier que toutes les boxes sont disponibles
+  // V??rifier que toutes les boxes sont disponibles
   const unavailableBoxes = boxes.filter(box => !box.isDisponible);
   if (unavailableBoxes.length > 0) {
     return {
@@ -107,21 +107,21 @@ const checkBoxesAvailability = async (boxIds) => {
 };
 
 /**
- * Valider la durée de location par rapport aux types de box
- * @param {Array} boxes - Boxes à vérifier
- * @param {Date} dateDebut - Date de début
+ * Valider la dur??e de location par rapport aux types de box
+ * @param {Array} boxes - Boxes ?? v??rifier
+ * @param {Date} dateDebut - Date de d??but
  * @param {Date} dateFin - Date de fin
- * @returns {Object} - Résultat de la validation
+ * @returns {Object} - R??sultat de la validation
  */
 const validateRentalDuration = async (boxes, dateDebut, dateFin) => {
   const dureeJours = Math.ceil((dateFin - dateDebut) / (1000 * 60 * 60 * 24));
   
   for (const box of boxes) {
     const typeBox = await TypeBox.findById(box.typeBoxId);
-    if (typeBox && dureeJours < typeBox.periode) { // période en jours (pas en mois)
+    if (typeBox && dureeJours < typeBox.periode) { // p??riode en jours (pas en mois)
       return {
         isValid: false,
-        error: `La durée de location pour la box ${box.numRef} doit être d'au moins ${typeBox.periode} jours`,
+        error: `La dur??e de location pour la box ${box.numRef} doit ??tre d'au moins ${typeBox.periode} jours`,
         statusCode: 400,
         data: {
           boxRef: box.numRef,
@@ -136,10 +136,10 @@ const validateRentalDuration = async (boxes, dateDebut, dateFin) => {
 };
 
 /**
- * Mettre à jour le statut des boxes
- * @param {Array} boxIds - IDs des boxes à mettre à jour
- * @param {Boolean} isDisponible - Nouveau statut de disponibilité
- * @returns {Promise} - Résultat de la mise à jour
+ * Mettre ?? jour le statut des boxes
+ * @param {Array} boxIds - IDs des boxes ?? mettre ?? jour
+ * @param {Boolean} isDisponible - Nouveau statut de disponibilit??
+ * @returns {Promise} - R??sultat de la mise ?? jour
  */
 const updateBoxesStatus = async (boxIds, isDisponible) => {
   return await Box.updateMany(
@@ -149,29 +149,31 @@ const updateBoxesStatus = async (boxIds, isDisponible) => {
 };
 
 /**
- * Créer une nouvelle boutique
- * @param {Object} boutiqueData - Données de la boutique
- * @param {String} userId - ID de l'utilisateur propriétaire (optionnel)
- * @returns {Object} - Boutique créée avec populate
+ * Cr??er une nouvelle boutique
+ * @param {Object} boutiqueData - Donn??es de la boutique
+ * @param {String} userId - ID de l'utilisateur propri??taire (optionnel)
+ * @returns {Object} - Boutique cr????e avec populate
  */
 const createBoutique = async (boutiqueData, userId) => {
-  const { contratlocation, nom, logo, locataire } = boutiqueData;
+  const { contratlocation, nom, logo, locataire, isActive, isPendingFirstActivation } = boutiqueData;
 
-  // Validation finale des dates avant création
+  // Validation finale des dates avant cr??ation
   if (contratlocation && contratlocation.dateDebutLocation && contratlocation.dateFinLocation) {
     const debut = new Date(contratlocation.dateDebutLocation);
     const fin = new Date(contratlocation.dateFinLocation);
     
     if (fin <= debut) {
-      throw new Error('La date de fin de location doit être postérieure à la date de début');
+      throw new Error('La date de fin de location doit ??tre post??rieure ?? la date de d??but');
     }
   }
 
-  // Créer la boutique avec la structure correcte
+  // Cr??er la boutique avec la structure correcte
   const boutique = await Boutique.create({
     nom,
     logo: logo || null,
-    locataire: locataire || [], // Locataire manuel, vide si non spécifié
+    isActive: typeof isActive === 'boolean' ? isActive : true,
+    isPendingFirstActivation: typeof isPendingFirstActivation === 'boolean' ? isPendingFirstActivation : false,
+    locataire: Array.isArray(locataire) && locataire.length ? locataire : (userId ? [userId] : []),
     contratlocation: {
       boxes: contratlocation.boxes,
       dateDebutLocation: contratlocation.dateDebutLocation,
@@ -195,10 +197,10 @@ const createBoutique = async (boutiqueData, userId) => {
 };
 
 /**
- * Upload et mettre à jour le logo d'une boutique
+ * Upload et mettre ?? jour le logo d'une boutique
  * @param {String} boutiqueId - ID de la boutique
- * @param {Object} file - Fichier uploadé
- * @returns {Object} - Boutique mise à jour avec le nouveau logo
+ * @param {Object} file - Fichier upload??
+ * @returns {Object} - Boutique mise ?? jour avec le nouveau logo
  */
 const uploadLogo = async (boutiqueId, file) => {
   const { uploadImage, deleteImage } = require('../services/cloudinary');
@@ -206,7 +208,7 @@ const uploadLogo = async (boutiqueId, file) => {
   const boutique = await Boutique.findById(boutiqueId);
   
   if (!boutique) {
-    throw new Error('Boutique non trouvée');
+    throw new Error('Boutique non trouv??e');
   }
 
   // Supprimer l'ancien logo si existe
@@ -217,14 +219,14 @@ const uploadLogo = async (boutiqueId, file) => {
       await deleteImage(oldPublicId);
     } catch (deleteError) {
       console.warn('Erreur suppression ancien logo:', deleteError.message);
-      // Continuer même si la suppression échoue
+      // Continuer m??me si la suppression ??choue
     }
   }
 
-  // Téléverser le nouveau logo sur Cloudinary
+  // T??l??verser le nouveau logo sur Cloudinary
   const logoUrl = await uploadImage(file, 'boutiques/logos');
   
-  // Mettre à jour le logo dans la boutique
+  // Mettre ?? jour le logo dans la boutique
   boutique.logo = logoUrl;
   await boutique.save();
 
@@ -241,58 +243,59 @@ const uploadLogo = async (boutiqueId, file) => {
 
 
 /**
- * Supprimer une boutique et libérer les boxes
- * @param {String} boutiqueId - ID de la boutique à supprimer
- * @returns {Promise} - Résultat de la suppression
+ * Supprimer une boutique et lib??rer les boxes
+ * @param {String} boutiqueId - ID de la boutique ?? supprimer
+ * @returns {Promise} - R??sultat de la suppression
  */
 const deleteBoutique = async (boutiqueId) => {
   const boutique = await Boutique.findById(boutiqueId);
   if (!boutique) {
-    throw new Error('Boutique non trouvée');
+    throw new Error('Boutique non trouv??e');
   }
 
   // Remettre les boxes comme disponibles
-  if (boutique.boxes && boutique.boxes.length > 0) {
-    await updateBoxesStatus(boutique.boxes, true);
+  const boxIds = boutique.contratlocation?.boxes || boutique.boxes || [];
+  if (boxIds.length > 0) {
+    await updateBoxesStatus(boxIds, true);
   }
 
   return await Boutique.findByIdAndDelete(boutiqueId);
 };
 
 /**
- * Mettre à jour une boutique existante
- * @param {String} boutiqueId - ID de la boutique à mettre à jour
- * @param {Object} boutiqueData - Données de la boutique à mettre à jour
- * @returns {Object} - Boutique mise à jour avec populate
+ * Mettre ?? jour une boutique existante
+ * @param {String} boutiqueId - ID de la boutique ?? mettre ?? jour
+ * @param {Object} boutiqueData - Donn??es de la boutique ?? mettre ?? jour
+ * @returns {Object} - Boutique mise ?? jour avec populate
  */
 const updateBoutique = async (boutiqueId, boutiqueData) => {
   const boutique = await Boutique.findById(boutiqueId);
   if (!boutique) {
-    throw new Error('Boutique non trouvée');
+    throw new Error('Boutique non trouv??e');
   }
 
-  const { contratlocation, nom, locataire } = boutiqueData;
+  const { contratlocation, nom, locataire, logo, isActive, isPendingFirstActivation } = boutiqueData;
 
-  // Si un contratlocation est fourni, valider les données
+  // Si un contratlocation est fourni, valider les donn??es
   if (contratlocation) {
-    // Validation finale des dates avant mise à jour
+    // Validation finale des dates avant mise ?? jour
     if (contratlocation.dateDebutLocation && contratlocation.dateFinLocation) {
       const debut = new Date(contratlocation.dateDebutLocation);
       const fin = new Date(contratlocation.dateFinLocation);
       
       if (fin <= debut) {
-        throw new Error('La date de fin de location doit être postérieure à la date de début');
+        throw new Error('La date de fin de location doit ??tre post??rieure ?? la date de d??but');
       }
     }
 
-    // Si les boxes sont modifiées, vérifier leur disponibilité
+    // Si les boxes sont modifi??es, v??rifier leur disponibilit??
     if (contratlocation.boxes && Array.isArray(contratlocation.boxes)) {
-      // Récupérer les anciennes boxes pour les libérer
-      const oldBoxIds = boutique.contratlocation?.boxes || [];
-      const newBoxIds = contratlocation.boxes;
-      
-      // Vérifier la disponibilité des nouvelles boxes (sauf celles déjà assignées à cette boutique)
-      const boxesToCheck = newBoxIds.filter(boxId => !oldBoxIds.includes(boxId));
+      // R??cup??rer les anciennes boxes pour les lib??rer
+      const oldBoxIds = (boutique.contratlocation?.boxes || []).map((boxId) => boxId.toString());
+      const newBoxIds = (contratlocation.boxes || []).map((boxId) => boxId.toString());
+
+      // V??rifier la disponibilit?? des nouvelles boxes (sauf celles d??j?? assign??es ?? cette boutique)
+      const boxesToCheck = newBoxIds.filter((boxId) => !oldBoxIds.includes(boxId));
       if (boxesToCheck.length > 0) {
         const availability = await checkBoxesAvailability(boxesToCheck);
         if (!availability.areAvailable) {
@@ -300,7 +303,7 @@ const updateBoutique = async (boutiqueId, boutiqueData) => {
         }
       }
 
-      // Valider la durée de location pour les nouvelles boxes
+      // Valider la dur??e de location pour les nouvelles boxes
       if (contratlocation.dateDebutLocation && contratlocation.dateFinLocation) {
         const debut = new Date(contratlocation.dateDebutLocation);
         const fin = new Date(contratlocation.dateFinLocation);
@@ -311,20 +314,20 @@ const updateBoutique = async (boutiqueId, boutiqueData) => {
         }
       }
 
-      // Libérer les anciennes boxes qui ne sont plus utilisées
-      const boxesToFree = oldBoxIds.filter(boxId => !newBoxIds.includes(boxId));
+      // Lib??rer les anciennes boxes qui ne sont plus utilis??es
+      const boxesToFree = oldBoxIds.filter((boxId) => !newBoxIds.includes(boxId));
       if (boxesToFree.length > 0) {
         await updateBoxesStatus(boxesToFree, true);
       }
 
       // Marquer les nouvelles boxes comme non disponibles
-      const boxesToReserve = newBoxIds.filter(boxId => !oldBoxIds.includes(boxId));
+      const boxesToReserve = newBoxIds.filter((boxId) => !oldBoxIds.includes(boxId));
       if (boxesToReserve.length > 0) {
         await updateBoxesStatus(boxesToReserve, false);
       }
     }
 
-    // Mettre à jour le contratlocation
+    // Mettre ?? jour le contratlocation
     boutique.contratlocation = {
       ...boutique.contratlocation,
       ...contratlocation,
@@ -340,8 +343,11 @@ const updateBoutique = async (boutiqueId, boutiqueData) => {
     };
   }
 
-  // Mettre à jour les autres champs
+  // Mettre ?? jour les autres champs
   if (nom !== undefined) boutique.nom = nom;
+  if (logo !== undefined) boutique.logo = logo;
+  if (typeof isActive === 'boolean') boutique.isActive = isActive;
+  if (typeof isPendingFirstActivation === 'boolean') boutique.isPendingFirstActivation = isPendingFirstActivation;
   if (locataire !== undefined) boutique.locataire = locataire;
 
   await boutique.save();
@@ -362,3 +368,4 @@ module.exports = {
   deleteBoutique,
   uploadLogo
 };
+

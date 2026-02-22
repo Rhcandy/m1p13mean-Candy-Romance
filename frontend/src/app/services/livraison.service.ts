@@ -91,6 +91,6 @@ export class LivraisonService {
    * Valider un numero de telephone
    */
   validerTelephone(telephone: string): boolean {
-    return /^[0-9]{10,14}$/.test(telephone.replace(/\s/g, ''));
+    return /^[0-9]{10,13}$/.test(telephone.replace(/\s/g, ''));
   }
 }

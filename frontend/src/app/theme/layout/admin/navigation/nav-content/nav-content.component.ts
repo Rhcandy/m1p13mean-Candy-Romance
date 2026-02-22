@@ -1,7 +1,7 @@
 // Angular import
-import { Component, OnInit, output, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, output, inject } from '@angular/core';
 import { Location } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { NavigationEnd, Router, RouterModule } from '@angular/router';
 
 //theme version
 import { environment } from 'src/environments/environment';
@@ -15,6 +15,8 @@ import { NavItemComponent } from './nav-item/nav-item.component';
 
 // NgScrollbarModule
 import { SharedModule } from 'src/app/theme/shared/shared.module';
+import { Subject } from 'rxjs';
+import { filter, takeUntil } from 'rxjs/operators';
 
 @Component({
   selector: 'app-nav-content',
@@ -22,8 +24,10 @@ import { SharedModule } from 'src/app/theme/shared/shared.module';
   templateUrl: './nav-content.component.html',
   styleUrl: './nav-content.component.scss'
 })
-export class NavContentComponent implements OnInit {
+export class NavContentComponent implements OnInit, OnDestroy {
   private readonly location = inject(Location);
+  private readonly router = inject(Router);
+  private readonly destroy$ = new Subject<void>();
 
   // public props
   NavCollapsedMob = output();
@@ -49,6 +53,20 @@ export class NavContentComponent implements OnInit {
         (document.querySelector('.coded-navbar') as HTMLElement).classList.add('menupos-static');
       }, 500);
     }
+
+    this.router.events
+      .pipe(
+        filter((event) => event instanceof NavigationEnd),
+        takeUntil(this.destroy$)
+      )
+      .subscribe(() => {
+        this.navigations = getNavigationItems();
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   fireOutClick() {

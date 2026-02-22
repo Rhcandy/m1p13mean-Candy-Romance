@@ -230,17 +230,41 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     return availableStock > 0;
   }
 
-  getActivePromotion(): Promotion | null {
-    if (!this.product?.promotions?.length) return null;
+  getActivePromotions(): Promotion[] {
+    if (!this.product?.promotions?.length) return [];
     const now = new Date();
-    return this.product.promotions.find((promo) => this.isPromotionActive(promo, now)) || null;
+    return this.product.promotions.filter((promo) => this.isPromotionActive(promo, now));
+  }
+
+  hasActivePromotions(): boolean {
+    return this.getActivePromotions().length > 0;
+  }
+
+  getTotalPromotionTaux(): number {
+    const total = this.getActivePromotions()
+      .reduce((sum, promo) => sum + (Number(promo.taux) || 0), 0);
+    return Math.min(100, total);
+  }
+
+  getBasePrice(): number {
+    return Number(this.product?.prix?.[0]?.prixUnitaire) || 0;
+  }
+
+  getDiscountedPrice(): number {
+    const basePrice = this.getBasePrice();
+    const discounted = basePrice * (1 - this.getTotalPromotionTaux() / 100);
+    return Math.max(0, Math.round(discounted));
+  }
+
+  getPromotionDetailsText(): string {
+    return this.getActivePromotions()
+      .map((promo) => `${promo.nom} (-${promo.taux}%)`)
+      .join(', ');
   }
 
   getPromotionBadgeText(): string {
-    const promo = this.getActivePromotion();
-    if (!promo) return '';
-    const taux = Number.isFinite(promo.taux) ? promo.taux : 0;
-    return `-${taux}%`;
+    const taux = this.getTotalPromotionTaux();
+    return taux > 0 ? `-${taux}%` : '';
   }
 
   private isPromotionActive(promo: Promotion, now: Date): boolean {
@@ -252,12 +276,10 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   }
 
   getStockQuantity(): number {
-    return this.product?.variant && this.product.variant.length > 0 ? (this.product.variant[0]?.qtt || 0) : 0;
+    return this.getAvailableStock();
   }
 
   getAvailableStock(): number {
-    // Utiliser l'API pour obtenir le stock total disponible
-    // Cette méthode est maintenant un simple getter qui sera mis à jour par l'API
     return this.currentAvailableStock || 0;
   }
 
@@ -317,7 +339,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
 
   incrementQuantity(): void {
     const currentValue = this.addToCartForm.get('quantity')?.value || 1;
-    const maxValue = this.getStockQuantity();
+    const maxValue = this.getAvailableStock();
     if (currentValue < maxValue) {
       this.addToCartForm.get('quantity')?.setValue(currentValue + 1);
     }

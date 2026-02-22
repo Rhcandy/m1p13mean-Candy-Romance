@@ -1,14 +1,19 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { CommonModule, CurrencyPipe } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { BoutiqueProduitService, BoutiqueProduit, PaginationResponse, BoutiqueProduitQueryParams } from '../../../../services/boutique-produit.service';
 import { NotificationService } from 'src/app/services/notification.service';
 import { Router } from '@angular/router';
 import { BoutiqueService } from '../../../../services/boutique.service';
 import { CategorieProduit, CategorieProduitService } from 'src/app/services/categorie-produit.service';
 import { Boutique } from './../../../../services/boutique.service';
+import { ProductService } from 'src/app/services/product.service';
+import { BoutiquePromotionService, BoutiquePromotion } from 'src/app/services/boutique-promotion.service';
+import { AuthService } from 'src/app/services/auth.service';
+import { forkJoin, of } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 
-// Représentation interne d'un attribut (clé/valeur libre)
+// ReprÃ©sentation interne d'un attribut (clÃ©/valeur libre)
 interface AttrEntry { key: string; value: string; }
 
 // Variante interne avec liste d'attributs dynamique
@@ -22,7 +27,7 @@ interface VariantForm {
   templateUrl: './boutique-produits.component.html',
   styleUrls: ['./boutique-produits.component.scss'],
   standalone: true,
-  imports: [FormsModule, CommonModule, CurrencyPipe]
+  imports: [FormsModule, CommonModule]
 })
 export class BoutiqueProduitsComponent implements OnInit {
   boutique: Boutique | null = null;
@@ -33,10 +38,19 @@ export class BoutiqueProduitsComponent implements OnInit {
 
   pagination = { total: 0, page: 1, limit: 12, totalPages: 0 };
   filters = { nom: '', categorieId: '' };
+  stockByProduitId: Record<string, { totalStock: number; availableStock: number }> = {};
+  loadingStocks = false;
 
-  // ── Fiche détail ─────────────────────────────────────────
+  // â”€â”€ Fiche dÃ©tail â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   showDetail = false;
   selectedProduit: BoutiqueProduit | null = null;
+  showPromotionModal = false;
+  selectedProduitForPromotion: BoutiqueProduit | null = null;
+  promotionsDisponibles: BoutiquePromotion[] = [];
+  selectedPromotionIds = new Set<string>();
+  loadingPromotionsDisponibles = false;
+  savingPromotions = false;
+  private readonly currentUserId: string | null;
 
   openDetail(produit: BoutiqueProduit): void {
     this.selectedProduit = produit;
@@ -45,11 +59,11 @@ export class BoutiqueProduitsComponent implements OnInit {
 
   closeDetail(): void {
     this.showDetail = false;
-    // Petit délai pour laisser l'animation se terminer
+    // Petit dÃ©lai pour laisser l'animation se terminer
     setTimeout(() => { this.selectedProduit = null; }, 300);
   }
 
-  // ── Modal Ajout ──────────────────────────────────────────
+  // â”€â”€ Modal Ajout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   showAddModal = false;
   addProduitForm = {
     nom: '',
@@ -61,7 +75,7 @@ export class BoutiqueProduitsComponent implements OnInit {
   };
   isSubmitting = false;
 
-  // ── Modal Modification ───────────────────────────────────
+  // â”€â”€ Modal Modification â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   showEditModal = false;
   editProduitForm = {
     id: '',
@@ -81,33 +95,48 @@ export class BoutiqueProduitsComponent implements OnInit {
     private readonly notificationService: NotificationService,
     private readonly router: Router,
     private readonly categorieService: CategorieProduitService,
-    private readonly boutiqueService: BoutiqueService
-  ) {}
+    private readonly boutiqueService: BoutiqueService,
+    private readonly productService: ProductService,
+    private readonly boutiquePromotionService: BoutiquePromotionService,
+    private readonly authService: AuthService
+  ) {
+    this.currentUserId = this.authService.currentUser?.id || this.authService.getUser()?.id || null;
+  }
 
   ngOnInit(): void {
     this.checkBoutiqueExists();
   }
 
-  // ── Initialisation ───────────────────────────────────────
+  // â”€â”€ Initialisation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   checkBoutiqueExists(): void {
     this.boutiqueService.getMyBoutique().subscribe({
       next: (response) => {
         if (response.success && response.data) {
           this.boutique = response.data;
+
+          if (!response.data.isActive) {
+            this.notificationService.info(
+              'Boutique inactive',
+              'Votre boutique doit etre active pour gerer les produits.'
+            );
+            this.router.navigate(['/boutique/informations']);
+            return;
+          }
+
           this.loadCategories();
           this.loadProduits();
         } else {
-          this.notificationService.warning('Attention', 'Vous devez créer une boutique avant de gérer des produits');
-          this.router.navigate(['/boutique/informations']);
+          this.notificationService.warning('Attention', 'Vous devez creer une boutique avant de gerer des produits');
+          this.router.navigate(['/boutique/boxes']);
         }
       },
       error: (err) => {
-        if (err.status === 404 || err.error?.message?.includes('Boutique non trouvée')) {
-          this.notificationService.warning('Attention', 'Vous devez créer une boutique avant de gérer des produits');
-          this.router.navigate(['/boutique/informations']);
+        if (err.status === 404 || err.error?.message?.includes('Boutique non trouvee')) {
+          this.notificationService.warning('Attention', 'Vous devez creer une boutique avant de gerer des produits');
+          this.router.navigate(['/boutique/boxes']);
         } else {
-          this.notificationService.error('Erreur', 'Erreur lors de la vérification de la boutique');
+          this.notificationService.error('Erreur', 'Erreur lors de la verification de la boutique');
         }
       }
     });
@@ -117,7 +146,7 @@ export class BoutiqueProduitsComponent implements OnInit {
     this.loadingCategories = true;
     this.categorieService.getAllCategories().subscribe({
       next: (response) => { this.categories = response; },
-      error: () => { this.notificationService.error('Erreur', 'Erreur lors du chargement des catégories'); },
+      error: () => { this.notificationService.error('Erreur', 'Erreur lors du chargement des catÃ©gories'); },
       complete: () => { this.loadingCategories = false; }
     });
   }
@@ -138,7 +167,8 @@ export class BoutiqueProduitsComponent implements OnInit {
         if (response.success) {
           this.produits = response.items;
           this.pagination = response.pagination;
-          // Mettre à jour le produit sélectionné si la fiche est ouverte
+          this.loadStocksDisponibles();
+          // Mettre Ã  jour le produit sÃ©lectionnÃ© si la fiche est ouverte
           if (this.selectedProduit) {
             const updated = this.produits.find(p => p._id === this.selectedProduit!._id);
             if (updated) this.selectedProduit = updated;
@@ -165,14 +195,14 @@ export class BoutiqueProduitsComponent implements OnInit {
     this.loadProduits();
   }
 
-  // ── Suppression ──────────────────────────────────────────
+  // â”€â”€ Suppression â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   deleteProduit(id: string): void {
-    if (confirm('Êtes-vous sûr de vouloir supprimer ce produit ?')) {
+    if (confirm('ÃŠtes-vous sÃ»r de vouloir supprimer ce produit ?')) {
       this.boutiqueProduitService.deleteMyBoutiqueProduit(id).subscribe({
         next: (response) => {
           if (response.success) {
-            this.notificationService.success('Produit supprimé avec succès');
+            this.notificationService.success('Produit supprimÃ© avec succÃ¨s');
             this.loadProduits();
           } else {
             this.notificationService.error('Erreur', response.message || 'Erreur lors de la suppression');
@@ -183,11 +213,75 @@ export class BoutiqueProduitsComponent implements OnInit {
     }
   }
 
-  // ── Helpers affichage ────────────────────────────────────
+  // â”€â”€ Helpers affichage â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   calculateTotalStock(produit: BoutiqueProduit): number {
     if (!produit.variant || !Array.isArray(produit.variant)) return 0;
     return produit.variant.reduce((sum, v) => sum + (v.qtt || 0), 0);
+  }
+
+  calculateAvailableStockLocal(produit: BoutiqueProduit): number {
+    if (!produit.variant || !Array.isArray(produit.variant)) return 0;
+    return produit.variant.reduce((sum, v: any) => {
+      const qtt = Number(v?.qtt) || 0;
+      const reserved = Number(v?.reserved) || 0;
+      return sum + Math.max(0, qtt - reserved);
+    }, 0);
+  }
+
+  private loadStocksDisponibles(): void {
+    if (!this.produits.length) {
+      this.stockByProduitId = {};
+      return;
+    }
+
+    this.loadingStocks = true;
+    const requests = this.produits.map((produit) =>
+      this.productService.getProductStock(produit._id).pipe(
+        map((stock) => ({
+          productId: produit._id,
+          totalStock: Number(stock.totalStock) || 0,
+          availableStock: Number(stock.availableStock) || 0
+        })),
+        catchError(() =>
+          of({
+            productId: produit._id,
+            totalStock: this.calculateTotalStock(produit),
+            availableStock: this.calculateAvailableStockLocal(produit)
+          })
+        )
+      )
+    );
+
+    forkJoin(requests).subscribe({
+      next: (stocks) => {
+        const nextMap: Record<string, { totalStock: number; availableStock: number }> = {};
+        stocks.forEach((stock) => {
+          nextMap[stock.productId] = {
+            totalStock: stock.totalStock,
+            availableStock: stock.availableStock
+          };
+        });
+        this.stockByProduitId = nextMap;
+      },
+      error: (error) => {
+        console.error('Erreur chargement stocks produits:', error);
+      },
+      complete: () => {
+        this.loadingStocks = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  getAvailableStock(produit: BoutiqueProduit | null): number {
+    if (!produit) return 0;
+    return this.stockByProduitId[produit._id]?.availableStock ?? this.calculateAvailableStockLocal(produit);
+  }
+
+  getTotalStock(produit: BoutiqueProduit | null): number {
+    if (!produit) return 0;
+    return this.stockByProduitId[produit._id]?.totalStock ?? this.calculateTotalStock(produit);
   }
 
   getPagesArray(): number[] {
@@ -199,7 +293,7 @@ export class BoutiqueProduitsComponent implements OnInit {
       return categorieId.nom;
     }
     const cat = this.categories.find(c => c._id === categorieId);
-    return cat ? cat.nom : 'Non catégorisé';
+    return cat ? cat.nom : 'Non catÃ©gorisÃ©';
   }
 
   /** Transforme un objet attributes en tableau [{key, value}] pour l'affichage */
@@ -208,7 +302,146 @@ export class BoutiqueProduitsComponent implements OnInit {
     return Object.entries(attributes).map(([key, value]) => ({ key, value: String(value) }));
   }
 
-  // ── Conversion : objet attributes ↔ attrList ────────────
+  openPromotionModal(produit: BoutiqueProduit): void {
+    this.selectedProduitForPromotion = produit;
+    this.selectedPromotionIds = new Set(this.extractPromotionIds(produit.promotions));
+    this.showPromotionModal = true;
+    this.loadPromotionsDisponibles();
+  }
+
+  closePromotionModal(): void {
+    this.showPromotionModal = false;
+    this.selectedProduitForPromotion = null;
+    this.selectedPromotionIds = new Set<string>();
+    this.savingPromotions = false;
+  }
+
+  private loadPromotionsDisponibles(): void {
+    this.loadingPromotionsDisponibles = true;
+    this.boutiquePromotionService.getMyBoutiquePromotions({
+      page: 1,
+      limit: 1000,
+      categorie: 'produit'
+    }).subscribe({
+      next: (response) => {
+        const allPromotions = response?.data || [];
+        this.promotionsDisponibles = allPromotions.filter((promotion) => this.isPromotionOwnedByCurrentUser(promotion));
+      },
+      error: (error) => {
+        console.error('Erreur chargement promotions disponibles:', error);
+        this.notificationService.error('Erreur', 'Impossible de charger les promotions');
+        this.promotionsDisponibles = [];
+      },
+      complete: () => {
+        this.loadingPromotionsDisponibles = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  isPromotionSelected(promotionId: string): boolean {
+    return this.selectedPromotionIds.has(promotionId);
+  }
+
+  togglePromotionSelection(promotionId: string, checked: boolean): void {
+    if (checked) {
+      this.selectedPromotionIds.add(promotionId);
+      return;
+    }
+    this.selectedPromotionIds.delete(promotionId);
+  }
+
+  saveProduitPromotions(): void {
+    if (!this.selectedProduitForPromotion?._id) {
+      return;
+    }
+
+    this.savingPromotions = true;
+    const promotionIds = Array.from(this.selectedPromotionIds);
+    this.boutiqueProduitService.updateProduitPromotions(this.selectedProduitForPromotion._id, promotionIds).subscribe({
+      next: (response) => {
+        if (!response.success) {
+          this.notificationService.error('Erreur', response.message || 'Association impossible');
+          return;
+        }
+
+        const updatedPromotions = response.data?.promotions || [];
+        this.produits = this.produits.map((produit) =>
+          produit._id === this.selectedProduitForPromotion!._id
+            ? { ...produit, promotions: updatedPromotions }
+            : produit
+        );
+
+        if (this.selectedProduit?._id === this.selectedProduitForPromotion._id) {
+          this.selectedProduit = {
+            ...this.selectedProduit,
+            promotions: updatedPromotions
+          };
+        }
+
+        this.notificationService.success('Promotions associees avec succes');
+        this.closePromotionModal();
+      },
+      error: (error) => {
+        console.error('Erreur association promotions:', error);
+        this.notificationService.error('Erreur', 'Erreur lors de l association des promotions');
+      },
+      complete: () => {
+        this.savingPromotions = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  isPromotionActive(promotion: BoutiquePromotion): boolean {
+    const now = new Date();
+    const debut = new Date(promotion.dateDebut);
+    const fin = new Date(promotion.dateFin);
+    return !Number.isNaN(debut.getTime()) && !Number.isNaN(fin.getTime()) && now >= debut && now <= fin;
+  }
+
+  getSelectedPromotionsTotalTaux(): number {
+    const selectedIds = this.selectedPromotionIds;
+    const total = this.promotionsDisponibles
+      .filter((promotion) => selectedIds.has(promotion._id))
+      .reduce((sum, promotion) => sum + (Number(promotion.taux) || 0), 0);
+    return Math.min(100, total);
+  }
+
+  getProduitActivePromotions(produit: BoutiqueProduit | null): BoutiquePromotion[] {
+    const promotions = Array.isArray(produit?.promotions) ? produit.promotions as BoutiquePromotion[] : [];
+    return promotions.filter((promotion) => this.isPromotionActive(promotion));
+  }
+
+  getProduitTotalTauxPromotion(produit: BoutiqueProduit | null): number {
+    const total = this.getProduitActivePromotions(produit)
+      .reduce((sum, promotion) => sum + (Number(promotion.taux) || 0), 0);
+    return Math.min(100, total);
+  }
+
+  getPromotionLineLabel(promotion: BoutiquePromotion): string {
+    return `${promotion.nom} (-${promotion.taux}%)`;
+  }
+
+  private extractPromotionIds(promotions: any[] | undefined): string[] {
+    if (!Array.isArray(promotions)) return [];
+    return promotions
+      .map((promotion: any) => {
+        if (typeof promotion === 'string') return promotion;
+        return promotion?._id || null;
+      })
+      .filter((id): id is string => !!id);
+  }
+
+  private isPromotionOwnedByCurrentUser(promotion: BoutiquePromotion): boolean {
+    if (!this.currentUserId) return true;
+    if (typeof promotion.createdBy === 'string') {
+      return promotion.createdBy === this.currentUserId;
+    }
+    return promotion.createdBy?._id === this.currentUserId;
+  }
+
+  // â”€â”€ Conversion : objet attributes â†” attrList â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   private attrsToList(attributes: any): AttrEntry[] {
     if (!attributes) return [];
@@ -227,7 +460,7 @@ export class BoutiqueProduitsComponent implements OnInit {
       .map(v => ({ attributes: this.listToAttrs(v.attrList), qtt: v.qtt }));
   }
 
-  // ── Modal Ajout ──────────────────────────────────────────
+  // â”€â”€ Modal Ajout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   addProduit(): void {
     this.resetAddForm();
@@ -271,7 +504,7 @@ export class BoutiqueProduitsComponent implements OnInit {
     }
     for (let i = 0; i < this.addProduitForm.variant.length; i++) {
       if (!this.addProduitForm.variant[i].qtt || this.addProduitForm.variant[i].qtt < 1) {
-        this.notificationService.error('Erreur', `La variante ${i + 1} doit avoir une quantité supérieure à 0`);
+        this.notificationService.error('Erreur', `La variante ${i + 1} doit avoir une quantitÃ© supÃ©rieure Ã  0`);
         return;
       }
     }
@@ -293,7 +526,7 @@ export class BoutiqueProduitsComponent implements OnInit {
     this.boutiqueProduitService.createMyBoutiqueProduit(formData).subscribe({
       next: (response) => {
         if (response.success) {
-          this.notificationService.success('Produit ajouté avec succès');
+          this.notificationService.success('Produit ajoutÃ© avec succÃ¨s');
           this.closeAddModal();
           this.loadProduits();
         } else {
@@ -309,7 +542,7 @@ export class BoutiqueProduitsComponent implements OnInit {
     });
   }
 
-  // ── Modal Modification ───────────────────────────────────
+  // â”€â”€ Modal Modification â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   editProduit(produit: BoutiqueProduit): void {
     const catId = typeof produit.categorieId === 'object'
@@ -368,7 +601,7 @@ export class BoutiqueProduitsComponent implements OnInit {
     }
     for (let i = 0; i < this.editProduitForm.variant.length; i++) {
       if (!this.editProduitForm.variant[i].qtt || this.editProduitForm.variant[i].qtt < 1) {
-        this.notificationService.error('Erreur', `La variante ${i + 1} doit avoir une quantité supérieure à 0`);
+        this.notificationService.error('Erreur', `La variante ${i + 1} doit avoir une quantitÃ© supÃ©rieure Ã  0`);
         return;
       }
     }
@@ -389,7 +622,7 @@ export class BoutiqueProduitsComponent implements OnInit {
     this.boutiqueProduitService.updateMyBoutiqueProduit(this.editProduitForm.id, formData).subscribe({
       next: (response) => {
         if (response.success) {
-          this.notificationService.success('Produit modifié avec succès');
+          this.notificationService.success('Produit modifiÃ© avec succÃ¨s');
           this.closeEditModal();
           this.loadProduits();
         } else {
@@ -405,3 +638,4 @@ export class BoutiqueProduitsComponent implements OnInit {
     });
   }
 }
+

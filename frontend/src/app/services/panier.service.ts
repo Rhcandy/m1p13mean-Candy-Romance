@@ -189,11 +189,30 @@ export class PanierService {
   }
 
   /**
+   * Mettre a jour une commande specifique (en attente) par ID
+   */
+  mettreAJourCommandeById(
+    commandeId: string,
+    data: { adresseLivraison?: any; methodePaiement?: string }
+  ): Observable<ApiResponse<Panier>> {
+    const userId = this.getCurrentUserId();
+    return this.apiService.post<ApiResponse<Panier>>(`${this.endpoint}/${commandeId}/mettre-a-jour`, { ...data, userId });
+  }
+
+  /**
    * Payer la commande
    */
   payerCommande(paiementDetails?: any): Observable<ApiResponse<{ commande: Panier; facture: any }>> {
     const userId = this.getCurrentUserId();
     return this.apiService.post<ApiResponse<{ commande: Panier; facture: any }>>(`${this.endpoint}/payer`, { userId, paiementDetails });
+  }
+
+  /**
+   * Payer une commande specifique (en attente) par ID
+   */
+  payerCommandeById(commandeId: string, paiementDetails?: any): Observable<ApiResponse<{ commande: Panier; facture: any }>> {
+    const userId = this.getCurrentUserId();
+    return this.apiService.post<ApiResponse<{ commande: Panier; facture: any }>>(`${this.endpoint}/${commandeId}/payer`, { userId, paiementDetails });
   }
 
   /**

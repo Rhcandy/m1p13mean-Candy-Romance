@@ -25,7 +25,7 @@
               <img [src]="product.photo || 'https://via.placeholder.com/400x400'" alt="{{ product.nom }}" class="main-image">
             </div>
 
-            @if (getActivePromotion()) {
+            @if (hasActivePromotions()) {
               <div class="promo-badge">
                 Promo {{ getPromotionBadgeText() }}
               </div>
@@ -82,8 +82,16 @@
             <!-- Prix -->
             <div class="price-section">
               <div class="current-price">
-                {{ formatPrice(product.prix[0].prixUnitaire) }}
+                {{ formatPrice(hasActivePromotions() ? getDiscountedPrice() : getBasePrice()) }}
               </div>
+              @if (hasActivePromotions()) {
+                <div class="text-muted text-decoration-line-through">
+                  {{ formatPrice(getBasePrice()) }}
+                </div>
+                <div class="small text-success mt-1">
+                  {{ getPromotionDetailsText() }}
+                </div>
+              }
               @if (product.deliveryDate) {
                 <div class="delivery-info">
                   <i class="ti ti-truck-delivery"></i>

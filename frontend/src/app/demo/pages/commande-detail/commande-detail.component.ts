@@ -1,10 +1,11 @@
-﻿import {ChangeDetectorRef, Component, inject, OnDestroy, OnInit} from '@angular/core';
+import { ChangeDetectorRef, Component, inject, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { PanierService, Panier } from '../../../services/panier.service';
+import { BoutiqueCommandeService } from '../../../services/boutique-commande.service';
 import { NotificationService } from '../../../services/notification.service';
 import { AuthService } from '../../../services/auth.service';
-import { Subject } from 'rxjs';
+import { Observable, Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 
 @Component({
@@ -18,6 +19,7 @@ export class CommandeDetailComponent implements OnInit, OnDestroy {
   commande: Panier | null = null;
   loading = false;
   isAdminBoutique = false;
+  isBoutiqueScope = false;
   private readonly destroy$ = new Subject<void>();
   private readonly cdr = inject(ChangeDetectorRef);
 
@@ -25,6 +27,7 @@ export class CommandeDetailComponent implements OnInit, OnDestroy {
     private readonly route: ActivatedRoute,
     private readonly router: Router,
     private readonly panierService: PanierService,
+    private readonly boutiqueCommandeService: BoutiqueCommandeService,
     private readonly notificationService: NotificationService,
     private readonly authService: AuthService
   ) {}
@@ -37,6 +40,7 @@ export class CommandeDetailComponent implements OnInit, OnDestroy {
         this.router.navigate(['/commandes']);
         return;
       }
+      this.isBoutiqueScope = this.route.snapshot.queryParamMap.get('scope') === 'boutique';
       this.loadCommande(id);
     });
   }
@@ -48,9 +52,14 @@ export class CommandeDetailComponent implements OnInit, OnDestroy {
 
   loadCommande(id: string): void {
     this.loading = true;
-    this.panierService.getCommandeById(id).pipe(takeUntil(this.destroy$)).subscribe({
+
+    const source$: Observable<{ data: any }> = this.isBoutiqueScope
+      ? this.boutiqueCommandeService.getMyBoutiqueCommandeById(id)
+      : this.panierService.getCommandeById(id);
+
+    source$.pipe(takeUntil(this.destroy$)).subscribe({
       next: (response) => {
-        this.commande = response.data;
+        this.commande = response.data as Panier;
         this.loading = false;
         Promise.resolve().then(() => {
           this.cdr.detectChanges();
@@ -69,6 +78,9 @@ export class CommandeDetailComponent implements OnInit, OnDestroy {
     if (this.isAdminBoutique && Array.isArray(commande.produitsBoutique)) {
       return commande.produitsBoutique;
     }
+    if (this.isAdminBoutique && Array.isArray(commande.produitsachete)) {
+      return commande.produitsachete;
+    }
     return commande.produitsachete || [];
   }
 
@@ -76,21 +88,26 @@ export class CommandeDetailComponent implements OnInit, OnDestroy {
     if (this.isAdminBoutique && typeof commande.sousTotalBoutique === 'number') {
       return commande.sousTotalBoutique;
     }
+    if (this.isAdminBoutique && typeof commande.totalBoutique === 'number') {
+      return commande.totalBoutique;
+    }
     return commande.sousTotal || 0;
   }
 
   getCommandeTotal(commande: any): number {
     if (this.isAdminBoutique && typeof commande.totalBoutique === 'number') {
-      return commande.totalBoutique;
+      return commande.totalBoutique + this.getFraisLivraison(commande);
     }
     return commande.total || 0;
   }
 
   getFraisLivraison(commande: any): number {
-    if (this.isAdminBoutique) return 0;
     const rawFrais = Number(commande.fraisLivraison);
     if (Number.isFinite(rawFrais) && rawFrais >= 0) return rawFrais;
-    const fallback = this.getCommandeTotal(commande) - this.getCommandeSousTotal(commande);
+
+    const total = Number(commande.total);
+    const sousTotal = Number(commande.sousTotal);
+    const fallback = total - sousTotal;
     return Number.isFinite(fallback) && fallback > 0 ? fallback : 0;
   }
 
@@ -137,6 +154,11 @@ export class CommandeDetailComponent implements OnInit, OnDestroy {
   }
 
   goBack(): void {
+    if (this.isBoutiqueScope || this.isAdminBoutique) {
+      this.router.navigate(['/boutique/commandes']);
+      return;
+    }
+
     this.router.navigate(['/commandes']);
   }
 }

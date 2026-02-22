@@ -16,9 +16,7 @@ import { BoutiqueService } from '../../../../services/boutique.service';
 interface PromotionCreateForm {
   nom: string;
   taux: number;
-  categorie: 'produit' | 'acheteur';
-  produitId: string;
-  acheteurId: string;
+  categorie: 'produit';
   dateDebut: string;
   dateFin: string;
 }
@@ -89,8 +87,6 @@ export class BoutiquePromotionsComponent implements OnInit {
       nom: '',
       taux: 0,
       categorie: 'produit',
-      produitId: '',
-      acheteurId: '',
       dateDebut: '',
       dateFin: ''
     };
@@ -233,14 +229,6 @@ export class BoutiquePromotionsComponent implements OnInit {
     this.createForm = this.getEmptyCreateForm();
   }
 
-  onCreateCategorieChange(): void {
-    if (this.createForm.categorie === 'produit') {
-      this.createForm.acheteurId = '';
-      return;
-    }
-    this.createForm.produitId = '';
-  }
-
   createPromotion(): void {
     if (!this.createForm.nom.trim()) {
       this.notificationService.error('Erreur', 'Le nom est requis');
@@ -262,29 +250,13 @@ export class BoutiquePromotionsComponent implements OnInit {
       return;
     }
 
-    if (this.createForm.categorie === 'produit' && !this.createForm.produitId) {
-      this.notificationService.error('Erreur', 'Selectionnez un produit');
-      return;
-    }
-
-    if (this.createForm.categorie === 'acheteur' && !this.createForm.acheteurId.trim()) {
-      this.notificationService.error('Erreur', 'L ID acheteur est requis');
-      return;
-    }
-
     const payload: CreateBoutiquePromotionPayload = {
       nom: this.createForm.nom.trim(),
       taux: Number(this.createForm.taux),
-      categorie: this.createForm.categorie,
+      categorie: 'produit',
       dateDebut: `${this.createForm.dateDebut}T00:00:00.000Z`,
       dateFin: `${this.createForm.dateFin}T23:59:59.999Z`
     };
-
-    if (this.createForm.categorie === 'produit') {
-      payload.produitId = this.createForm.produitId;
-    } else {
-      payload.acheteurId = this.createForm.acheteurId.trim();
-    }
 
     this.creating = true;
     this.boutiquePromotionService.createMyBoutiquePromotion(payload).subscribe({
@@ -431,7 +403,7 @@ export class BoutiquePromotionsComponent implements OnInit {
   getPromotionTargetLabel(promotion: BoutiquePromotion): string {
     if (promotion.categorie === 'produit') {
       if (!promotion.produitId) {
-        return 'Produit non defini';
+        return 'Associer depuis Produits';
       }
       if (typeof promotion.produitId === 'string') {
         const produit = this.produits.find((item) => item._id === promotion.produitId);

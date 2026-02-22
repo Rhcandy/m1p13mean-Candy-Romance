@@ -1,6 +1,7 @@
 const Boutique = require('../models/Boutique');
 const Box = require('../models/Box');
 const TypeBox = require('../models/TypeBox');
+const Produit = require('../models/Produit');
 const advancedResults = require('../middlewares/advancedResults');
 const boutiqueService = require('../services/boutiqueService');
 const authService = require('../services/authService');
@@ -20,27 +21,27 @@ const authService = require('../services/authService');
  *       properties:
  *         _id:
  *           type: string
- *           description: L'ID auto-généré de la boutique
+ *           description: L'ID auto-g??n??r?? de la boutique
  *         boxes:
  *           type: array
  *           items:
  *             type: string
- *           description: Liste des IDs des boxes louées
+ *           description: Liste des IDs des boxes lou??es
  *           example: ["60f1b2b3c4d5e6f7g8h9i0j1", "60f1b2b3c4d5e6f7g8h9i0j2"]
  *         contratlocation:
  *           type: object
- *           description: Détails du contrat de location
+ *           description: D??tails du contrat de location
  *           properties:
  *             boxes:
  *               type: array
  *               items:
  *                 type: string
- *               description: Liste des IDs des boxes louées
+ *               description: Liste des IDs des boxes lou??es
  *               example: ["60f1b2b3c4d5e6f7g8h9i0j1"]
  *             dateDebutLocation:
  *               type: string
  *               format: date-time
- *               description: Date de début de location
+ *               description: Date de d??but de location
  *               example: "2024-01-01T00:00:00.000Z"
  *             dateFinLocation:
  *               type: string
@@ -95,23 +96,23 @@ const authService = require('../services/authService');
  *         createdAt:
  *           type: string
  *           format: date-time
- *           description: Date de création
+ *           description: Date de cr??ation
  *         updatedAt:
  *           type: string
  *           format: date-time
- *           description: Date de mise à jour
+ *           description: Date de mise ?? jour
  *         contratlocationDetails:
  *           type: array
  *           items:
  *             $ref: '#/components/schemas/Box'
- *           description: Détails des boxes avec populate
+ *           description: D??tails des boxes avec populate
  */
 
 /**
  * @swagger
  * /api/boutiques:
  *   post:
- *     summary: Créer une nouvelle boutique
+ *     summary: Cr??er une nouvelle boutique
  *     tags: [Boutique]
  *     security:
  *       - bearerAuth: []
@@ -137,7 +138,7 @@ const authService = require('../services/authService');
  *                 example: ["60f1b2b3c4d5e6f7g8h9i0j3"]
  *               contratlocation:
  *                 type: object
- *                 description: Données du contrat de location
+ *                 description: Donn??es du contrat de location
  *                 properties:
  *                   boxes:
  *                     type: array
@@ -148,7 +149,7 @@ const authService = require('../services/authService');
  *                   dateDebutLocation:
  *                     type: string
  *                     format: date-time
- *                     description: Date de début de location
+ *                     description: Date de d??but de location
  *                     example: "2024-01-01T00:00:00.000Z"
  *                   dateFinLocation:
  *                     type: string
@@ -182,7 +183,7 @@ const authService = require('../services/authService');
  *                         example: false
  *     responses:
  *       201:
- *         description: Boutique créée avec succès
+ *         description: Boutique cr????e avec succ??s
  *         content:
  *           application/json:
  *             schema:
@@ -193,23 +194,39 @@ const authService = require('../services/authService');
  *                   example: true
  *                 message:
  *                   type: string
- *                   example: "Boutique créée avec succès"
+ *                   example: "Boutique cr????e avec succ??s"
  *                 data:
  *                   $ref: '#/components/schemas/Boutique'
  *       400:
- *         description: Données invalides ou boxes non disponibles
+ *         description: Donn??es invalides ou boxes non disponibles
  *       401:
- *         description: Non authentifié
+ *         description: Non authentifi??
  *       403:
- *         description: Non autorisé
+ *         description: Non autoris??
  *       500:
  *         description: Erreur serveur
  */
 exports.createBoutique = async (req, res) => {
   try {
     const boutiqueData = req.body;
+    const requesterId = req.user?.userId || req.user?.id;
+    const roleName = req.user?.roleName;
 
-    // 1. Valider les données de base
+    if (roleName === 'admin_boutique') {
+      const existingBoutique = await Boutique.findOne({ locataire: requesterId }).select('_id isActive');
+      if (existingBoutique) {
+        return res.status(400).json({
+          success: false,
+          message: 'Vous avez deja une boutique. Utilisez la modification de box depuis les informations boutique.'
+        });
+      }
+
+      boutiqueData.locataire = [requesterId];
+      boutiqueData.isActive = false;
+      boutiqueData.isPendingFirstActivation = true;
+    }
+
+    // 1. Valider les donn??es de base
     const validation = await boutiqueService.validateBoutiqueData(boutiqueData);
     if (!validation.isValid) {
       return res.status(validation.statusCode).json({
@@ -218,7 +235,7 @@ exports.createBoutique = async (req, res) => {
       });
     }
 
-    // 2. Vérifier la disponibilité des boxes
+    // 2. V??rifier la disponibilit?? des boxes
     const availability = await boutiqueService.checkBoxesAvailability(boutiqueData.contratlocation.boxes);
     if (!availability.areAvailable) {
       return res.status(availability.statusCode).json({
@@ -228,7 +245,7 @@ exports.createBoutique = async (req, res) => {
       });
     }
 
-    // 3. Valider la durée de location
+    // 3. Valider la dur??e de location
     const debut = new Date(boutiqueData.contratlocation.dateDebutLocation);
     const fin = new Date(boutiqueData.contratlocation.dateFinLocation);
     const durationValidation = await boutiqueService.validateRentalDuration(availability.boxes, debut, fin);
@@ -240,19 +257,21 @@ exports.createBoutique = async (req, res) => {
       });
     }
 
-    // 4. Créer la boutique
-    const boutique = await boutiqueService.createBoutique(boutiqueData, req.user?.id);
+    // 4. Cr??er la boutique
+    const boutique = await boutiqueService.createBoutique(boutiqueData, requesterId);
     
     // 5. Marquer les boxes comme non disponibles
     await boutiqueService.updateBoxesStatus(boutiqueData.contratlocation.boxes, false);
 
     res.status(201).json({
       success: true,
-      message: 'Boutique créée avec succès',
+      message: boutique.isActive
+        ? 'Boutique creee avec succes'
+        : 'Boutique creee avec succes. En attente de la premiere activation par admin centre.',
       data: boutique
     });
   } catch (error) {
-    console.error('Erreur création boutique:', error);
+    console.error('Erreur cr??ation boutique:', error);
     res.status(500).json({
       success: false,
       message: 'Erreur serveur',
@@ -265,7 +284,7 @@ exports.createBoutique = async (req, res) => {
  * @swagger
  * /api/boutiques:
  *   get:
- *     summary: Récupérer toutes les boutiques avec pagination et filtres
+ *     summary: R??cup??rer toutes les boutiques avec pagination et filtres
  *     tags: [Boutique]
  *     security:
  *       - bearerAuth: []
@@ -275,13 +294,13 @@ exports.createBoutique = async (req, res) => {
  *         schema:
  *           type: integer
  *           default: 1
- *         description: Numéro de page
+ *         description: Num??ro de page
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
  *           default: 10
- *         description: Nombre d'éléments par page
+ *         description: Nombre d'??l??ments par page
  *       - in: query
  *         name: sort
  *         schema:
@@ -292,7 +311,7 @@ exports.createBoutique = async (req, res) => {
  *         name: fields
  *         schema:
  *           type: string
- *         description: "Champs à retourner (ex: nom,statut,dateDebutLocation)"
+ *         description: "Champs ?? retourner (ex: nom,statut,dateDebutLocation)"
  *       - in: query
  *         name: nom
  *         schema:
@@ -308,13 +327,13 @@ exports.createBoutique = async (req, res) => {
  *         name: locataire
  *         schema:
  *           type: string
- *         description: Filtrer par propriétaire ID
+ *         description: Filtrer par propri??taire ID
  *       - in: query
  *         name: dateDebutLocation[gte]
  *         schema:
  *           type: string
  *           format: date-time
- *         description: Date de début minimum
+ *         description: Date de d??but minimum
  *       - in: query
  *         name: dateFinLocation[lte]
  *         schema:
@@ -323,7 +342,7 @@ exports.createBoutique = async (req, res) => {
  *         description: Date de fin maximum
  *     responses:
  *       200:
- *         description: Boutiques récupérées avec succès
+ *         description: Boutiques r??cup??r??es avec succ??s
  *         content:
  *           application/json:
  *             schema:
@@ -334,7 +353,7 @@ exports.createBoutique = async (req, res) => {
  *                   example: true
  *                 message:
  *                   type: string
- *                   example: "Boutiques récupérées avec succès"
+ *                   example: "Boutiques r??cup??r??es avec succ??s"
  *                 items:
  *                   type: array
  *                   items:
@@ -355,7 +374,7 @@ exports.createBoutique = async (req, res) => {
  *                       type: integer
  *                       example: 10
  *       401:
- *         description: Non authentifié
+ *         description: Non authentifi??
  *       500:
  *         description: Erreur serveur
  */
@@ -366,12 +385,12 @@ exports.getAllBoutiques = async (req, res, next) => {
   next();
 };
 
-// @desc    Récupérer les résultats des boutiques (middleware advancedResults)
+// @desc    R??cup??rer les r??sultats des boutiques (middleware advancedResults)
 // @route   GET /api/boutiques
-// @access  Privé
+// @access  Priv??
 exports.getBoutiquesResults = async (req, res) => {
   try {
-    // Populer les résultats avec les bons chemins
+    // Populer les r??sultats avec les bons chemins
     const populatedResults = await Boutique.populate(res.advancedResults.items, [
       { path: 'locataire', select: 'nom email numtel' },
       { path: 'contratlocation.boxes', select: 'Superficie etage numRef isDisponible' },
@@ -380,12 +399,12 @@ exports.getBoutiquesResults = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Boutiques récupérées avec succès',
+      message: 'Boutiques r??cup??r??es avec succ??s',
       items: populatedResults,
       pagination: res.advancedResults.pagination
     });
   } catch (error) {
-    console.error('Erreur récupération boutiques:', error);
+    console.error('Erreur r??cup??ration boutiques:', error);
     res.status(500).json({
       success: false,
       message: 'Erreur serveur',
@@ -398,7 +417,7 @@ exports.getBoutiquesResults = async (req, res) => {
  * @swagger
  * /api/boutiques/all:
  *   get:
- *     summary: Récupérer toutes les boutiques sans pagination
+ *     summary: R??cup??rer toutes les boutiques sans pagination
  *     tags: [Boutique]
  *     security:
  *       - bearerAuth: []
@@ -413,11 +432,11 @@ exports.getAllBoutiquesSimple = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Boutiques récupérées avec succès',
+      message: 'Boutiques r??cup??r??es avec succ??s',
       data: boutiques
     });
   } catch (error) {
-    console.error('Erreur récupération boutiques simples:', error);
+    console.error('Erreur r??cup??ration boutiques simples:', error);
     res.status(500).json({
       success: false,
       message: 'Erreur serveur',
@@ -430,7 +449,7 @@ exports.getAllBoutiquesSimple = async (req, res) => {
  * @swagger
  * /api/boutiques/{id}:
  *   get:
- *     summary: Récupérer une boutique par son ID
+ *     summary: R??cup??rer une boutique par son ID
  *     tags: [Boutique]
  *     security:
  *       - bearerAuth: []
@@ -443,7 +462,7 @@ exports.getAllBoutiquesSimple = async (req, res) => {
  *         description: ID de la boutique
  *     responses:
  *       200:
- *         description: Boutique récupérée avec succès
+ *         description: Boutique r??cup??r??e avec succ??s
  *         content:
  *           application/json:
  *             schema:
@@ -454,13 +473,13 @@ exports.getAllBoutiquesSimple = async (req, res) => {
  *                   example: true
  *                 message:
  *                   type: string
- *                   example: "Boutique récupérée avec succès"
+ *                   example: "Boutique r??cup??r??e avec succ??s"
  *                 data:
  *                   $ref: '#/components/schemas/Boutique'
  *       401:
- *         description: Non authentifié
+ *         description: Non authentifi??
  *       404:
- *         description: Boutique non trouvée
+ *         description: Boutique non trouv??e
  *       500:
  *         description: Erreur serveur
  */
@@ -473,17 +492,17 @@ exports.getBoutiqueById = async (req, res) => {
     if (!boutique) {
       return res.status(404).json({
         success: false,
-        message: 'Boutique non trouvée'
+        message: 'Boutique non trouv??e'
       });
     }
 
     res.status(200).json({
       success: true,
-      message: 'Boutique récupérée avec succès',
+      message: 'Boutique r??cup??r??e avec succ??s',
       data: boutique
     });
   } catch (error) {
-    console.error('Erreur récupération boutique:', error);
+    console.error('Erreur r??cup??ration boutique:', error);
     res.status(500).json({
       success: false,
       message: 'Erreur serveur',
@@ -497,16 +516,16 @@ exports.updateBoutique = async (req, res) => {
     const boutiqueId = req.params.id;
     const boutiqueData = req.body;
 
-    // Vérifier si la boutique existe
+    // V??rifier si la boutique existe
     const existingBoutique = await Boutique.findById(boutiqueId);
     if (!existingBoutique) {
       return res.status(404).json({
         success: false,
-        message: 'Boutique non trouvée'
+        message: 'Boutique non trouv??e'
       });
     }
 
-    // Valider les données de base si un contratlocation est fourni
+    // Valider les donn??es de base si un contratlocation est fourni
     if (boutiqueData.contratlocation) {
       const validation = await boutiqueService.validateBoutiqueData(boutiqueData);
       if (!validation.isValid) {
@@ -517,16 +536,16 @@ exports.updateBoutique = async (req, res) => {
       }
     }
 
-    // Mettre à jour la boutique
+    // Mettre ?? jour la boutique
     const updatedBoutique = await boutiqueService.updateBoutique(boutiqueId, boutiqueData);
 
     res.status(200).json({
       success: true,
-      message: 'Boutique mise à jour avec succès',
+      message: 'Boutique mise ?? jour avec succ??s',
       data: updatedBoutique
     });
   } catch (error) {
-    console.error('Erreur mise à jour boutique:', error);
+    console.error('Erreur mise ?? jour boutique:', error);
     res.status(500).json({
       success: false,
       message: 'Erreur serveur',
@@ -539,7 +558,7 @@ exports.updateBoutique = async (req, res) => {
  * @swagger
  * /api/boutiques/{id}:
  *   put:
- *     summary: Mettre à jour une boutique
+ *     summary: Mettre ?? jour une boutique
  *     tags: [Boutique]
  *     security:
  *       - bearerAuth: []
@@ -569,7 +588,7 @@ exports.updateBoutique = async (req, res) => {
  *                 example: ["60f1b2b3c4d5e6f7g8h9i0j3"]
  *               contratlocation:
  *                 type: object
- *                 description: Données du contrat de location (optionnel)
+ *                 description: Donn??es du contrat de location (optionnel)
  *                 properties:
  *                   boxes:
  *                     type: array
@@ -580,7 +599,7 @@ exports.updateBoutique = async (req, res) => {
  *                   dateDebutLocation:
  *                     type: string
  *                     format: date-time
- *                     description: Date de début de location
+ *                     description: Date de d??but de location
  *                     example: "2024-01-01T00:00:00.000Z"
  *                   dateFinLocation:
  *                     type: string
@@ -659,7 +678,7 @@ exports.uploadLogo = async (req, res) => {
     if (!boutique) {
       return res.status(404).json({
         success: false,
-        message: 'Boutique non trouvée'
+        message: 'Boutique non trouv??e'
       });
     }
 
@@ -673,14 +692,14 @@ exports.uploadLogo = async (req, res) => {
         await deleteImage(oldPublicId);
       } catch (deleteError) {
         console.warn('Erreur suppression ancien logo:', deleteError.message);
-        // Continuer même si la suppression échoue
+        // Continuer m??me si la suppression ??choue
       }
     }
 
-    // Téléverser le nouveau logo sur Cloudinary
+    // T??l??verser le nouveau logo sur Cloudinary
     const logoUrl = await uploadImage(req.file, 'boutiques/logos');
     
-    // Mettre à jour le logo dans la boutique
+    // Mettre ?? jour le logo dans la boutique
     boutique.logo = logoUrl;
     await boutique.save();
 
@@ -691,7 +710,7 @@ exports.uploadLogo = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Logo uploadé avec succès',
+      message: 'Logo upload?? avec succ??s',
       data: {
         boutique: updatedBoutique,
         logo: boutique.logo,
@@ -727,7 +746,7 @@ exports.uploadLogo = async (req, res) => {
  *         description: ID de la boutique
  *     responses:
  *       200:
- *         description: Boutique supprimée avec succès
+ *         description: Boutique supprim??e avec succ??s
  *         content:
  *           application/json:
  *             schema:
@@ -738,13 +757,13 @@ exports.uploadLogo = async (req, res) => {
  *                   example: true
  *                 message:
  *                   type: string
- *                   example: "Boutique supprimée avec succès"
+ *                   example: "Boutique supprim??e avec succ??s"
  *       401:
- *         description: Non authentifié
+ *         description: Non authentifi??
  *       403:
- *         description: Non autorisé
+ *         description: Non autoris??
  *       404:
- *         description: Boutique non trouvée
+ *         description: Boutique non trouv??e
  *       500:
  *         description: Erreur serveur
  */
@@ -754,7 +773,7 @@ exports.deleteBoutique = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Boutique supprimée avec succès'
+      message: 'Boutique supprim??e avec succ??s'
     });
   } catch (error) {
     console.error('Erreur suppression boutique:', error);
@@ -770,15 +789,15 @@ exports.deleteBoutique = async (req, res) => {
  * @swagger
  * /api/boutiques/my-boutique:
  *   get:
- *     summary: Récupérer la boutique de l'utilisateur connecté
+ *     summary: R??cup??rer la boutique de l'utilisateur connect??
  *     tags: [Boutique]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Boutique de l'utilisateur récupérée avec succès
+ *         description: Boutique de l'utilisateur r??cup??r??e avec succ??s
  *       404:
- *         description: Boutique non trouvée
+ *         description: Boutique non trouv??e
  *       500:
  *         description: Erreur serveur
  */
@@ -792,17 +811,17 @@ exports.getMyBoutique = async (req, res) => {
     if (!boutique) {
       return res.status(404).json({
         success: false,
-        message: 'Boutique non trouvée'
+        message: 'Boutique non trouv??e'
       });
     }
 
     res.status(200).json({
       success: true,
-      message: 'Boutique récupérée avec succès',
+      message: 'Boutique r??cup??r??e avec succ??s',
       data: boutique
     });
   } catch (error) {
-    console.error('Erreur récupération boutique utilisateur:', error);
+    console.error('Erreur r??cup??ration boutique utilisateur:', error);
     res.status(500).json({
       success: false,
       message: 'Erreur serveur',
@@ -815,15 +834,15 @@ exports.getMyBoutique = async (req, res) => {
  * @swagger
  * /api/boutiques/my-boutique:
  *   put:
- *     summary: Mettre à jour la boutique de l'utilisateur connecté
+ *     summary: Mettre ?? jour la boutique de l'utilisateur connect??
  *     tags: [Boutique]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Boutique mise à jour avec succès
+ *         description: Boutique mise ?? jour avec succ??s
  *       404:
- *         description: Boutique non trouvée
+ *         description: Boutique non trouv??e
  *       500:
  *         description: Erreur serveur
  */
@@ -835,34 +854,25 @@ exports.updateMyBoutique = async (req, res) => {
     if (!boutique) {
       return res.status(404).json({
         success: false,
-        message: 'Boutique non trouvée'
+        message: 'Boutique non trouv??e'
       });
     }
 
-    // Mettre à jour uniquement les champs autorisés pour le propriétaire
-    const allowedFields = ['nom', 'logo'];
+    // Mettre ?? jour uniquement les champs autoris??s pour le propri??taire
     const updateData = {};
-    
-    allowedFields.forEach(field => {
-      if (req.body[field] !== undefined) {
-        updateData[field] = req.body[field];
-      }
-    });
+    if (req.body.nom !== undefined) updateData.nom = req.body.nom;
+    if (req.body.logo !== undefined) updateData.logo = req.body.logo;
+    if (req.body.contratlocation !== undefined) updateData.contratlocation = req.body.contratlocation;
 
-    const updatedBoutique = await Boutique.findByIdAndUpdate(
-      boutique._id,
-      updateData,
-      { new: true, runValidators: true }
-    ).populate('contratlocation.boxes', 'Superficie etage numRef isDisponible typeBoxId')
-     .populate('locataire', 'nom email');
+    const updatedBoutique = await boutiqueService.updateBoutique(boutique._id, updateData);
 
     res.status(200).json({
       success: true,
-      message: 'Boutique mise à jour avec succès',
+      message: 'Boutique mise ?? jour avec succ??s',
       data: updatedBoutique
     });
   } catch (error) {
-    console.error('Erreur mise à jour boutique utilisateur:', error);
+    console.error('Erreur mise ?? jour boutique utilisateur:', error);
     res.status(500).json({
       success: false,
       message: 'Erreur serveur',
@@ -875,15 +885,15 @@ exports.updateMyBoutique = async (req, res) => {
  * @swagger
  * /api/boutiques/my-boutique/deactivate:
  *   patch:
- *     summary: Désactiver la boutique de l'utilisateur connecté
+ *     summary: D??sactiver la boutique de l'utilisateur connect??
  *     tags: [Boutique]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Boutique désactivée avec succès
+ *         description: Boutique d??sactiv??e avec succ??s
  *       404:
- *         description: Boutique non trouvée
+ *         description: Boutique non trouv??e
  *       500:
  *         description: Erreur serveur
  */
@@ -895,7 +905,7 @@ exports.deactivateMyBoutique = async (req, res) => {
     if (!boutique) {
       return res.status(404).json({
         success: false,
-        message: 'Boutique non trouvée'
+        message: 'Boutique non trouv??e'
       });
     }
 
@@ -904,11 +914,11 @@ exports.deactivateMyBoutique = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Boutique désactivée avec succès',
+      message: 'Boutique d??sactiv??e avec succ??s',
       data: boutique
     });
   } catch (error) {
-    console.error('Erreur désactivation boutique:', error);
+    console.error('Erreur d??sactivation boutique:', error);
     res.status(500).json({
       success: false,
       message: 'Erreur serveur',
@@ -921,15 +931,15 @@ exports.deactivateMyBoutique = async (req, res) => {
  * @swagger
  * /api/boutiques/my-boutique/activate:
  *   patch:
- *     summary: Activer la boutique de l'utilisateur connecté
+ *     summary: Activer la boutique de l'utilisateur connect??
  *     tags: [Boutique]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Boutique activée avec succès
+ *         description: Boutique activ??e avec succ??s
  *       404:
- *         description: Boutique non trouvée
+ *         description: Boutique non trouv??e
  *       500:
  *         description: Erreur serveur
  */
@@ -941,16 +951,24 @@ exports.activateMyBoutique = async (req, res) => {
     if (!boutique) {
       return res.status(404).json({
         success: false,
-        message: 'Boutique non trouvée'
+        message: 'Boutique non trouv??e'
+      });
+    }
+
+    if (boutique.isPendingFirstActivation && req.user?.roleName === 'admin_boutique') {
+      return res.status(403).json({
+        success: false,
+        message: 'La premiere activation doit etre faite par admin centre.'
       });
     }
 
     boutique.isActive = true;
+    boutique.isPendingFirstActivation = false;
     await boutique.save();
 
     res.status(200).json({
       success: true,
-      message: 'Boutique activée avec succès',
+      message: 'Boutique activ??e avec succ??s',
       data: boutique
     });
   } catch (error) {
@@ -962,3 +980,88 @@ exports.activateMyBoutique = async (req, res) => {
     });
   }
 };
+
+/**
+ * Activer une boutique par ID (admin centre / super admin)
+ */
+exports.activateBoutiqueById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const boutique = await Boutique.findById(id);
+
+    if (!boutique) {
+      return res.status(404).json({
+        success: false,
+        message: 'Boutique non trouvee'
+      });
+    }
+
+    boutique.isActive = true;
+    boutique.isPendingFirstActivation = false;
+    await boutique.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Boutique activee avec succes',
+      data: boutique
+    });
+  } catch (error) {
+    console.error('Erreur activation boutique par admin:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Quitter le centre:
+ * - impossible si des produits existent encore
+ * - liberation de la box
+ * - suppression de la boutique
+ */
+exports.quitterCentre = async (req, res) => {
+  try {
+    const userId = await authService.getUserIdByToken(req);
+    const boutique = await Boutique.findOne({ locataire: userId });
+
+    if (!boutique) {
+      return res.status(404).json({
+        success: false,
+        message: 'Boutique non trouvee'
+      });
+    }
+
+    const nombreProduits = await Produit.countDocuments({ boutiqueId: boutique._id });
+    if (nombreProduits > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Supprimez d abord tous les produits de la boutique avant de quitter le centre.'
+      });
+    }
+
+    const boxIds = boutique.contratlocation?.boxes || [];
+    if (boxIds.length > 0) {
+      await Box.updateMany(
+        { _id: { $in: boxIds } },
+        { $set: { isDisponible: true } }
+      );
+    }
+
+    await Boutique.deleteOne({ _id: boutique._id });
+
+    res.status(200).json({
+      success: true,
+      message: 'Vous avez quitte le centre. Boutique supprimee et box liberee.'
+    });
+  } catch (error) {
+    console.error('Erreur quitter centre:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur',
+      error: error.message
+    });
+  }
+};
+
