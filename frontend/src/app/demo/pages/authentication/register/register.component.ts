@@ -1,138 +1,205 @@
-import { ChangeDetectorRef, Component, inject, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule, Router } from '@angular/router';
-import { email, Field, form, minLength, required } from '@angular/forms/signals';
-
+import { Router, RouterModule } from '@angular/router';
+import {
+  AbstractControl,
+  FormArray,
+  FormBuilder,
+  FormGroup,
+  ReactiveFormsModule,
+  ValidationErrors,
+  ValidatorFn,
+  Validators
+} from '@angular/forms';
 import { AuthService, RegisterData } from '../../../../services/auth.service';
-import { NotificationService } from 'src/app/services/notification.service';
+import { NotificationService } from '../../../../services/notification.service';
 import { BoutiqueService } from '../../../../services/boutique.service';
 
 @Component({
   selector: 'app-register',
-  imports: [CommonModule, RouterModule, Field],
+  standalone: true,
+  imports: [CommonModule, RouterModule, ReactiveFormsModule],
   templateUrl: './register.component.html',
   styleUrls: ['./register.component.scss']
 })
 export class RegisterComponent {
-  private readonly notificationService = inject(NotificationService);
-  private readonly cd = inject(ChangeDetectorRef);
   private readonly authService = inject(AuthService);
   private readonly boutiqueService = inject(BoutiqueService);
   private readonly router = inject(Router);
+  private readonly notificationService = inject(NotificationService);
+  private readonly fb = inject(FormBuilder);
+  private readonly cd = inject(ChangeDetectorRef);
 
-  submitted = signal(false);
-  error = signal('');
-  showPassword = signal(false);
-  loading = signal(false);
-  selectedRole = signal<'user' | 'admin_boutique' | null>(null);
-  avatarFile: File | null = null;
+  submitted = false;
+  loading = false;
+  error = '';
+  showPassword = false;
+  showConfirmPassword = false;
 
-  registerModel = signal<{ email: string; password: string; confirmPassword: string; name: string }>({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: ''
-  });
+  selectedRole: 'user' | 'admin_boutique' | null = null;
+  registerForm!: FormGroup;
 
-  registerForm = form(this.registerModel, (schemaPath) => {
-    required(schemaPath.email, { message: 'Email is required' });
-    email(schemaPath.email, { message: 'Enter a valid email address' });
-    required(schemaPath.password, { message: 'Password is required' });
-    minLength(schemaPath.password, 8, { message: 'Password must be at least 8 characters' });
-    required(schemaPath.confirmPassword, { message: 'Password confirmation is required' });
-    required(schemaPath.name, { message: 'Name is required' });
-  });
+  private readonly passwordMatchValidator: ValidatorFn = (group: AbstractControl): ValidationErrors | null => {
+    const password = group.get('password')?.value;
+    const confirmPassword = group.get('confirmPassword')?.value;
 
-  onAvatarSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    if (input.files && input.files.length > 0) {
-      this.avatarFile = input.files[0];
+    if (!password || !confirmPassword) {
+      return null;
     }
+
+    return password === confirmPassword ? null : { passwordMismatch: true };
+  };
+
+  constructor() {
+    this.initForm();
+  }
+
+  initForm(): void {
+    this.registerForm = this.fb.group(
+      {
+        nom: ['', Validators.required],
+        email: ['', [Validators.required, Validators.email]],
+        password: ['', [Validators.required, Validators.minLength(8)]],
+        confirmPassword: ['', Validators.required],
+        sexe: ['M', Validators.required],
+        numtel: this.fb.array([this.fb.control('')]),
+        dtnaissance: ['2000-02-04', Validators.required]
+      },
+      { validators: this.passwordMatchValidator }
+    );
+  }
+
+  get numtelArray(): FormArray {
+    return this.registerForm.get('numtel') as FormArray;
   }
 
   selectRole(role: 'user' | 'admin_boutique'): void {
-    this.selectedRole.set(role);
+    this.selectedRole = role;
+  }
+
+  addPhoneNumber(): void {
+    this.numtelArray.push(this.fb.control(''));
+  }
+
+  removePhoneNumber(index: number): void {
+    if (this.numtelArray.length > 1) {
+      this.numtelArray.removeAt(index);
+    }
+  }
+
+  hasValidPhoneNumber(): boolean {
+    return this.numtelArray.controls.some((control) => {
+      const phoneValue = control.value as string | null;
+      return !!phoneValue && phoneValue.trim() !== '';
+    });
+  }
+
+  isPasswordMismatch(): boolean {
+    const confirmPassword = this.registerForm.get('confirmPassword')?.value;
+    return this.submitted && !!confirmPassword && this.registerForm.hasError('passwordMismatch');
+  }
+
+  togglePasswordVisibility(): void {
+    this.showPassword = !this.showPassword;
+  }
+
+  toggleConfirmPasswordVisibility(): void {
+    this.showConfirmPassword = !this.showConfirmPassword;
   }
 
   onSubmit(event: Event): void {
-    this.submitted.set(true);
-    this.error.set('');
-
-    if (!this.selectedRole()) {
-      this.error.set('Veuillez selectionner un type de compte');
-      event.preventDefault();
-      return;
-    }
-
-    if (
-      this.registerForm.email().invalid() ||
-      this.registerForm.password().invalid() ||
-      this.registerForm.name().invalid() ||
-      this.registerForm.confirmPassword().invalid()
-    ) {
-      event.preventDefault();
-      return;
-    }
-
-    const credentials = this.registerModel();
-    if (credentials.password !== credentials.confirmPassword) {
-      this.error.set('Les mots de passe ne correspondent pas');
-      event.preventDefault();
-      return;
-    }
-
-    this.loading.set(true);
     event.preventDefault();
+    this.submitted = true;
+    this.error = '';
 
+    if (!this.selectedRole) {
+      this.error = 'Veuillez selectionner un type de compte';
+      return;
+    }
+
+    if (!this.registerForm.valid || !this.hasValidPhoneNumber()) {
+      this.error = !this.hasValidPhoneNumber() ? 'Au moins un numero de telephone est requis' : '';
+      this.registerForm.markAllAsTouched();
+      return;
+    }
+
+    const formValue = this.registerForm.value;
     const registerData: RegisterData = {
-      email: credentials.email,
-      password: credentials.password,
-      nom: credentials.name,
-      role: this.selectedRole()!
+      nom: formValue.nom?.trim(),
+      email: formValue.email?.trim(),
+      password: formValue.password,
+      role: this.selectedRole,
+      sexe: formValue.sexe,
+      numtel: (formValue.numtel as string[])
+        .map((phone) => phone.trim())
+        .filter((phone) => phone !== ''),
+      dtnaissance: formValue.dtnaissance
     };
 
+    this.loading = true;
+
     this.authService.register(registerData).subscribe({
-      next: () => {
-        if (this.authService.hasRole('user')) {
-          this.router.navigate(['/produits']);
-          this.loading.set(false);
-        } else if (this.authService.hasRole('admin_boutique')) {
-          this.boutiqueService.refreshMyBoutiqueStatus().subscribe({
-            next: (status) => {
-              if (!status.hasBoutique) {
-                this.router.navigate(['/boutique/boxes']);
-              } else if (!status.isActive) {
-                this.router.navigate(['/boutique/informations']);
-              } else {
-                this.router.navigate(['/default']);
-              }
-              this.loading.set(false);
-              this.cd.detectChanges();
-            },
-            error: () => {
-              this.router.navigate(['/default']);
-              this.loading.set(false);
-              this.cd.detectChanges();
-            }
-          });
-        } else {
-          this.router.navigate(['/default']);
-          this.loading.set(false);
+      next: (response) => {
+        if (!response?.success) {
+          this.error = response?.message || "Erreur lors de l'inscription.";
+          this.loading = false;
+          this.cd.detectChanges();
+          return;
         }
 
-        this.notificationService.success('Profil', 'Compte cree avec succes.');
+        this.notificationService.success('Succes', 'Compte cree avec succes.');
+        this.redirectAfterRegister();
       },
       error: (err) => {
-        console.error('Registration error:', err);
-        this.error.set('Erreur lors de l\'inscription. Veuillez reessayer.');
-        this.loading.set(false);
+        const errorMessage =
+          err?.error?.message || err?.message || "Erreur lors de l'inscription. Veuillez reessayer.";
+        this.notificationService.error('Erreur inscription', errorMessage);
+        this.error = errorMessage;
+        this.loading = false;
+        this.cd.detectChanges();
       },
       complete: () => {
         if (!this.authService.hasRole('admin_boutique')) {
-          this.loading.set(false);
+          this.loading = false;
           this.cd.detectChanges();
         }
       }
     });
+  }
+
+  private redirectAfterRegister(): void {
+    if (this.authService.hasRole('user')) {
+      this.router.navigate(['/produits']);
+      this.loading = false;
+      this.cd.detectChanges();
+      return;
+    }
+
+    if (this.authService.hasRole('admin_boutique')) {
+      this.boutiqueService.refreshMyBoutiqueStatus().subscribe({
+        next: (status) => {
+          if (!status.hasBoutique) {
+            this.router.navigate(['/boutique/boxes']);
+          } else if (!status.isActive) {
+            this.router.navigate(['/boutique/informations']);
+          } else {
+            this.router.navigate(['/default']);
+          }
+
+          this.loading = false;
+          this.cd.detectChanges();
+        },
+        error: () => {
+          this.router.navigate(['/default']);
+          this.loading = false;
+          this.cd.detectChanges();
+        }
+      });
+      return;
+    }
+
+    this.router.navigate(['/default']);
+    this.loading = false;
+    this.cd.detectChanges();
   }
 }

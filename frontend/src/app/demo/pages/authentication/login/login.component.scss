@@ -1,1 +1,7 @@
-// This file is intentionally left empty to allow customers to add custom CSS if needed.
+.input-group > .btn {
+  min-width: 46px;
+}
+
+.input-group .form-control.is-invalid {
+  z-index: 2;
+}
