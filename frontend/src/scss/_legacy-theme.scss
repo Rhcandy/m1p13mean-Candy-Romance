@@ -1,0 +1,28 @@
+// main framework
+@import 'bootstrap/scss/functions';
+@import 'bootstrap/scss/variables';
+@import 'bootstrap/scss/variables-dark';
+
+@import 'settings/color-variables';
+@import 'settings/theme-variables';
+@import 'settings/bootstrap-variables.scss';
+
+@import 'bootstrap/bootstrap.scss';
+
+@import 'bootstrap/scss/utilities';
+@import 'bootstrap/scss/utilities/api';
+
+@import 'themes/generic.scss';
+@import 'themes/general.scss';
+
+// Layouts
+@import 'themes/layouts/layouts';
+
+// Components
+@import 'themes/components/components';
+
+// pages
+@import 'themes/pages/page.scss';
+
+@import 'themes/customizer';
+@import 'style-preset.scss';

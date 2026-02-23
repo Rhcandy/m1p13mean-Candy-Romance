@@ -79,7 +79,7 @@ export class AuthService {
       this.currentUserSubject.next(user);
       this.isAuthenticatedSubject.next(true);
     } else {
-      this.logout();
+      this.clearAuthState();
     }
   }
 
@@ -119,13 +119,20 @@ export class AuthService {
     );
   }
 
-  logout(): void {
+  logout(redirectToLogin = true): void {
+    this.clearAuthState();
+
+    if (redirectToLogin) {
+      this.router.navigate(['/login']);
+    }
+  }
+
+  private clearAuthState(): void {
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.USER_KEY);
     localStorage.removeItem('boutique_status_cache');
     this.currentUserSubject.next(null);
     this.isAuthenticatedSubject.next(false);
-    this.router.navigate(['/login']);
   }
 
   getToken(): string | null {

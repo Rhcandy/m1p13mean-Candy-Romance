@@ -1,226 +1,173 @@
-// landing.component.ts
-import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule, Router } from '@angular/router';
-import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import {
-  trigger, transition, style, animate, state
-} from '@angular/animations';
-import { AuthService } from '../../../services/auth.service';
+import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
+import { Router, RouterModule } from '@angular/router';
+import { Subscription } from 'rxjs';
+import { LeafletMapComponent } from '../../../components/map/leaflet-map.component';
+import { AuthService, User } from '../../../services/auth.service';
+
+interface CenterSlide {
+  src: string;
+  alt: string;
+  title: string;
+  description: string;
+}
 
 @Component({
   selector: 'app-landing',
   standalone: true,
-  imports: [CommonModule, RouterModule, ReactiveFormsModule],
+  imports: [CommonModule, RouterModule, LeafletMapComponent],
   templateUrl: './landing.component.html',
-  styleUrls: ['./landing.component.scss'],
-  animations: [
-    trigger('fadeUp', [
-      transition(':enter', [
-        style({ opacity: 0, transform: 'translateY(30px)' }),
-        animate('600ms cubic-bezier(.4,0,.2,1)', style({ opacity: 1, transform: 'translateY(0)' }))
-      ])
-    ]),
-    trigger('slideIn', [
-      transition(':enter', [
-        style({ opacity: 0, transform: 'translateX(50px)' }),
-        animate('700ms 200ms cubic-bezier(.4,0,.2,1)', style({ opacity: 1, transform: 'translateX(0)' }))
-      ])
-    ])
-  ]
+  styleUrls: ['./landing.component.scss']
 })
 export class LandingComponent implements OnInit, OnDestroy {
-
-  isScrolled  = false;
-  menuOpen    = false;
-  isSending   = false;
-  sent        = false;
-  currentYear = new Date().getFullYear();
+  isScrolled = false;
+  menuOpen = false;
   isAuthenticated = false;
   isBoutiqueAdmin = false;
+  currentYear = new Date().getFullYear();
 
-  contactForm!: FormGroup;
+  readonly centerCoordinates: [number, number] = [-18.952783162227885, 47.52845781884346];
 
-  // ── Features strip ────────────────────────────────────────
-  features = [
+  readonly centerSlides: CenterSlide[] = [
     {
-      icon: 'ti-truck',
-      title: 'Livraison rapide',
-      desc: 'Partout à Madagascar',
-      color: '#5046e5',
-      bg: 'rgba(80,70,229,.1)'
+      src: 'assets/images/centre/1.webp',
+      alt: 'Entree du Royal Center',
+      title: 'Royal Center - Entree principale',
+      description: 'Un point de rencontre moderne pour les boutiques et les clients.'
     },
     {
-      icon: 'ti-shield-check',
-      title: 'Paiement sécurisé',
-      desc: 'SSL & cryptage 256 bits',
-      color: '#059669',
-      bg: 'rgba(5,150,105,.1)'
+      src: 'assets/images/centre/2.webp',
+      alt: 'Zone commerciale du Royal Center',
+      title: 'Zone commerciale active',
+      description: 'Des espaces penses pour presenter les produits et faciliter les echanges.'
     },
     {
-      icon: 'ti-refresh',
-      title: 'Retours gratuits',
-      desc: 'Sous 30 jours',
-      color: '#ea6c00',
-      bg: 'rgba(234,108,0,.1)'
-    },
-    {
-      icon: 'ti-headset',
-      title: 'Support 7j/7',
-      desc: 'Équipe dédiée',
-      color: '#0284c7',
-      bg: 'rgba(2,132,199,.1)'
+      src: 'assets/images/centre/3.webp',
+      alt: 'Vue interieure du Royal Center',
+      title: 'Experience client au centre',
+      description: 'Un environnement accueillant pour decouvrir et acheter en confiance.'
     }
   ];
 
-  // ── About pillars ─────────────────────────────────────────
-  pillars = [
-    {
-      icon: 'ti-rocket',
-      title: 'Lancement rapide',
-      desc: 'Votre boutique en ligne en 5 minutes.',
-      color: '#5046e5',
-      bg: 'rgba(80,70,229,.1)'
-    },
-    {
-      icon: 'ti-chart-bar',
-      title: 'Analytics avancés',
-      desc: 'Suivez vos ventes en temps réel.',
-      color: '#059669',
-      bg: 'rgba(5,150,105,.1)'
-    },
-    {
-      icon: 'ti-lock',
-      title: 'Sécurité maximale',
-      desc: 'Vos données et transactions protégées.',
-      color: '#7c3aed',
-      bg: 'rgba(124,58,237,.1)'
-    }
-  ];
+  activeSlide = 0;
 
-  // ── Categories ────────────────────────────────────────────
-  categories = [
-    { icon: 'ti-devices',      name: 'Électronique',   count: '2 400+ articles', color: '#5046e5', bg: 'rgba(80,70,229,.1)' },
-    { icon: 'ti-shirt',        name: 'Mode',           count: '3 100+ articles', color: '#ec4899', bg: 'rgba(236,72,153,.1)' },
-    { icon: 'ti-home',         name: 'Maison',         count: '1 800+ articles', color: '#ea6c00', bg: 'rgba(234,108,0,.1)'  },
-    { icon: 'ti-ball-football',name: 'Sport',          count: '900+ articles',   color: '#059669', bg: 'rgba(5,150,105,.1)'  },
-    { icon: 'ti-book',         name: 'Livres',         count: '600+ articles',   color: '#0284c7', bg: 'rgba(2,132,199,.1)'  },
-    { icon: 'ti-tool',         name: 'Bricolage',      count: '750+ articles',   color: '#7c3aed', bg: 'rgba(124,58,237,.1)' },
-    { icon: 'ti-heart',        name: 'Beauté',         count: '1 200+ articles', color: '#e63946', bg: 'rgba(230,57,70,.1)'  },
-    { icon: 'ti-package',      name: 'Autres',         count: '5 000+ articles', color: '#6b7699', bg: 'rgba(107,118,153,.1)'}
-  ];
-
-  // ── Contact channels ──────────────────────────────────────
-  channels = [
-    {
-      icon: 'ti-mail',
-      label: 'Email',
-      value: 'contact@bazaar.mg',
-      color: '#5046e5',
-      bg: 'rgba(80,70,229,.1)'
-    },
-    {
-      icon: 'ti-phone',
-      label: 'Téléphone',
-      value: '+261 34 00 000 00',
-      color: '#059669',
-      bg: 'rgba(5,150,105,.1)'
-    },
-    {
-      icon: 'ti-map-pin',
-      label: 'Adresse',
-      value: 'Antananarivo, Madagascar',
-      color: '#ea6c00',
-      bg: 'rgba(234,108,0,.1)'
-    }
-  ];
+  private authSubscription?: Subscription;
+  private carouselTimer?: ReturnType<typeof setInterval>;
 
   constructor(
-    private fb: FormBuilder,
-    private router: Router,
-    private authService: AuthService
+    private readonly router: Router,
+    private readonly authService: AuthService
   ) {}
 
   ngOnInit(): void {
-    this.isAuthenticated = this.authService.isAuthenticated;
-    this.isBoutiqueAdmin = this.authService.hasRole('admin_boutique');
-    
-    // Rediriger automatiquement les admin_boutique vers leur dashboard
-    if (this.isAuthenticated && this.isBoutiqueAdmin) {
-      this.router.navigate(['/boutique/dashboard']);
-      return;
-    }
-    
-    this.contactForm = this.fb.group({
-      prenom:  ['', Validators.required],
-      nom:     ['', Validators.required],
-      email:   ['', [Validators.required, Validators.email]],
-      sujet:   ['', Validators.required],
-      message: ['', [Validators.required, Validators.minLength(10)]]
+    this.applyUserState(this.authService.currentUser);
+
+    this.authSubscription = this.authService.currentUser$.subscribe((user) => {
+      this.applyUserState(user);
     });
+
+    this.startCarousel();
   }
 
-  ngOnDestroy(): void {}
+  ngOnDestroy(): void {
+    this.authSubscription?.unsubscribe();
+    this.stopCarousel();
+  }
 
   @HostListener('window:scroll')
-  onScroll(): void {
-    this.isScrolled = window.scrollY > 60;
+  onWindowScroll(): void {
+    this.isScrolled = window.scrollY > 20;
   }
 
-  scrollTo(id: string): void {
-    const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  scrollTo(sectionId: string): void {
+    const section = document.getElementById(sectionId);
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   }
 
-  sendMessage(): void {
-    if (this.contactForm.invalid) return;
-    this.isSending = true;
-    // Simuler un envoi
-    setTimeout(() => {
-      this.isSending = false;
-      this.sent      = true;
-      this.contactForm.reset();
-      setTimeout(() => this.sent = false, 5000);
-    }, 1800);
+  toggleMenu(): void {
+    this.menuOpen = !this.menuOpen;
   }
 
-  // ── Navigation & Auth ───────────────────────────────────
+  goToProducts(): void {
+    if (this.isAuthenticated) {
+      if (this.isBoutiqueAdmin) {
+        this.router.navigate(['/boutique/produits']);
+      } else {
+        this.router.navigate(['/produits']);
+      }
+      return;
+    }
 
-  goToLogin(): void {
     this.router.navigate(['/login']);
+  }
+
+  goToUserSpace(): void {
+    if (this.isAuthenticated && !this.isBoutiqueAdmin) {
+      this.router.navigate(['/produits']);
+      return;
+    }
+
+    this.router.navigate(['/login']);
+  }
+
+  goToBoutiqueSpace(): void {
+    if (this.isAuthenticated && this.isBoutiqueAdmin) {
+      this.router.navigate(['/boutique/produits']);
+      return;
+    }
+
+    this.router.navigate(['/register']);
   }
 
   goToRegister(): void {
     this.router.navigate(['/register']);
   }
 
-  goToProducts(): void {
+  handleAuthAction(): void {
     if (this.isAuthenticated) {
-      if (this.authService.hasRole('admin_boutique')) {
-        this.router.navigate(['/boutique/produits']);
-      } else {
-        this.router.navigate(['/produits']);
-      }
-    } else {
-      this.router.navigate(['/login']);
+      this.authService.logout(false);
+      this.menuOpen = false;
+      this.router.navigate(['/landing']);
+      return;
+    }
+
+    this.router.navigate(['/login']);
+  }
+
+  previousSlide(): void {
+    this.activeSlide = (this.activeSlide - 1 + this.centerSlides.length) % this.centerSlides.length;
+    this.restartCarousel();
+  }
+
+  nextSlide(): void {
+    this.activeSlide = (this.activeSlide + 1) % this.centerSlides.length;
+  }
+
+  setSlide(index: number): void {
+    this.activeSlide = index;
+    this.restartCarousel();
+  }
+
+  private applyUserState(user: User | null): void {
+    this.isAuthenticated = !!user;
+    this.isBoutiqueAdmin = !!user && user.role === 'admin_boutique';
+  }
+
+  private startCarousel(): void {
+    this.stopCarousel();
+    this.carouselTimer = setInterval(() => this.nextSlide(), 5000);
+  }
+
+  private stopCarousel(): void {
+    if (this.carouselTimer) {
+      clearInterval(this.carouselTimer);
+      this.carouselTimer = undefined;
     }
   }
 
-  goToDashboard(): void {
-    if (this.isAuthenticated) {
-      if (this.authService.hasRole('admin_boutique')) {
-        this.router.navigate(['/boutique/dashboard']);
-      } else {
-        this.router.navigate(['/default']);
-      }
-    } else {
-      this.router.navigate(['/login']);
-    }
-  }
-
-  logout(): void {
-    this.authService.logout();
-    this.isAuthenticated = false;
-    this.isBoutiqueAdmin = false;
+  private restartCarousel(): void {
+    this.startCarousel();
   }
 }

@@ -1,1 +1,17 @@
-// This file is intentionally left empty to allow customers to add custom CSS if needed.
+.b-brand {
+  display: inline-flex;
+  align-items: center;
+}
+
+.logo {
+  width: auto;
+  object-fit: contain;
+}
+
+.logo-lg {
+  height: 38px;
+}
+
+.logo-sm {
+  height: 28px;
+}
