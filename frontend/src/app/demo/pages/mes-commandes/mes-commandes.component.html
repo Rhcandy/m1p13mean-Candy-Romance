@@ -1,0 +1,83 @@
+﻿<div class="commandes-container">
+  <div class="commandes-header">
+    <h1>{{ isAdminBoutique ? 'Commandes boutique' : 'Mes commandes' }}</h1>
+    <div class="header-actions">
+      <button class="btn btn-outline-primary" (click)="refreshCommandes()">
+        <i class="ti ti-refresh"></i>
+        Actualiser
+      </button>
+      <button class="btn btn-primary" (click)="goToProducts()">
+        <i class="ti ti-shopping-cart-plus"></i>
+        {{ isAdminBoutique ? 'Voir produits' : 'Nouvelles commandes' }}
+      </button>
+    </div>
+  </div>
+
+  @if (loading) {
+    <div class="loading-state">
+      <div class="spinner-border text-primary"></div>
+      <p>Chargement des commandes...</p>
+    </div>
+  } @else if (commandes.length === 0) {
+    <div class="empty-state">
+      <i class="ti ti-package-off"></i>
+      <h2>{{ isAdminBoutique ? 'Aucune commande pour votre boutique' : 'Vous n\'avez pas encore de commandes' }}</h2>
+      <p>{{ isAdminBoutique ? 'Vos produits n\'ont pas encore ete commandes.' : 'Decouvrez nos produits et passez votre premiere commande !' }}</p>
+      <button class="btn btn-primary sm" (click)="goToProducts()">
+        <i class="ti ti-shopping-cart"></i>
+        Voir les produits
+      </button>
+    </div>
+  } @else {
+    <div class="commandes-list">
+      @for (commande of commandes; track commande._id) {
+        <div class="commande-card">
+          <div class="commande-header">
+            <div class="commande-info">
+              <div class="commande-number">
+                <strong>Facture:</strong> {{ getNumeroFacture(commande) }}
+              </div>
+              <div class="commande-date">
+                <i class="ti ti-calendar"></i>
+                {{ commande.createdAt | date:'longDate' }}
+              </div>
+              @if (isAdminBoutique && commande.userId?.nom) {
+                <div class="commande-date">
+                  <i class="ti ti-user"></i>
+                  {{ commande.userId?.nom }} ({{ commande.userId?.email }})
+                </div>
+              }
+            </div>
+            <div class="commande-status">
+              <span class="status-badge {{ getStatutClass(commande.statut) }}">
+                <i class="{{ getStatutIcon(commande.statut) }}"></i>
+                {{ panierService.getStatutLibelle(commande.statut) }}
+              </span>
+            </div>
+          </div>
+
+          <div class="commande-actions">
+            <button class="btn btn-outline-primary btn-sm" (click)="voirDetails(commande)">
+              <i class="ti ti-eye"></i>
+              Détails
+            </button>
+
+            @if (canPayerCommande(commande)) {
+              <button class="btn btn-outline-success btn-sm" (click)="payerCommande(commande)">
+                <i class="ti ti-credit-card"></i>
+                Payer
+              </button>
+            }
+
+            @if (commande.isPaye) {
+              <button class="btn btn-outline-secondary btn-sm" (click)="telechargerFacture(commande)">
+                <i class="ti ti-download"></i>
+                Facture
+              </button>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

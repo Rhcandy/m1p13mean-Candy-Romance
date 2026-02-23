@@ -1,8 +1,9 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject,ChangeDetectorRef } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../../services/auth.service';
+import { BoutiqueService } from '../../../../services/boutique.service';
 
 @Component({
   selector: 'app-login',
@@ -12,8 +13,10 @@ import { AuthService } from '../../../../services/auth.service';
   styleUrls: ['./login.component.scss']
 })
 export class LoginComponent {
-  private authService = inject(AuthService);
-  private router = inject(Router);
+  private readonly authService = inject(AuthService);
+  private readonly boutiqueService = inject(BoutiqueService);
+  private readonly router = inject(Router);
+   private readonly cdr = inject(ChangeDetectorRef);
 
   submitted = false;
   loading = false;
@@ -39,14 +42,47 @@ export class LoginComponent {
 
     this.authService.login(this.model.email, this.model.password).subscribe({
       next: () => {
-        this.router.navigate(['/default']);
+        if (this.authService.hasRole('user')) {
+          this.router.navigate(['/produits']);
+          this.loading = false;
+          return;
+        }
+
+        if (this.authService.hasRole('admin_boutique')) {
+          this.boutiqueService.refreshMyBoutiqueStatus().subscribe({
+            next: (status) => {
+              if (!status.hasBoutique) {
+                this.router.navigate(['/boutique/boxes']);
+              } else if (!status.isActive) {
+                this.router.navigate(['/boutique/informations']);
+              } else {
+                this.router.navigate(['/default']);
+              }
+              this.loading = false;
+              this.cdr.detectChanges();
+            },
+            error: () => {
+              this.router.navigate(['/default']);
+              this.loading = false;
+              this.cdr.detectChanges();
+            }
+          });
+        } else {
+          this.router.navigate(['/default']);
+          this.loading = false;
+        }
       },
       error: () => {
         this.error = 'Email ou mot de passe incorrect';
         this.loading = false;
+        Promise.resolve().then(() => {
+          this.cdr.detectChanges();
+        });
       },
       complete: () => {
-        this.loading = false;
+        if (!this.authService.hasRole('admin_boutique')) {
+          this.loading = false;
+        }
       }
     });
   }

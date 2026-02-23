@@ -5,7 +5,7 @@ import { NavigationEnd, Router, RouterModule, Event } from '@angular/router';
 import { Title } from '@angular/platform-browser';
 
 // project import
-import { NavigationItem, NavigationItems } from 'src/app/theme/layout/admin/navigation/navigation';
+import { NavigationItem, getNavigationItems } from 'src/app/theme/layout/admin/navigation/navigation';
 import { SharedModule } from '../../shared.module';
 
 interface titleType {
@@ -35,7 +35,7 @@ export class BreadcrumbComponent {
 
   // constructor
   constructor() {
-    this.navigations = NavigationItems;
+    this.navigations = getNavigationItems();
     this.type = 'icon';
     this.setBreadcrumb();
   }
@@ -48,7 +48,7 @@ export class BreadcrumbComponent {
         const breadcrumbList = this.filterNavigation(this.navigations, activeLink);
         const title = breadcrumbList[breadcrumbList.length - 1]?.title || 'Welcome';
         this.navigationList = breadcrumbList.splice(-2);
-        this.titleService.setTitle(title + ' | Berry Angular Admin Template');
+        this.titleService.setTitle(title + ' | m1p13mean-candy-romance');
       }
     });
   }

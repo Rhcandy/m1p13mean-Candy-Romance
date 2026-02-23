@@ -1,13 +1,13 @@
 // Angular import
-import { Component, OnInit, output, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, output, inject } from '@angular/core';
 import { Location } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { NavigationEnd, Router, RouterModule } from '@angular/router';
 
 //theme version
 import { environment } from 'src/environments/environment';
 
 // project import
-import { NavigationItem, NavigationItems } from '../navigation';
+import { NavigationItem, getNavigationItems } from '../navigation';
 
 import { NavCollapseComponent } from './nav-collapse/nav-collapse.component';
 import { NavGroupComponent } from './nav-group/nav-group.component';
@@ -15,6 +15,8 @@ import { NavItemComponent } from './nav-item/nav-item.component';
 
 // NgScrollbarModule
 import { SharedModule } from 'src/app/theme/shared/shared.module';
+import { Subject } from 'rxjs';
+import { filter, takeUntil } from 'rxjs/operators';
 
 @Component({
   selector: 'app-nav-content',
@@ -22,8 +24,10 @@ import { SharedModule } from 'src/app/theme/shared/shared.module';
   templateUrl: './nav-content.component.html',
   styleUrl: './nav-content.component.scss'
 })
-export class NavContentComponent implements OnInit {
-  private location = inject(Location);
+export class NavContentComponent implements OnInit, OnDestroy {
+  private readonly location = inject(Location);
+  private readonly router = inject(Router);
+  private readonly destroy$ = new Subject<void>();
 
   // public props
   NavCollapsedMob = output();
@@ -38,7 +42,7 @@ export class NavContentComponent implements OnInit {
 
   // Constructor
   constructor() {
-    this.navigations = NavigationItems;
+    this.navigations = getNavigationItems();
     this.windowWidth = window.innerWidth;
   }
 
@@ -46,9 +50,23 @@ export class NavContentComponent implements OnInit {
   ngOnInit() {
     if (this.windowWidth < 1025) {
       setTimeout(() => {
-        (document.querySelector('.coded-navbar') as HTMLDivElement).classList.add('menupos-static');
+        (document.querySelector('.coded-navbar') as HTMLElement).classList.add('menupos-static');
       }, 500);
     }
+
+    this.router.events
+      .pipe(
+        filter((event) => event instanceof NavigationEnd),
+        takeUntil(this.destroy$)
+      )
+      .subscribe(() => {
+        this.navigations = getNavigationItems();
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   fireOutClick() {
@@ -67,14 +85,11 @@ export class NavContentComponent implements OnInit {
       const up_parent = parent?.parentElement?.parentElement;
       const last_parent = up_parent?.parentElement;
       if (parent?.classList.contains('coded-hasmenu')) {
-        parent.classList.add('coded-trigger');
-        parent.classList.add('active');
+        parent.classList.add('coded-trigger', 'active');
       } else if (up_parent?.classList.contains('coded-hasmenu')) {
-        up_parent.classList.add('coded-trigger');
-        up_parent.classList.add('active');
+        up_parent.classList.add('coded-trigger', 'active');
       } else if (last_parent?.classList.contains('coded-hasmenu')) {
-        last_parent.classList.add('coded-trigger');
-        last_parent.classList.add('active');
+        last_parent.classList.add('coded-trigger', 'active');
       }
     }
   }

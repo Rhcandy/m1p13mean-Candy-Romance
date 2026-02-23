@@ -1,14 +1,24 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { BehaviorSubject, Observable, tap } from 'rxjs';
-import { environment } from '../../environments/environment';
+import { BehaviorSubject, Observable } from 'rxjs';
+import { tap } from 'rxjs/operators';
+import { ApiService } from './api.service';
+
 
 export interface User {
   id: string;
+  nom?: string;
   email: string;
-  role: 'user' | 'admin_boutique' | 'admin_centre' | 'super_admin';
-  name?: string;
+  role: 'user' | 'admin_boutique' | 'admin_center' | 'super_admin';
+  pdppath?: string;
+  numtel?: string[];
+  dtnaissance?: string;
+  sexe?: 'M' | 'F';
+  adresse?: {
+    nomEndroit?: string;
+    latitude?: number;
+    longitude?: number;
+  };
 }
 
 export interface LoginResponse {
@@ -25,31 +35,40 @@ export interface RegisterData {
   password: string;
   role: 'user' | 'admin_boutique';
   nom?: string;
-  profilePicture?: File;
   sexe?: 'M' | 'F';
   numtel?: string[];
   dtnaissance?: string;
+}
+
+export interface ForgotPasswordResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface ResetPasswordResponse {
+  success: boolean;
+  message: string;
 }
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private readonly API_URL = environment.apiUrl;
   private readonly TOKEN_KEY = 'auth_token';
   private readonly USER_KEY = 'current_user';
 
-  private currentUserSubject = new BehaviorSubject<User | null>(null);
-  public currentUser$ = this.currentUserSubject.asObservable();
+  private readonly currentUserSubject = new BehaviorSubject<User | null>(null);
+  public readonly currentUser$ = this.currentUserSubject.asObservable();
 
-  private isAuthenticatedSubject = new BehaviorSubject<boolean>(false);
-  public isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
+  private readonly isAuthenticatedSubject = new BehaviorSubject<boolean>(false);
+  public readonly isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
 
   constructor(
-    private http: HttpClient,
-    private router: Router
+    private readonly router: Router,
+    private readonly api: ApiService
   ) {
     this.checkAuthStatus();
+    
   }
 
   private checkAuthStatus(): void {
@@ -65,43 +84,45 @@ export class AuthService {
   }
 
   login(email: string, password: string): Observable<LoginResponse> {
-    return this.http.post<LoginResponse>(`${this.API_URL}/auth/login`, { email, password })
-      .pipe(
-        tap(response => {
-          console.log(response);
+    return this.api.post<LoginResponse>('/auth/login', { email, password }).pipe(   
+      tap(response => {
+        if (response.success && response.data) {
           this.setToken(response.data.token);
           this.setUser(response.data.user);
           this.currentUserSubject.next(response.data.user);
           this.isAuthenticatedSubject.next(true);
-        })
-      );
+        }
+      })
+    );
   }
 
   register(data: RegisterData): Observable<LoginResponse> {
     const registerPayload = {
+      nom: data.nom,
       email: data.email,
       password: data.password,
       roleName: data.role,
-      nom: data.nom || undefined,
-      sexe: data.sexe || undefined,
-      numtel: data.numtel || undefined,
-      dtnaissance: data.dtnaissance || undefined
+      sexe: data.sexe,
+      numtel: data.numtel,
+      dtnaissance: data.dtnaissance
     };
-    
-    return this.http.post<LoginResponse>(`${this.API_URL}/auth/register`, registerPayload)
-      .pipe(
-        tap(response => {
+
+    return this.api.post<LoginResponse>('/auth/register', registerPayload).pipe(
+      tap(response => {
+        if (response.success && response.data) {
           this.setToken(response.data.token);
           this.setUser(response.data.user);
           this.currentUserSubject.next(response.data.user);
           this.isAuthenticatedSubject.next(true);
-        })
-      );
+        }
+      })
+    );
   }
 
   logout(): void {
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.USER_KEY);
+    localStorage.removeItem('boutique_status_cache');
     this.currentUserSubject.next(null);
     this.isAuthenticatedSubject.next(false);
     this.router.navigate(['/login']);
@@ -128,11 +149,84 @@ export class AuthService {
     return this.currentUserSubject.value;
   }
 
+  /** Met à jour l'utilisateur stocké (après édition du profil). */
+  updateStoredUser(backendUser: Partial<Omit<User, 'role'>> & { _id?: string; role?: { nom: string } | string }): void {
+    const current = this.getUser();
+    if (!current) return;
+    const roleName = typeof backendUser.role === 'string'
+      ? backendUser.role
+      : (backendUser.role as { nom: string })?.nom;
+    const updated: User = {
+      ...current,
+      id: backendUser.id ?? backendUser._id ?? current.id,
+      nom: backendUser.nom ?? current.nom,
+      email: backendUser.email ?? current.email,
+      pdppath: backendUser.pdppath !== undefined ? backendUser.pdppath : current.pdppath,
+      numtel: backendUser.numtel ?? current.numtel,
+      dtnaissance: backendUser.dtnaissance ?? current.dtnaissance,
+      sexe: backendUser.sexe ?? current.sexe,
+      adresse: backendUser.adresse ?? current.adresse,
+      role: (roleName as User['role']) ?? current.role
+    };
+    this.setUser(updated);
+    this.currentUserSubject.next(updated);
+  }
+
   get isAuthenticated(): boolean {
     return this.isAuthenticatedSubject.value;
   }
 
-  hasRole(role: 'user' | 'admin_boutique'): boolean {
+  /**
+   * Créer un utilisateur de test pour les démonstrations
+   */
+  createTestUser(): User {
+    const testUser: User = {
+      id: '507f1f77bcf86cd799439011', // ObjectId MongoDB valide
+      nom: 'Test User',
+      email: 'test@example.com',
+      role: 'user'
+    };
+
+    this.setUser(testUser);
+    this.setToken('test-token-123');
+    this.currentUserSubject.next(testUser);
+    this.isAuthenticatedSubject.next(true);
+
+    return testUser;
+  }
+
+  /**
+   * S'assurer qu'un utilisateur est défini (pour les tests)
+   */
+  ensureUserExists(): User {
+    let user = this.getUser();
+    if (!user) {
+      user = this.createTestUser();
+    }
+    return user;
+  }
+
+  /**
+   * Obtenir l'ID de l'utilisateur actuel (compatible MongoDB)
+   */
+  getUserId(): string {
+    const user = this.ensureUserExists();
+    return user.id;
+  }
+
+  hasRole(role: 'user' | 'admin_boutique' | 'admin_center' | 'super_admin'): boolean {
     return this.currentUser?.role === role;
+  }
+
+  forgotPassword(email: string): Observable<ForgotPasswordResponse> {
+    return this.api.post<ForgotPasswordResponse>('/auth/forgot-password', { email });
+  }
+
+  resetPassword(email: string, code: number, newPassword: string): Observable<ResetPasswordResponse> {
+    return this.api.post<ResetPasswordResponse>('/auth/reset-password', {
+      email,
+      code,
+      newPassword
+    });
   }
 }

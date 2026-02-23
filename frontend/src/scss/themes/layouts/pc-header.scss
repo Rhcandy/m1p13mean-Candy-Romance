@@ -1,3 +1,5 @@
+@use "sass:color";
+
 // ============================
 //     header css start
 // ============================
@@ -176,7 +178,7 @@
         weight: 400;
       }
 
-      color: transparentize($header-color, 0.3);
+      color: color.scale($header-color, $alpha: -30%);
     }
   }
 
@@ -224,6 +226,7 @@
 
       .user-avtar {
         width: 34px;
+        height: 37px;
       }
 
       @include media-breakpoint-down(sm) {

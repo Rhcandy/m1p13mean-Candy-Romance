@@ -1,0 +1,20 @@
+const mongoose = require('mongoose');
+
+const histoPrixCategSchema = new mongoose.Schema({
+  prixParM2: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  typeboxId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'TypeBox',
+    required: true
+  }
+}, {
+  timestamps: true,
+  collection: 'histo_prix_categ'
+});
+
+const HistoPrixCateg = mongoose.model('HistoPrixCateg', histoPrixCategSchema);
+module.exports = HistoPrixCateg;

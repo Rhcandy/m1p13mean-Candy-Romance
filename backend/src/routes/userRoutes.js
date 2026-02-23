@@ -2,8 +2,8 @@ const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
 const authMiddleware = require('../middlewares/authMiddleware');
-const { adminOnly, adminOrManager } = require('../middlewares/roleMiddleware');
-const { uploadProfilePicture, handleUploadError } = require('../middlewares/uploadMiddleware');
+const { adminOnly, adminOrManager,allRoles } = require('../middlewares/roleMiddleware');
+const { uploadProfilPicture, handleUploadError } = require('../middlewares/uploadMiddleware');
 
 /**
  * @swagger
@@ -120,7 +120,7 @@ router.post('/', userController.createUser);
  */
 router.post('/with-profile', 
   authMiddleware, 
-  uploadProfilePicture, 
+  uploadProfilPicture, 
   handleUploadError, 
   userController.createUserWithProfilePicture
 );
@@ -194,6 +194,39 @@ router.put('/profile', userController.updateProfile);
 
 /**
  * @swagger
+ * /api/users/profile/with-profile:
+ *   put:
+ *     summary: Mettre à jour son profil avec photo de profil
+ *     tags: [Utilisateurs]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               nom: { type: string }
+ *               email: { type: string, format: email }
+ *               sexe: { type: string, enum: [M, F, Autre] }
+ *               numtel: { type: array, items: { type: string } }
+ *               dtnaissance: { type: string, format: date }
+ *               adresse: { type: object }
+ *               profilePicture: { type: string, format: binary }
+ *     responses:
+ *       200:
+ *         description: Profil mis à jour avec succès
+ *       400:
+ *         description: Erreur lors de la mise à jour
+ */
+router.put('/profile/with-profile',
+  uploadProfilPicture,
+  handleUploadError,
+  userController.updateProfileWithPicture
+);
+
+/**
+ * @swagger
  * /api/users/profile-picture:
  *   put:
  *     summary: Mettre à jour sa photo de profil
@@ -229,7 +262,7 @@ router.put('/profile', userController.updateProfile);
  *         description: Erreur lors de la mise à jour
  */
 router.put('/profile-picture', 
-  uploadProfilePicture, 
+  uploadProfilPicture, 
   handleUploadError, 
   userController.updateProfilePicture
 );
@@ -343,7 +376,7 @@ router.get('/', adminOrManager, userController.getAllUsers);
  *       403:
  *         description: Permissions insuffisantes
  */
-router.get('/:id', adminOrManager, userController.getUserById);
+router.get('/:id', allRoles, userController.getUserById);
 
 /**
  * @swagger
@@ -391,7 +424,7 @@ router.get('/:id', adminOrManager, userController.getUserById);
  *       403:
  *         description: Permissions insuffisantes
  */
-router.put('/:id', adminOnly, userController.updateUser);
+router.put('/:id', allRoles, userController.updateUser);
 
 /**
  * @swagger
@@ -461,8 +494,8 @@ router.put('/:id', adminOnly, userController.updateUser);
  *         description: Permissions insuffisantes
  */
 router.put('/:id/with-profile', 
-  adminOnly, 
-  uploadProfilePicture, 
+  allRoles, 
+  uploadProfilPicture, 
   handleUploadError, 
   userController.updateUserWithProfilePicture
 );

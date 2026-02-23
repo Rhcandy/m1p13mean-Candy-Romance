@@ -2,11 +2,13 @@ const User = require('../models/User');
 const Role = require('../models/Role');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { uploadImage } = require('./cloudinary');
+const { sendEmail } = require('../utils/send-mail.util');
 
 class AuthService {
   async register(userData) {
     try {
-       const { nom, email, password,sexe, pdppath,numtel, dtnaissance, roleName } = userData;
+       const { nom, email, password,sexe,numtel, dtnaissance, roleName } = userData;
 
       // Vérifier si l'email existe déjà
       const existingUser = await User.findOne({ email });
@@ -29,7 +31,7 @@ class AuthService {
         nom,
         email,
         password: hashedPassword,
-        pdppath: pdppath || null,
+        pdppath: null,
         sexe,
         numtel,
         dtnaissance,
@@ -81,7 +83,9 @@ class AuthService {
           id: user._id,
           nom: user.nom,
           email: user.email,
-          role: user.role.nom
+          pdppath: user.pdppath,
+          role: user.role.nom,
+          adresse: user.adresse,
         },
         token
       };
@@ -110,6 +114,24 @@ class AuthService {
     }
   }
 
+  /**
+   * Extraire l'utilisateur à partir du token JWT
+   * @param {string} token - Token JWT
+   * @returns {Promise<Object>} - Utilisateur avec ses informations complètes
+   */
+  async getUserIdByToken(req) {
+    try {
+    
+      const token = req.headers.authorization.substring(7);
+      // Vérifier et décoder le token
+      const decoded = this.verifyToken(token);
+      
+      return decoded.userId;
+    } catch (error) {
+      throw new Error(`Erreur lors de la récupération de l'utilisateur: ${error.message}`);
+    }
+  }
+
   async refreshToken(token) {
     try {
       const decoded = this.verifyToken(token);
@@ -123,6 +145,71 @@ class AuthService {
       return { token: newToken };
     } catch (error) {
       throw new Error(`Erreur lors du rafraîchissement du token: ${error.message}`);
+    }
+  }
+
+  generateResetCode() {
+    return Math.floor(100000 + Math.random() * 900000);
+  }
+
+  async requestPasswordReset(email) {
+    try {
+      const user = await User.findOne({ email });
+      if (!user) {
+        throw new Error('Utilisateur non trouvé');
+      }
+
+      const code = this.generateResetCode();
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+      user.coderesetpwd = {
+        code,
+        expiresAt
+      };
+
+      await user.save();
+
+      await sendEmail('reset', {
+        email: user.email,
+        confirmPassword: code
+      });
+
+      return { message: 'Code de réinitialisation envoyé par email' };
+    } catch (error) {
+      throw new Error(`Erreur lors de la demande de réinitialisation: ${error.message}`);
+    }
+  }
+
+  async resetPassword(email, code, newPassword) {
+    try {
+      const user = await User.findOne({ email });
+      if (!user || !user.coderesetpwd || user.coderesetpwd.code == null) {
+        throw new Error('Code de réinitialisation invalide');
+      }
+
+      const now = new Date();
+      if (user.coderesetpwd.expiresAt && user.coderesetpwd.expiresAt < now) {
+        throw new Error('Code de réinitialisation expiré');
+      }
+
+      if (Number(user.coderesetpwd.code) !== Number(code)) {
+        throw new Error('Code de réinitialisation incorrect');
+      }
+
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+      user.password = hashedPassword;
+      user.coderesetpwd = {
+        code: null,
+        expiresAt: null
+      };
+
+      await user.save();
+
+      return { message: 'Mot de passe réinitialisé avec succès' };
+    } catch (error) {
+      throw new Error(`Erreur lors de la réinitialisation du mot de passe: ${error.message}`);
     }
   }
 }

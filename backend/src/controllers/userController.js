@@ -162,6 +162,41 @@ class UserController {
     }
   }
 
+  /**
+   * Met à jour le profil avec photo (multipart: champs + profilePicture).
+   * Parse les champs envoyés en form-data (numtel, adresse en JSON si besoin).
+   */
+  async updateProfileWithPicture(req, res) {
+    try {
+      const body = { ...req.body };
+      if (typeof body.numtel === 'string') {
+        try {
+          body.numtel = JSON.parse(body.numtel);
+        } catch {
+          body.numtel = body.numtel ? [body.numtel] : [];
+        }
+      }
+      if (typeof body.adresse === 'string' && body.adresse) {
+        try {
+          body.adresse = JSON.parse(body.adresse);
+        } catch (e) {
+          body.adresse = undefined;
+        }
+      }
+      const user = await userService.updateUserWithProfilePicture(req.user.userId, body, req.file);
+      res.status(200).json({
+        success: true,
+        message: 'Profil mis à jour avec succès',
+        data: user
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
   async updateProfilePicture(req, res) {
     try {
       const user = await userService.updateProfilePicture(req.user.userId, req.file);

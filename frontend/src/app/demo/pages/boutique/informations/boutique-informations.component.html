@@ -1,0 +1,244 @@
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-12">
+      <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+        <h4 class="mb-sm-0">Informations de ma Boutique</h4>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="success" class="alert alert-success alert-dismissible fade show" role="alert">
+    {{ success }}
+    <button type="button" class="btn-close" (click)="success = null"></button>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="loading" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Chargement...</span>
+    </div>
+  </div>
+
+  <!-- Aucune boutique -->
+  <div *ngIf="!loading && !boutique" class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body text-center py-5">
+          <div class="mb-4">
+            <i class="ri-store-2-line text-primary" style="font-size: 4rem;"></i>
+          </div>
+          <h5 class="card-title mb-3">Vous n'avez pas encore de boutique</h5>
+          <p class="text-muted mb-4">
+            Cr??ez votre boutique pour commencer ?? vendre vos produits sur la plateforme, chercher votre Box.
+          </p>
+          <button type="button" class="btn btn-primary" (click)="goToBoxesList()">
+            Voir les boxes disponibles
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Contenu principal -->
+  <div *ngIf="!loading && boutique" class="row g-4">
+
+    <!-- Colonne gauche : Infos + Formulaire -->
+    <div class="col-xl-8">
+
+      <!-- Carte : Infos de localisation (lecture seule) -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="card-title mb-0">
+            <i class="ri-map-pin-line me-2 text-primary"></i>Localisation dans le centre
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row g-3" *ngIf="boutique.contratlocation?.boxes?.[0] as box">
+            <div class="col-sm-4">
+              <div class="info-block">
+                <span class="info-label"><i class="ri-hashtag me-1"></i>Numero Box</span>
+                <span class="info-value fw-semibold text-primary fs-5">{{ box.numRef }}</span>
+              </div>
+            </div>
+            <div class="col-sm-4">
+              <div class="info-block">
+                <span class="info-label"><i class="ri-building-line me-1"></i>??tage</span>
+                <span class="info-value fw-semibold">{{ box.etage }}</span>
+              </div>
+            </div>
+            <div class="col-sm-4">
+              <div class="info-block">
+                <span class="info-label"><i class="ri-ruler-line me-1"></i>Superficie</span>
+                <span class="info-value fw-semibold">{{ box.Superficie }} m²</span>
+              </div>
+            </div>
+          </div>
+
+          <hr class="my-3">
+
+          <!-- Dates de location -->
+          <div class="row g-3" *ngIf="boutique.contratlocation">
+            <div class="col-sm-4">
+              <div class="info-block">
+                <span class="info-label"><i class="ri-calendar-line me-1"></i>D??but de location</span>
+                <span class="info-value">{{ boutique.contratlocation.dateDebutLocation | date:'dd/MM/yyyy' }}</span>
+              </div>
+            </div>
+            <div class="col-sm-4">
+              <div class="info-block">
+                <span class="info-label"><i class="ri-calendar-check-line me-1"></i>Fin de location</span>
+                <span class="info-value">{{ boutique.contratlocation.dateFinLocation | date:'dd/MM/yyyy' }}</span>
+              </div>
+            </div>
+            <div class="col-sm-4">
+              <div class="info-block">
+                <span class="info-label"><i class="ri-time-line me-1"></i>Cr????e le</span>
+                <span class="info-value">{{ boutique.createdAt | date:'dd/MM/yyyy' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <hr class="my-3">
+
+          <!-- Jours d'ouverture -->
+          <div *ngIf="boutique.contratlocation?.jLocation">
+            <span class="info-label d-block mb-2"><i class="ri-door-open-line me-1"></i>Jours d'ouverture</span>
+            <div class="d-flex flex-wrap gap-2">
+              <span *ngFor="let jour of joursOuverture" 
+                    class="badge rounded-pill px-3 py-2"
+                    [ngClass]="boutique.contratlocation.jLocation[jour.key] ? 'badge-jour-ouvert' : 'badge-jour-ferme'">
+                {{ jour.label }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Carte : Formulaire modification -->
+      <div class="card">
+        <div class="card-header">
+          <h5 class="card-title mb-0">
+            <i class="ri-edit-line me-2 text-primary"></i>Modifier les informations
+          </h5>
+        </div>
+        <div class="card-body">
+          <form [formGroup]="boutiqueForm" (ngSubmit)="onSubmit()">
+            <div class="row">
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label for="nom" class="form-label">Nom de la boutique</label>
+                  <input type="text" 
+                         class="form-control" 
+                         id="nom" 
+                         formControlName="nom"
+                         [ngClass]="{ 'is-invalid': nom?.invalid && nom?.touched }"
+                         placeholder="Entrez le nom de votre boutique">
+                  <div *ngIf="nom?.invalid && nom?.touched" class="invalid-feedback">
+                    <div *ngIf="nom?.errors?.['required']">Le nom est requis</div>
+                    <div *ngIf="nom?.errors?.['maxlength']">Le nom ne doit pas d??passer 100 caract??res</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="row mt-3">
+              <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                  <button type="submit" 
+                          class="btn btn-primary" 
+                          [disabled]="saving || boutiqueForm.invalid">
+                    <span *ngIf="!saving" class="d-flex align-items-center">
+                      <i class="ri-save-line me-2"></i>
+                      Enregistrer les modifications
+                    </span>
+                    <span *ngIf="saving" class="d-flex align-items-center">
+                      <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                      Enregistrement...
+                    </span>
+                  </button>
+
+                  <button type="button" 
+                          class="btn" 
+                          [ngClass]="boutique.isActive ? 'btn-danger' : 'btn-success'"
+                          [disabled]="saving"
+                          (click)="toggleBoutiqueStatus()">
+                    <span *ngIf="!saving" class="d-flex align-items-center">
+                      <i [ngClass]="boutique.isActive ? 'ri-pause-circle-line' : 'ri-play-circle-line'" 
+                         class="me-2"></i>
+                      {{ boutique.isActive ? 'Désactiver la boutique' : 'Activer la boutique' }}
+                    </span>
+                    <span *ngIf="saving" class="d-flex align-items-center">
+                      <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                      Traitement...
+                    </span>
+                  </button>
+
+                  <button type="button"
+                          class="btn btn-outline-primary"
+                          [disabled]="saving"
+                          (click)="goToChangeBox()">
+                    <i class="ri-shape-line me-2"></i>
+                    Changer de box
+                  </button>
+
+                  <button type="button"
+                          class="btn btn-outline-danger"
+                          [disabled]="saving"
+                          (click)="quitterCentre()">
+                    <i class="ri-logout-box-r-line me-2"></i>
+                    Quitter le centre
+                  </button>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Colonne droite : Logo + Statut -->
+    <div class="col-xl-4">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="card-title mb-0">Logo de la boutique</h5>
+        </div>
+        <div class="card-body text-center">
+          @if (boutique.logo) {
+            <img [src]="boutique.logo" [alt]="boutique.nom" class="boutique-logo mb-3">
+          } @else {
+            <div class="boutique-logo-placeholder mb-3">
+              <i class="ti ti-building-store"></i>
+            </div>
+          }
+
+          <div class="mb-3">
+            <span class="badge fs-6 px-3 py-2" 
+                  [ngClass]="boutique.isActive ? 'bg-success' : 'bg-danger'">
+              <i [class]="boutique.isActive ? 'ri-checkbox-circle-line' : 'ri-close-circle-line'" class="me-1"></i>
+              {{ boutique.isActive ? 'Active' : 'Inactive' }}
+            </span>
+          </div>
+
+          @if (boutique.isPendingFirstActivation) {
+            <div class="alert alert-warning text-start py-2 px-3 small mb-3">
+              Votre boutique est en attente de la premiere activation par admin centre.
+            </div>
+          }
+
+          <input type="file" 
+                 #logoInput
+                 class="d-none" 
+                 accept="image/*" 
+                 (change)="onLogoUpload($event)">
+          <button type="button" 
+                  class="btn btn-soft-primary w-100" 
+                  (click)="logoInput.click()">
+            <i class="ri-image-line me-2"></i>
+            Changer le logo
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

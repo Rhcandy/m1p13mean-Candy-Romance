@@ -1,11 +1,14 @@
 // Angular Import
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
 
 // project import
 import { SharedModule } from 'src/app/theme/shared/shared.module';
 import { BajajChartComponent } from 'src/app/theme/shared/components/apexchart/bajaj-chart/bajaj-chart.component';
 import { BarChartComponent } from 'src/app/theme/shared/components/apexchart/bar-chart/bar-chart.component';
 import { ChartDataMonthComponent } from 'src/app/theme/shared/components/apexchart/chart-data-month/chart-data-month.component';
+import { AuthService } from 'src/app/services/auth.service';
+import { BoutiqueService } from 'src/app/services/boutique.service';
 
 @Component({
   selector: 'app-default',
@@ -13,7 +16,29 @@ import { ChartDataMonthComponent } from 'src/app/theme/shared/components/apexcha
   templateUrl: './default.component.html',
   styleUrls: ['./default.component.scss']
 })
-export class DefaultComponent {
+export class DefaultComponent implements OnInit {
+  constructor(
+    private readonly authService: AuthService,
+    private readonly boutiqueService: BoutiqueService,
+    private readonly router: Router
+  ) {}
+
+  ngOnInit(): void {
+    if (!this.authService.hasRole('admin_boutique')) {
+      return;
+    }
+
+    const boutiqueStatus = this.boutiqueService.getCachedBoutiqueStatus();
+    if (!boutiqueStatus.hasBoutique) {
+      this.router.navigate(['/boutique/boxes']);
+      return;
+    }
+
+    if (!boutiqueStatus.isActive) {
+      this.router.navigate(['/boutique/informations']);
+    }
+  }
+
   // public method
   ListGroup = [
     {

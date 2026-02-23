@@ -1,3 +1,5 @@
+@use "sass:color";
+
 // ============================
 //     Common layout css start
 // ============================
@@ -57,7 +59,7 @@ body {
     margin-right: 8px;
     padding-right: 8px;
     font-weight: 500;
-    border-right: 1px solid darken($body-bg, 10%);
+    border-right: 1px solid color.scale($body-bg, $lightness: -10%);
   }
 
   .breadcrumb {

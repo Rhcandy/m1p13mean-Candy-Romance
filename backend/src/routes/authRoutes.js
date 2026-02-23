@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const authController = require('../controllers/authController');
+const { AuthController, upload } = require('../controllers/authController');
 const authMiddleware = require('../middlewares/authMiddleware');
 
 /**
@@ -21,7 +21,39 @@ const authMiddleware = require('../middlewares/authMiddleware');
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/RegisterRequest'
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *               - roleName
+ *             properties:
+ *               nom:
+ *                 type: string
+ *                 example: "John Doe"
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: "user@example.com"
+ *               password:
+ *                 type: string
+ *                 example: "password123"
+ *               sexe:
+ *                 type: string
+ *                 enum: [M, F]
+ *                 example: "M"
+ *               numtel:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["+212600000000", "+212600000001"]
+ *               dtnaissance:
+ *                 type: string
+ *                 format: date
+ *                 example: "2026-02-04"
+ *               roleName:
+ *                 type: string
+ *                 enum: [user, admin_boutique]
+ *                 example: "user"
  *           example:
  *             nom: "John Doe"
  *             email: "user@example.com"
@@ -40,7 +72,7 @@ const authMiddleware = require('../middlewares/authMiddleware');
  *       400:
  *         description: Erreur lors de l'inscription
  */
-router.post('/register', authController.register);
+router.post('/register', AuthController.register);
 
 /**
  * @swagger
@@ -67,7 +99,69 @@ router.post('/register', authController.register);
  *       401:
  *         description: Email ou mot de passe incorrect
  */
-router.post('/login', authController.login);
+router.post('/login', AuthController.login);
+
+/**
+ * @swagger
+ * /api/auth/forgot-password:
+ *   post:
+ *     summary: Demander un code de réinitialisation de mot de passe
+ *     tags: [Authentification]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: "user@example.com"
+ *     responses:
+ *       200:
+ *         description: Code de réinitialisation envoyé
+ *       400:
+ *         description: Erreur lors de la demande de réinitialisation
+ */
+router.post('/forgot-password', AuthController.requestPasswordReset);
+
+/**
+ * @swagger
+ * /api/auth/reset-password:
+ *   post:
+ *     summary: Réinitialiser le mot de passe avec un code
+ *     tags: [Authentification]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - code
+ *               - newPassword
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: "user@example.com"
+ *               code:
+ *                 type: number
+ *                 example: 123456
+ *               newPassword:
+ *                 type: string
+ *                 example: "newpassword123"
+ *     responses:
+ *       200:
+ *         description: Mot de passe réinitialisé avec succès
+ *       400:
+ *         description: Erreur lors de la réinitialisation
+ */
+router.post('/reset-password', AuthController.resetPassword);
 
 /**
  * @swagger
@@ -110,7 +204,7 @@ router.post('/login', authController.login);
  *       401:
  *         description: Token invalide ou expiré
  */
-router.post('/refresh-token', authController.refreshToken);
+router.post('/refresh-token', AuthController.refreshToken);
 
 /**
  * @swagger
@@ -140,6 +234,54 @@ router.post('/refresh-token', authController.refreshToken);
  *       401:
  *         description: Non authentifié
  */
-router.post('/logout', authMiddleware, authController.logout);
+router.post('/logout', authMiddleware, AuthController.logout);
+
+/**
+ * @swagger
+ * /api/auth/cloudinary-signature:
+ *   get:
+ *     summary: Générer une signature Cloudinary pour l'upload direct
+ *     tags: [Authentification]
+ *     parameters:
+ *       - in: query
+ *         name: folder
+ *         schema:
+ *           type: string
+ *           default: profiles
+ *         description: Dossier Cloudinary de destination
+ *     responses:
+ *       200:
+ *         description: Signature générée avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Signature générée avec succès"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     timestamp:
+ *                       type: number
+ *                       example: 1640995200
+ *                     signature:
+ *                       type: string
+ *                       example: "abc123def456"
+ *                     cloudName:
+ *                       type: string
+ *                       example: "mycloud"
+ *                     apiKey:
+ *                       type: string
+ *                       example: "1234567890"
+ *                     folder:
+ *                       type: string
+ *                       example: "profiles"
+ */
+router.get('/cloudinary-signature', AuthController.getCloudinarySignature);
 
 module.exports = router;

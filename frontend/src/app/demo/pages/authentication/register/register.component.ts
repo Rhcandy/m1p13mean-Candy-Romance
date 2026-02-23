@@ -1,40 +1,47 @@
-import { Component, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterModule } from '@angular/router';
-import { FormsModule } from '@angular/forms';
+import { RouterModule, Router } from '@angular/router';
+import { email, Field, form, minLength, required } from '@angular/forms/signals';
+
 import { AuthService, RegisterData } from '../../../../services/auth.service';
+import { NotificationService } from 'src/app/services/notification.service';
+import { BoutiqueService } from '../../../../services/boutique.service';
 
 @Component({
   selector: 'app-register',
-  standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [CommonModule, RouterModule, Field],
   templateUrl: './register.component.html',
   styleUrls: ['./register.component.scss']
 })
 export class RegisterComponent {
-  private authService = inject(AuthService);
-  private router = inject(Router);
+  private readonly notificationService = inject(NotificationService);
+  private readonly cd = inject(ChangeDetectorRef);
+  private readonly authService = inject(AuthService);
+  private readonly boutiqueService = inject(BoutiqueService);
+  private readonly router = inject(Router);
 
-  submitted = false;
-  loading = false;
-  error = '';
-
-  selectedRole: 'user' | 'admin_boutique' | null = null;
+  submitted = signal(false);
+  error = signal('');
+  showPassword = signal(false);
+  loading = signal(false);
+  selectedRole = signal<'user' | 'admin_boutique' | null>(null);
   avatarFile: File | null = null;
 
-  model = {
-    nom: '',
+  registerModel = signal<{ email: string; password: string; confirmPassword: string; name: string }>({
+    name: '',
     email: '',
     password: '',
-    confirmPassword: '',
-    sexe: 'M' as 'M' | 'F',
-    numtel: ['+212600000000', '+212600000001'],
-    dtnaissance: '2026-02-04'
-  };
+    confirmPassword: ''
+  });
 
-  selectRole(role: 'user' | 'admin_boutique') {
-    this.selectedRole = role;
-  }
+  registerForm = form(this.registerModel, (schemaPath) => {
+    required(schemaPath.email, { message: 'Email is required' });
+    email(schemaPath.email, { message: 'Enter a valid email address' });
+    required(schemaPath.password, { message: 'Password is required' });
+    minLength(schemaPath.password, 8, { message: 'Password must be at least 8 characters' });
+    required(schemaPath.confirmPassword, { message: 'Password confirmation is required' });
+    required(schemaPath.name, { message: 'Name is required' });
+  });
 
   onAvatarSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
@@ -43,48 +50,88 @@ export class RegisterComponent {
     }
   }
 
-  onSubmit(event: Event) {
+  selectRole(role: 'user' | 'admin_boutique'): void {
+    this.selectedRole.set(role);
+  }
+
+  onSubmit(event: Event): void {
+    this.submitted.set(true);
+    this.error.set('');
+
+    if (!this.selectedRole()) {
+      this.error.set('Veuillez selectionner un type de compte');
+      event.preventDefault();
+      return;
+    }
+
+    if (
+      this.registerForm.email().invalid() ||
+      this.registerForm.password().invalid() ||
+      this.registerForm.name().invalid() ||
+      this.registerForm.confirmPassword().invalid()
+    ) {
+      event.preventDefault();
+      return;
+    }
+
+    const credentials = this.registerModel();
+    if (credentials.password !== credentials.confirmPassword) {
+      this.error.set('Les mots de passe ne correspondent pas');
+      event.preventDefault();
+      return;
+    }
+
+    this.loading.set(true);
     event.preventDefault();
-    this.submitted = true;
-    this.error = '';
-
-    if (!this.selectedRole) {
-      this.error = 'Veuillez sélectionner un type de compte';
-      return;
-    }
-
-    if (!this.model.nom || !this.model.email || !this.model.password || !this.model.confirmPassword || !this.model.sexe || !this.model.numtel || !this.model.dtnaissance) {
-      this.error = 'Veuillez remplir tous les champs obligatoires';
-      return;
-    }
-
-    if (this.model.password !== this.model.confirmPassword) {
-      this.error = 'Les mots de passe ne correspondent pas';
-      return;
-    }
-
-    this.loading = true;
 
     const registerData: RegisterData = {
-      nom: this.model.nom,
-      email: this.model.email,
-      password: this.model.password,
-      role: this.selectedRole,
-      sexe: this.model.sexe,
-      numtel: this.model.numtel,
-      dtnaissance: this.model.dtnaissance
+      email: credentials.email,
+      password: credentials.password,
+      nom: credentials.name,
+      role: this.selectedRole()!
     };
-    
+
     this.authService.register(registerData).subscribe({
       next: () => {
-        this.router.navigate(['/default']);
+        if (this.authService.hasRole('user')) {
+          this.router.navigate(['/produits']);
+          this.loading.set(false);
+        } else if (this.authService.hasRole('admin_boutique')) {
+          this.boutiqueService.refreshMyBoutiqueStatus().subscribe({
+            next: (status) => {
+              if (!status.hasBoutique) {
+                this.router.navigate(['/boutique/boxes']);
+              } else if (!status.isActive) {
+                this.router.navigate(['/boutique/informations']);
+              } else {
+                this.router.navigate(['/default']);
+              }
+              this.loading.set(false);
+              this.cd.detectChanges();
+            },
+            error: () => {
+              this.router.navigate(['/default']);
+              this.loading.set(false);
+              this.cd.detectChanges();
+            }
+          });
+        } else {
+          this.router.navigate(['/default']);
+          this.loading.set(false);
+        }
+
+        this.notificationService.success('Profil', 'Compte cree avec succes.');
       },
-      error: () => {
-        this.error = "Erreur lors de l'inscription. Veuillez réessayer.";
-        this.loading = false;
+      error: (err) => {
+        console.error('Registration error:', err);
+        this.error.set('Erreur lors de l\'inscription. Veuillez reessayer.');
+        this.loading.set(false);
       },
       complete: () => {
-        this.loading = false;
+        if (!this.authService.hasRole('admin_boutique')) {
+          this.loading.set(false);
+          this.cd.detectChanges();
+        }
       }
     });
   }

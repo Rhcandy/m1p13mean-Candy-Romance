@@ -1,0 +1,90 @@
+﻿<div class="commande-detail-container">
+  <button type="button" class="back-button" (click)="goBack()">
+    <i class="ti ti-arrow-left"></i>
+    Retour aux commandes
+  </button>
+
+  @if (loading) {
+    <div class="loading-state">
+      <div class="spinner-border text-primary"></div>
+      <p>Chargement de la commande...</p>
+    </div>
+  } @else if (commande) {
+    <div class="commande-header">
+      <div class="header-main">
+        <h1>Commande {{ commande.numeroCommande }}</h1>
+        <div class="header-meta">
+          <span><i class="ti ti-calendar"></i> {{ commande.createdAt | date:'longDate' }}</span>
+          @if (isAdminBoutique && commande.userId?.nom) {
+            <span><i class="ti ti-user"></i> {{ commande.userId?.nom }} ({{ commande.userId?.email }})</span>
+          }
+        </div>
+      </div>
+      <div class="header-status">
+        <span class="status-badge {{ getStatutClass(commande.statut) }}">
+          <i class="{{ getStatutIcon(commande.statut) }}"></i>
+          {{ getStatutLabel(commande.statut) }}
+        </span>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Produits</h2>
+      <div class="products-list">
+        @for (item of getCommandeProduits(commande); track $index) {
+          <div class="product-row">
+            <img class="product-thumb" [src]="item.produit?.photo || 'https://via.placeholder.com/80x80'" [alt]="item.produit?.nom || 'Produit'">
+            <div class="product-info">
+              <div class="product-name">{{ item.produit?.nom || 'Produit' }}</div>
+              <div class="product-meta">Quantité: {{ item.qtt }}</div>
+            </div>
+            <div class="product-price">{{ formatPrice(item.sousTotal) }}</div>
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="section summary">
+      <h2>Récapitulatif</h2>
+      <div class="summary-row">
+        <span>Sous-total</span>
+        <span>{{ formatPrice(getCommandeSousTotal(commande)) }}</span>
+      </div>
+      @if (getFraisLivraison(commande) > 0) {
+        <div class="summary-row">
+          <span>Frais de livraison</span>
+          <span>{{ formatPrice(getFraisLivraison(commande)) }}</span>
+        </div>
+      }
+      <div class="summary-row total">
+        <span>Total</span>
+        <span>{{ formatPrice(getCommandeTotal(commande)) }}</span>
+      </div>
+    </div>
+
+    @if (commande.adresseLivraison) {
+      <div class="section delivery">
+        <h2>Livraison</h2>
+        <div class="delivery-info">
+          @if (commande.adresseLivraison.nomEndroit) {
+            <div><strong>Adresse:</strong> {{ commande.adresseLivraison.nomEndroit }}</div>
+          } @else if (commande.adresseLivraison.latitude != null && commande.adresseLivraison.longitude != null) {
+            <div><strong>Coordonnées:</strong> {{ commande.adresseLivraison.latitude }}, {{ commande.adresseLivraison.longitude }}</div>
+          }
+          @if (commande.adresseLivraison.telephone) {
+            <div><strong>Téléphone:</strong> {{ commande.adresseLivraison.telephone }}</div>
+          }
+          @if (commande.dateLivraison && commande.statut !== 'panier' && commande.statut !== 'en_attente') {
+            <div><strong>Livraison prévue:</strong> {{ commande.dateLivraison | date:'longDate' }}</div>
+          }
+        </div>
+      </div>
+    }
+  } @else {
+    <div class="error-state">
+      <i class="ti ti-alert-circle"></i>
+      <h2>Commande introuvable</h2>
+      <p>Impossible d'afficher les détails de la commande.</p>
+    </div>
+  }
+</div>

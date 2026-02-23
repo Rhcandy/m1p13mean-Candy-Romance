@@ -9,6 +9,8 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
+// Enable nested query parsing (e.g. nom[regex]=x, prix.prixUnitaire[gte]=10)
+app.set('query parser', 'extended');
 app.use(express.json());
 
 // Connexion à MongoDB
@@ -51,7 +53,7 @@ const swaggerOptions = {
       }
     ]
   },
-  apis: ['./src/routes/*.js', './src/models/*.js', './src/dto/*.js'],
+  apis: ['./src/routes/*.js', './src/controllers/*.js', './src/models/*.js', './src/dto/*.js'],
 };
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
@@ -63,14 +65,34 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
+const typeBoxRoutes = require('./routes/typeBoxRoutes');
+const boxRoutes = require('./routes/boxRoutes');
+const boutiqueRoutes = require('./routes/boutiqueRoutes');
+const categorieProduitRoutes = require('./routes/categorieProduitRoutes');
+const produitRoutes = require('./routes/produitRoutes');
+const panierRoutes = require('./routes/panierRoutes');
+const avisRoutes = require('./routes/avisRoutes');
+const livraisonRoutes = require('./routes/livraisonRoutes');
+const favorisRoutes = require('./routes/favorisRoutes');
+const promotionRoutes = require('./routes/promotionRoutes');
+const commandeBoutiqueRoutes = require('./routes/commandeBoutiqueRoutes');
 
 // Routes API
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/typebox', typeBoxRoutes);
+app.use('/api/boxes', boxRoutes);
+app.use('/api/boutiques', boutiqueRoutes);
+app.use('/api/categories-produit', categorieProduitRoutes);
+app.use('/api/produits', produitRoutes);
+app.use('/api/paniers', panierRoutes);
+app.use('/api/avis', avisRoutes);
+app.use('/api/livraison', livraisonRoutes);
+app.use('/api/favoris', favorisRoutes);
+app.use('/api/promotions', promotionRoutes);
+app.use('/api/commandes-boutique', commandeBoutiqueRoutes);
 
-// Servir les fichiers uploadés statiquement
-app.use('/uploads', express.static('uploads'));
 
 /**
  * @swagger

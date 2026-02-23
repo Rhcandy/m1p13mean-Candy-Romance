@@ -1,0 +1,179 @@
+<div class="container-fluid">
+  <!-- panier.component.html — Version améliorée -->
+  <div class="panier-wrapper">
+
+    @if (loading) {
+      <div class="loading-state">
+        <div class="spinner-border text-primary"></div>
+        <p>Chargement du panier...</p>
+      </div>
+
+    } @else if (!panier || panier.produitsachete.length === 0) {
+      <div class="empty-cart-mini">
+        <i class="ti ti-shopping-cart-off"></i>
+        <p>Votre panier est vide</p>
+        <button class="btn btn-sm btn-primary" (click)="goToProducts()">
+          Découvrir nos produits
+        </button>
+      </div>
+
+    } @else {
+
+      <!-- Countdown Timer -->
+      <div class="countdown-timer" [class.expired]="isExpired">
+        <div class="countdown-label">
+          @if (isExpired) { Panier Expiré } @else { Temps Restant }
+        </div>
+        <div class="countdown-time" [class.expired]="isExpired">
+          {{ timeRemaining }}
+        </div>
+        @if (isExpired) {
+          <div class="countdown-warning">
+            <i class="ti ti-alert-circle"></i>
+            Votre panier a expiré. Veuillez le recréer.
+          </div>
+        }
+      </div>
+
+      <!-- Table responsive -->
+      <div class="table-responsive">
+        <table class="cart-table">
+          <thead>
+            <tr>
+              <th>Produit</th>
+              <th class="text-center">Prix</th>
+              <th class="text-center">Quantité</th>
+              <th class="text-center">Total</th>
+              <th class="text-center">Action</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            @for (item of panier.produitsachete; track item.produit._id) {
+              <tr [@itemAnimation]>
+
+                <!-- Produit -->
+                <td class="product-cell">
+                  <div class="product-info">
+                    <img
+                      [src]="item.produit.photo"
+                      [alt]="item.produit.nom"
+                      class="product-thumb"
+                      onerror="this.src='assets/images/default-product.jpg'" />
+
+                    <div class="product-details">
+                      <h6 class="product-name" [title]="item.produit.nom">
+                        {{ item.produit.nom }}
+                      </h6>
+                      <div class="product-meta">
+                        @if (item.produit.boutiqueId) {
+                          <small class="shop-name">
+                            <i class="ti ti-building-store"></i>
+                            {{ item.produit.boutiqueId.nom }}
+                          </small>
+                        }
+
+                        
+                        <small class="stock-status"
+                          [class.low-stock]="getAvailableStock(item.produit) > 0 && getAvailableStock(item.produit) <= 3"
+                          [class.out-of-stock]="getAvailableStock(item.produit) === 0">
+
+                          @if (getAvailableStock(item.produit) === 0) {
+                            <i class="ti ti-alert-circle"></i>
+                            Rupture de stock
+                          } @else if (getAvailableStock(item.produit) <= 3) {
+                            <i class="ti ti-alert-triangle"></i>
+                            {{ getAvailableStock(item.produit) }} restant{{ getAvailableStock(item.produit) > 1 ? 's' : '' }}
+                          } @else {
+                            <i class="ti ti-package"></i>
+                            {{ getAvailableStock(item.produit) }} disponibles
+                          }
+                        </small>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+
+                <!-- Prix unitaire -->
+                <td class="text-center price-cell">
+                  {{ formatPrice(item.prixUnitaire) }}
+                </td>
+
+                <!-- Quantité -->
+                <td class="text-center quantity-cell">
+                  <div class="quantity-controls">
+                    <button
+                      class="qty-btn"
+                      (click)="decreaseQuantity(item)"
+                      [disabled]="item.qtt <= 1">
+                      <i class="ti ti-minus"></i>
+                    </button>
+                    <span class="quantity">{{ item.qtt }}</span>
+                    <button
+                      class="qty-btn"
+                      (click)="increaseQuantity(item)"
+                      [disabled]="item.qtt >= getAvailableStock(item.produit)">
+                      <i class="ti ti-plus"></i>
+                    </button>
+                  </div>
+                </td>
+
+                <!-- Sous-total -->
+                <td class="text-center total-cell">
+                  <span class="item-total">{{ formatPrice(item.sousTotal) }}</span>
+                </td>
+
+                <!-- Supprimer -->
+                <td class="text-center action-cell ">
+                  <button
+                    class="btn btn-outline-danger"
+                    (click)="removeItem(item)"
+                    title="Supprimer cet article">
+                    <i class="ti ti-trash"></i>
+                  </button>
+                </td>
+
+              </tr>
+            }
+          </tbody>
+
+          <tfoot>
+            <tr>
+              <td colspan="5">
+                <div class="cart-footer">
+                  <div class="cart-summary">
+                    <div class="summary-item total">
+                      <span>Total :</span>
+                      <strong>{{ formatPrice(calculateTotal()) }}</strong>
+                    </div>
+                  </div>
+
+                  <div class="cart-actions">
+                    <button class="btn btn-outline-secondary btn-sm" (click)="goToProducts()">
+                      <i class="ti ti-arrow-left"></i>
+                      Continuer
+                    </button>
+                    <button 
+                      class="btn btn-outline-danger btn-sm me-2" 
+                      (click)="viderPanier()"
+                      [disabled]="!panier || panier.produitsachete.length === 0">
+                      <i class="ti ti-trash"></i>
+                      Vider le panier
+                    </button>
+                    <button
+                      class="btn btn-outline-success btn-sm"
+                      (click)="validerCommande()"
+                      [disabled]="panier.produitsachete.length === 0 || isExpired">
+                      Commander
+                      <i class="ti ti-arrow-right"></i>
+                    </button>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    }
+  </div>
+</div>

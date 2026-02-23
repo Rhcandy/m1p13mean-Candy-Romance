@@ -1,0 +1,187 @@
+﻿<div class="confirmation-container">
+  @if (loading) {
+    <div class="loading-state">
+      <div class="spinner-border text-primary"></div>
+      <p>Chargement...</p>
+    </div>
+  } @else if (commande && facture) {
+    <div class="success-header">
+      <div class="success-icon">
+        <i class="ti ti-circle-check"></i>
+      </div>
+      <h1>Merci pour votre commande !</h1>
+      <p class="success-message">Votre commande a été confirmée avec succès et est maintenant en préparation.</p>
+      <div class="order-number">
+        <strong>Numéro de commande:</strong> {{ commande.numeroCommande }}
+      </div>
+    </div>
+
+    <div class="confirmation-content">
+      <!-- Facture -->
+      <div class="facture-section" id="facture-content">
+        <div class="facture-header">
+          <h2>FACTURE</h2>
+          <div class="facture-meta">
+            <div class="facture-number">N° {{ facture.numeroFacture }}</div>
+            <div class="facture-date">Date: {{ facture.dateFacture | date:'longDate' }}</div>
+          </div>
+        </div>
+
+        <div class="facture-body">
+          <!-- Informations commande -->
+          <div class="section">
+            <h3>Détails de la commande</h3>
+            <div class="commande-info">
+              <div class="info-row">
+                <span>Numéro de commande:</span>
+                <span>{{ facture.commande.numero }}</span>
+              </div>
+              <div class="info-row">
+                <span>Date de commande:</span>
+                <span>{{ facture.commande.date | date:'longDate' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Produits -->
+          <div class="section">
+            <h3>Produits commandés</h3>
+            <div class="products-list">
+              @for (produit of facture.commande.produits; track produit.produit._id) {
+                <div class="product-item">
+                  <div class="product-info">
+                    <div class="product-name">{{ produit.produit?.nom || 'Produit' }}</div>
+                    @if (produit.produit?.boutiqueId?.nom) {
+                      <div class="product-details">Boutique: {{ produit.produit?.boutiqueId?.nom }}</div>
+                    }
+                    <div class="product-details">
+                      Quantité: {{ produit.qtt }} x {{ formatPrice(produit.prixUnitaire) }}
+                    </div>
+                  </div>
+                  <div class="product-total">{{ formatPrice(produit.sousTotal) }}</div>
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Récapitulatif financier -->
+          <div class="section">
+            <h3>Récapitulatif</h3>
+            <div class="summary">
+              <div class="summary-row">
+                <span>Sous-total:</span>
+                <span>{{ formatPrice(facture.commande.sousTotal) }}</span>
+              </div>
+              <div class="summary-row">
+                <span>Frais de livraison:</span>
+                <span>{{ formatPrice(getFraisLivraison()) }}</span>
+              </div>
+              <div class="summary-row total">
+                <span>Total payé:</span>
+                <span>{{ formatPrice(facture.commande.total) }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Informations de paiement -->
+          <div class="section">
+            <h3>Paiement</h3>
+            <div class="payment-info">
+              <div class="info-row">
+                <span>Méthode de paiement:</span>
+                <span>{{ facture.paiement.methode === 'carte' ? 'Carte bancaire' : facture.paiement.methode }}</span>
+              </div>
+              <div class="info-row">
+                <span>Date de paiement:</span>
+                <span>{{ facture.paiement.date | date:'longDate' }}</span>
+              </div>
+              <div class="info-row">
+                <span>Montant:</span>
+                <span>{{ formatPrice(facture.paiement.montant) }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Informations de livraison -->
+          <div class="section">
+            <h3>Livraison</h3>
+            <div class="delivery-info">
+              @if (facture.livraison.adresse) {
+                <div class="address">
+                  @if (facture.livraison.adresse.nomEndroit) {
+                    <div>{{ facture.livraison.adresse.nomEndroit }}</div>
+                  }
+                  @if (facture.livraison.adresse.latitude != null) {
+                    <div>Latitude: {{ facture.livraison.adresse.latitude }}</div>
+                  }
+                  @if (facture.livraison.adresse.longitude != null) {
+                    <div>Longitude: {{ facture.livraison.adresse.longitude }}</div>
+                  }
+                  @if (facture.livraison.adresse.telephone) {
+                    <div>Tel: {{ facture.livraison.adresse.telephone }}</div>
+                  }
+                </div>
+              }
+              <div class="delivery-date">
+                <strong>Date de livraison estimée:</strong>
+                <div>{{ facture.livraison.dateEstimee | date:'longDate' }}</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="actions-section">
+        <h3>Actions disponibles</h3>
+        <div class="actions-grid">
+          <button class="action-btn primary" (click)="downloadFacture()">
+            <i class="ti ti-download"></i>
+            Télécharger la facture
+          </button>
+          
+          <button class="action-btn secondary" (click)="printFacture()">
+            <i class="ti ti-printer"></i>
+            Imprimer la facture
+          </button>
+          
+          <button class="action-btn secondary" (click)="goToOrders()">
+            <i class="ti ti-list"></i>
+            Voir mes commandes
+          </button>
+          
+          <button class="action-btn outline" (click)="continueShopping()">
+            <i class="ti ti-shopping-cart"></i>
+            Continuer mes achats
+          </button>
+        </div>
+      </div>
+
+      <!-- Informations supplémentaires -->
+      <div class="info-section">
+        <div class="info-card">
+          <h4><i class="ti ti-truck-delivery"></i> Suivi de votre commande</h4>
+          <p>Vous recevrez un email lorsque votre commande sera expédiée. Vous pourrez alors suivre votre colis en temps réel.</p>
+        </div>
+        
+        <div class="info-card">
+          <h4><i class="ti ti-headset"></i> Service client</h4>
+          <p>Pour toute question concernant votre commande, notre service client est disponible 7j/7 par email ou par téléphone.</p>
+        </div>
+        
+        <div class="info-card">
+          <h4><i class="ti ti-rotate-clockwise"></i> Politique de retour</h4>
+          <p>Vous disposez de 14 jours pour retourner les articles qui ne vous conviennent pas. Consultez nos conditions de retour.</p>
+        </div>
+      </div>
+    </div>
+  } @else {
+    <div class="error-state">
+      <i class="ti ti-alert-circle"></i>
+      <h2>Erreur</h2>
+      <p>Impossible d'afficher les détails de la commande.</p>
+      <button class="btn btn-primary" (click)="goToHome()">Retour à l'accueil</button>
+    </div>
+  }
+</div>
