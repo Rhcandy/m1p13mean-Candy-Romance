@@ -247,7 +247,7 @@ export class MesCommandesComponent implements OnInit, OnDestroy {
     }
 
     try {
-      const response = await fetch('assets/images/logo 3.jpg');
+      const response = await fetch('assets/images/logo3.png');
       if (!response.ok) {
         this.logoDataUrlCache = null;
         return null;

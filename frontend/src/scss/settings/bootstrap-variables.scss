@@ -9,9 +9,14 @@
 
 // BLUE Primary Color
 
-$blue-700: #1c76da;
-$purple-500: #673ab7;
-$purple-700: #542ca7;
+$blue-700: #6d1835;
+$purple-500: #d4aa54;
+$purple-700: #b88a2d;
+
+$grenat-700: #6d1835;
+$grenat-500: #8a2748;
+$gold-700: #b88a2d;
+$gold-500: #d4aa54;
 
 $yellow-100: #ffecb5;
 $yellow-200: #ffe083;
@@ -24,8 +29,8 @@ $yellow-800: #ffab04;
 $yellow-900: #ff9e02;
 
 // Assign Main Theme Color
-$blue: $blue-500;
-$purple: $purple-500;
+$blue: $grenat-500;
+$purple: $gold-500;
 
 // scss-docs-start colors-map
 $colors: (
@@ -34,7 +39,7 @@ $colors: (
 );
 
 $primary: $blue; // change
-$secondary: $indigo; // change
+$secondary: $purple; // change
 
 // scss-docs-start theme-colors-map
 $theme-colors: (
@@ -75,7 +80,7 @@ $position-values: (
   100: 100%
 );
 
-$body-bg: #eceff1; // change
+$body-bg: #fdf8ef; // change
 $body-text-align: null;
 $link-color: $primary;
 $link-decoration: none;
@@ -86,7 +91,7 @@ $stretched-link-pseudo-element: after;
 $stretched-link-z-index: 1;
 $paragraph-margin-bottom: 1rem;
 
-$warning: $yellow; // change
+$warning: $gold-500; // change
 
 // scss-docs-start grid-breakpoints
 $grid-breakpoints: (
@@ -372,13 +377,13 @@ $menu-light-background: #fff;
 $menu-light-text-color: #3f4d67;
 
 //theme
-$theme-background: #f4f7fa;
+$theme-background: #fdf8ef;
 $theme-font-color: #888;
 $theme-heading-color: #111;
 
-$form-bg: #f0f3f6;
-$theme-color: linear-gradient(-135deg, #673ab7 0%, #673ab7 100%);
-$theme-color2: linear-gradient(-135deg, #899fd4 0%, #a389d4 100%);
+$form-bg: #f7efe1;
+$theme-color: linear-gradient(-135deg, #6d1835 0%, #8a2748 100%);
+$theme-color2: linear-gradient(-135deg, #d4aa54 0%, #e7c98a 100%);
 
 $theme-colors: map.merge(
   (
