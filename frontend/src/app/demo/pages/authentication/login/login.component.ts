@@ -21,11 +21,16 @@ export class LoginComponent {
   submitted = false;
   loading = false;
   error = '';
+  showPassword = false;
 
   model = {
     email: '',
     password: ''
   };
+
+  togglePasswordVisibility(): void {
+    this.showPassword = !this.showPassword;
+  }
 
   onSubmit(event: Event) {
     event.preventDefault(); // 🔥 empêche le GET et l’URL bizarre
