@@ -78,6 +78,10 @@ const routes: Routes = [
         loadComponent: () => import('./demo/pages/panier/panier.component').then((c) => c.PanierComponent)
       },
       {
+        path: 'wishlist',
+        loadComponent: () => import('./demo/pages/wishlist/wishlist.component').then((c) => c.WishlistComponent)
+      },
+      {
         path: 'checkout',
         loadComponent: () => import('./demo/pages/checkout/checkout.component').then((c) => c.CheckoutComponent)
       },
