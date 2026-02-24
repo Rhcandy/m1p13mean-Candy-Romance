@@ -1,11 +1,21 @@
 const User = require('../models/User');
 const Produit = require('../models/Produit');
 
+const favorisPopulate = {
+  path: 'favoris',
+  select: 'nom photo prix averageRating description variant promotions categorieId boutiqueId',
+  populate: [
+    { path: 'categorieId', select: 'nom' },
+    { path: 'boutiqueId', select: 'nom' },
+    { path: 'promotions', select: 'nom taux dateDebut dateFin categorie' }
+  ]
+};
+
 exports.getFavoris = async (req, res) => {
   try {
     const userId = req.user.userId;
     const user = await User.findById(userId)
-      .populate('favoris', 'nom photo prix averageRating categorieId boutiqueId')
+      .populate(favorisPopulate)
       .select('favoris');
 
     if (!user) {
@@ -47,7 +57,7 @@ exports.addFavori = async (req, res) => {
       userId,
       { $addToSet: { favoris: produitId } },
       { new: true }
-    ).populate('favoris', 'nom photo prix averageRating categorieId boutiqueId');
+    ).populate(favorisPopulate);
 
     res.status(200).json({
       success: true,
@@ -73,7 +83,7 @@ exports.removeFavori = async (req, res) => {
       userId,
       { $pull: { favoris: produitId } },
       { new: true }
-    ).populate('favoris', 'nom photo prix averageRating categorieId boutiqueId');
+    ).populate(favorisPopulate);
 
     res.status(200).json({
       success: true,

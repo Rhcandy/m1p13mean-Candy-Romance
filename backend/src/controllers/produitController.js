@@ -7,6 +7,21 @@ const produitService = require('../services/produitService');
 const Devise = require('../models/Devise');
 const advancedResults = require('../middlewares/advancedResults');
 
+const normalizeDescriptionField = (payload = {}) => {
+  if (
+    (payload.description === undefined || payload.description === null || payload.description === '') &&
+    typeof payload.descriptionProduit === 'string'
+  ) {
+    payload.description = payload.descriptionProduit;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'descriptionProduit')) {
+    delete payload.descriptionProduit;
+  }
+
+  return payload;
+};
+
 /**
  * @swagger
  * components:
@@ -180,7 +195,8 @@ exports.createProduit = async (req, res) => {
       }
     }
 
-  
+    produitData = normalizeDescriptionField(produitData);
+
     const produit = await produitService.createProduit(produitData, file);
 
     res.status(201).json({
@@ -411,6 +427,8 @@ exports.updateProduit = async (req, res) => {
     }
     
     // Vérifier si la catégorie existe si fournie
+    updateData = normalizeDescriptionField(updateData);
+
     if (updateData.categorieId) {
       const categorie = await CategorieProduit.findById(updateData.categorieId);
       if (!categorie) {
@@ -737,6 +755,7 @@ exports.createMyBoutiqueProduit = async (req, res) => {
 
     // Ajouter l'ID de la boutique aux données du produit
     req.body.boutiqueId = boutique._id;
+    normalizeDescriptionField(req.body);
 
     // Utiliser le service existant pour créer le produit
     const produit = await produitService.createProduit(req.body, req.file);
@@ -807,6 +826,7 @@ exports.updateMyBoutiqueProduit = async (req, res) => {
     }
 
     // Utiliser le service existant pour mettre à jour le produit
+    normalizeDescriptionField(req.body);
     const updatedProduit = await produitService.updateProduit(req.params.id, req.body, req.file);
 
     res.status(200).json({

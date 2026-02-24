@@ -512,7 +512,7 @@ export class BoutiqueProduitsComponent implements OnInit {
     this.isSubmitting = true;
     const formData = new FormData();
     formData.append('nom', this.addProduitForm.nom);
-    formData.append('descriptionProduit', this.addProduitForm.description);
+    formData.append('description', this.addProduitForm.description);
     formData.append('prix', JSON.stringify([{ prixUnitaire: this.addProduitForm.prix }]));
     formData.append('boutiqueId', this.boutique?._id || '');
     formData.append('categorieId', this.addProduitForm.categorieId);
@@ -609,7 +609,7 @@ export class BoutiqueProduitsComponent implements OnInit {
     this.isUpdating = true;
     const formData = new FormData();
     formData.append('nom', this.editProduitForm.nom);
-    formData.append('descriptionProduit', this.editProduitForm.description);
+    formData.append('description', this.editProduitForm.description);
     formData.append('prix', JSON.stringify([{ prixUnitaire: this.editProduitForm.prix }]));
     formData.append('categorieId', this.editProduitForm.categorieId);
     if (this.editProduitForm.variant.length > 0) {
