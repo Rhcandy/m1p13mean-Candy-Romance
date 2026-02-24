@@ -16,5 +16,5 @@ const histoPrixCategSchema = new mongoose.Schema({
   collection: 'histo_prix_categ'
 });
 
-const HistoPrixCateg = mongoose.model('HistoPrixCateg', histoPrixCategSchema);
+const HistoPrixCateg = mongoose.models.HistoPrixCateg || mongoose.model('HistoPrixCateg', histoPrixCategSchema);
 module.exports = HistoPrixCateg;

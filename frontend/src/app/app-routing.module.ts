@@ -171,7 +171,13 @@ const routes: Routes = [
         loadComponent: () => import('./demo/pages/authentication/reset-password/reset-password.component').then((c) => c.ResetPasswordComponent)
       }
     ]
-  }
+  },
+  {
+      path: 'loyers',
+      loadComponent: () =>
+        import('./components/loyer-list/loyer-list.component')
+          .then(m => m.LoyerListComponent)
+    }
 ];
 
 @NgModule({
