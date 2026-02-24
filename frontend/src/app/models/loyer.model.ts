@@ -1,0 +1,27 @@
+export interface Paiement {
+  title: string;
+  libelle: string | null;
+  montant: number;
+  _id: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Boutique {
+  _id: string;
+  nom: string;
+  adresse?: string;
+}
+
+export interface Loyer {
+  _id: string;
+  boutiqueId: Boutique;
+  periode: string;
+  total: number;
+  reste: number;
+  statut: string;
+  dateEcheance: string;
+  paiements: Paiement[];
+  createdAt: string;
+  updatedAt: string;
+}

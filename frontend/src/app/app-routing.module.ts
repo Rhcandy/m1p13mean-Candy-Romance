@@ -38,7 +38,13 @@ const routes: Routes = [
         loadComponent: () => import('./demo/pages/authentication/register/register.component').then((c) => c.RegisterComponent)
       }
     ]
-  }
+  },
+  {
+      path: 'loyers',
+      loadComponent: () =>
+        import('./components/loyer-list/loyer-list.component')
+          .then(m => m.LoyerListComponent)
+    }
 ];
 
 @NgModule({
