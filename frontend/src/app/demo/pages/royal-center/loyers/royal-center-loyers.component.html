@@ -1,0 +1,120 @@
+<div class="container-fluid royal-section">
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+        <h4 class="mb-sm-0">Loyers - Royal Center</h4>
+        <button type="button" class="btn btn-primary" (click)="openCreateModal()">
+          <i class="ti ti-plus me-1"></i>Ajouter un loyer
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status"></div>
+  </div>
+
+  <div *ngIf="!loading" class="card">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-centered mb-0">
+          <thead>
+            <tr>
+              <th>Boutique</th>
+              <th>Lignes</th>
+              <th>Montant paye</th>
+              <th>Reste a payer</th>
+              <th>Maj</th>
+              <th class="text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let loyer of loyers">
+              <td class="fw-semibold">{{ getBoutiqueNameFromLoyer(loyer) }}</td>
+              <td>{{ loyer.details.length }}</td>
+              <td>{{ getTotalMontantPaye(loyer) | number }} Ar</td>
+              <td>{{ getTotalRestePaye(loyer) | number }} Ar</td>
+              <td>{{ loyer.updatedAt | date: 'dd/MM/yyyy HH:mm' }}</td>
+              <td class="text-center">
+                <button class="btn btn-sm btn-outline-primary me-1" (click)="openEditModal(loyer)">
+                  <i class="ti ti-pencil"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" (click)="deleteLoyer(loyer)">
+                  <i class="ti ti-trash"></i>
+                </button>
+              </td>
+            </tr>
+            <tr *ngIf="loyers.length === 0">
+              <td colspan="6" class="text-center text-muted py-4">Aucun loyer enregistre.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" [class.show]="showModal" [class.d-block]="showModal" tabindex="-1"
+     [style.background]="showModal ? 'rgba(0,0,0,0.5)' : ''">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          {{ editingLoyerId ? 'Modifier loyer' : 'Nouveau loyer' }}
+        </h5>
+        <button type="button" class="btn-close" (click)="closeModal()"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Boutique</label>
+          <select class="form-select" [(ngModel)]="form.boutiqueId" [disabled]="saving">
+            <option value="">Selectionner</option>
+            <option *ngFor="let boutique of boutiques" [value]="boutique._id">
+              {{ boutique.nom }}
+            </option>
+          </select>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h6 class="mb-0">Details</h6>
+          <button type="button" class="btn btn-sm btn-outline-warning" (click)="addDetail()" [disabled]="saving">
+            <i class="ti ti-plus me-1"></i>Ajouter ligne
+          </button>
+        </div>
+
+        <div class="detail-block mb-2" *ngFor="let detail of form.details; let i = index">
+          <div class="row g-2 align-items-end">
+            <div class="col-md-4">
+              <label class="form-label">Titre</label>
+              <input type="text" class="form-control" [(ngModel)]="detail.title" [disabled]="saving">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Montant paye</label>
+              <input type="number" min="0" class="form-control" [(ngModel)]="detail.montantPaye" [disabled]="saving">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Reste a payer</label>
+              <input type="number" min="0" class="form-control" [(ngModel)]="detail.restePaye" [disabled]="saving">
+            </div>
+            <div class="col-md-2 text-end">
+              <button type="button" class="btn btn-sm btn-outline-danger" (click)="removeDetail(i)" [disabled]="saving">
+                <i class="ti ti-x"></i>
+              </button>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Libelle</label>
+              <input type="text" class="form-control" [(ngModel)]="detail.libelle" [disabled]="saving">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeModal()" [disabled]="saving">Annuler</button>
+        <button type="button" class="btn btn-primary" (click)="saveLoyer()" [disabled]="saving">
+          <span *ngIf="!saving">Enregistrer</span>
+          <span *ngIf="saving">Traitement...</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

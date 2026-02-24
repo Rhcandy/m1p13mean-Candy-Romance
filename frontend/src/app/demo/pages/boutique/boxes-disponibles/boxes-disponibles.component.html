@@ -1,0 +1,120 @@
+<div class="boxes-page">
+  <section class="hero">
+    <div>
+      <h1>{{ isChangingBox ? 'Changer de box' : 'Choisir une box disponible' }}</h1>
+      <p>
+        {{ isChangingBox
+          ? 'Selectionnez une nouvelle box et mettez a jour votre contrat.'
+          : 'Creer votre boutique en selectionnant une box libre du centre.' }}
+      </p>
+    </div>
+    @if (hasBoutique && !isChangingBox) {
+      <button type="button" class="btn btn-outline-light" (click)="goToBoutiqueInfo()">
+        Voir ma boutique
+      </button>
+    }
+  </section>
+
+  @if (loading || loadingBoutique) {
+    <div class="loading-state">
+      <div class="spinner-border text-primary" role="status"></div>
+      <p>Chargement des boxes...</p>
+    </div>
+  } @else {
+    <div class="content-grid">
+      <section class="boxes-list">
+        <header>
+          <h2>Boxes disponibles</h2>
+          <span class="count">{{ boxes.length }}</span>
+        </header>
+
+        @if (boxes.length === 0) {
+          <div class="empty">
+            <h3>Aucune box disponible</h3>
+            <p>Revenez plus tard ou contactez l'administration du centre.</p>
+          </div>
+        } @else {
+          <div class="cards">
+            @for (box of boxes; track trackByBoxId($index, box)) {
+              <article class="box-card" [class.selected]="isSelectedBox(box)" (click)="selectBox(box)">
+                <div class="row-top">
+                  <strong>Box {{ box.numRef }}</strong>
+                  <span class="badge">Libre</span>
+                </div>
+                <div class="meta">
+                  <span>Etage: {{ box.etage }}</span>
+                  <span>Surface: {{ box.Superficie }} m2</span>
+                  <span>Type: {{ box.typeBoxId?.nom || 'N/A' }}</span>
+                  <span>Centre: {{ box.centreId?.nom || 'N/A' }}</span>
+                </div>
+              </article>
+            }
+          </div>
+        }
+      </section>
+
+      <section class="create-panel">
+        <h2>{{ isChangingBox ? 'Mise a jour du contrat' : 'Creation de boutique' }}</h2>
+
+        @if (selectedBox) {
+          <div class="selected-box">
+            <span>Box selectionnee:</span>
+            <strong>{{ selectedBox.numRef }} ({{ selectedBox.etage }})</strong>
+          </div>
+        }
+
+        <form [formGroup]="boutiqueForm" (ngSubmit)="submit()">
+          <div class="mb-3">
+            <label class="form-label">Nom de la boutique *</label>
+            <input type="text" class="form-control" formControlName="nom" placeholder="Ex: My chop " />
+          </div>
+
+          <div class="date-grid">
+            <div>
+              <label class="form-label">Debut location *</label>
+              <input type="date" class="form-control" formControlName="dateDebutLocation" />
+            </div>
+            <div>
+              <label class="form-label">Fin location *</label>
+              <input type="date" class="form-control" formControlName="dateFinLocation" />
+            </div>
+          </div>
+
+          <div class="days-grid">
+            <label><input type="checkbox" formControlName="lundi" /> Lun</label>
+            <label><input type="checkbox" formControlName="mardi" /> Mar</label>
+            <label><input type="checkbox" formControlName="mercredi" /> Mer</label>
+            <label><input type="checkbox" formControlName="jeudi" /> Jeu</label>
+            <label><input type="checkbox" formControlName="vendredi" /> Ven</label>
+            <label><input type="checkbox" formControlName="samedi" /> Sam</label>
+            <label><input type="checkbox" formControlName="dimanche" /> Dim</label>
+          </div>
+
+          <div class="terms">
+            <label>
+              <input type="checkbox" formControlName="acceptRent" />
+              J'accepte le paiement du loyer selon les regles du centre (hebdomadaire sur le mois).
+            </label>
+            <label>
+              <input type="checkbox" formControlName="acceptDelivery" />
+              J'ai lu que le centre reste responsable de la livraison selon sa politique.
+            </label>
+            <label>
+              <input type="checkbox" formControlName="acceptCommission" />
+              J'accepte la condition de taux sur vente au-dela de 500 000 Ar.
+            </label>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100" [disabled]="creating || !selectedBox">
+            @if (creating) {
+              <span class="spinner-border spinner-border-sm me-2"></span>
+              Traitement...
+            } @else {
+              {{ isChangingBox ? 'Mettre a jour ma box' : 'Creer ma boutique' }}
+            }
+          </button>
+        </form>
+      </section>
+    </div>
+  }
+</div>

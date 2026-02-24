@@ -4,13 +4,11 @@
       <div class="card mt-5">
         <div class="card-body">
           <form [formGroup]="registerForm" (ngSubmit)="onSubmit($event)" novalidate>
-
-            <!-- Logo -->
-            <a href="javascript:" class="d-flex justify-content-center mt-3">
-              <img src="assets/images/logo-dark.svg" alt="logo" />
+            <a href="#" (click)="$event.preventDefault()" class="d-flex justify-content-center mt-3">
+              <img src="assets/images/logo3.png" alt="logo" class="auth-logo-img" />
+              <span class="brand-text brand-script">Royal Center</span>
             </a>
 
-            <!-- Header -->
             <div class="d-flex justify-content-center">
               <div class="auth-header text-center">
                 <h2 class="text-secondary mt-5"><b>Sign up</b></h2>
@@ -18,12 +16,8 @@
               </div>
             </div>
 
-            <!-- ROLE SELECTION -->
             <div class="mb-4">
-              <label class="form-label fw-bold">
-                Choisissez votre type de compte
-              </label>
-
+              <label class="form-label fw-bold">Choisissez votre type de compte</label>
               <div class="row">
                 <div class="col-md-6 mb-2">
                   <button
@@ -35,9 +29,7 @@
                     <i class="bi bi-person me-2"></i>
                     Client
                   </button>
-                  <small class="text-muted d-block mt-1">
-                    Particulier cherchant des produits et services
-                  </small>
+                  <small class="text-muted d-block mt-1">Particulier cherchant des produits et services</small>
                 </div>
 
                 <div class="col-md-6 mb-2">
@@ -50,51 +42,40 @@
                     <i class="bi bi-shop me-2"></i>
                     Boutique
                   </button>
-                  <small class="text-muted d-block mt-1">
-                    Commerçant vendant des produits ou services
-                  </small>
+                  <small class="text-muted d-block mt-1">Commercant vendant des produits ou services</small>
                 </div>
               </div>
             </div>
 
-            <!-- NAME -->
             <div class="form-floating mb-3">
               <input
                 type="text"
                 class="form-control"
                 id="nom"
-                name="nom"
                 formControlName="nom"
                 [class.is-invalid]="submitted && registerForm.get('nom')?.invalid"
                 placeholder="Nom complet"
               />
               <label for="nom">Nom complet</label>
-              <div *ngIf="submitted && registerForm.get('nom')?.invalid" class="invalid-feedback">
-                Nom requis
-              </div>
+              <div *ngIf="submitted && registerForm.get('nom')?.invalid" class="invalid-feedback">Nom requis</div>
             </div>
 
-            <!-- SEXE -->
             <div class="form-floating mb-3">
               <select
-                class="form-control"
+                class="form-select"
                 id="sexe"
-                name="sexe"
                 formControlName="sexe"
                 [class.is-invalid]="submitted && registerForm.get('sexe')?.invalid"
               >
                 <option value="M">Masculin</option>
-                <option value="F">Féminin</option>
+                <option value="F">Feminin</option>
               </select>
               <label for="sexe">Sexe</label>
-              <div *ngIf="submitted && registerForm.get('sexe')?.invalid" class="invalid-feedback">
-                Sexe requis
-              </div>
+              <div *ngIf="submitted && registerForm.get('sexe')?.invalid" class="invalid-feedback d-block">Sexe requis</div>
             </div>
 
-            <!-- NUMTEL -->
             <div class="mb-3">
-              <label class="form-label fw-bold">Numéros de téléphone</label>
+              <label class="form-label fw-bold">Numeros de telephone</label>
               <div formArrayName="numtel">
                 <div *ngFor="let phone of numtelArray.controls; let i = index" class="d-flex align-items-center mb-2">
                   <div class="form-floating flex-grow-1">
@@ -102,46 +83,42 @@
                       type="tel"
                       class="form-control"
                       [id]="'numtel' + i"
-                      [name]="'numtel' + i"
                       [formControlName]="i"
-                      [class.is-invalid]="submitted && i === 0 && numtelArray.at(i)?.invalid"
-                      placeholder="Numéro de téléphone {{ i + 1 }}"
+                      [class.is-invalid]="submitted && i === 0 && !hasValidPhoneNumber()"
+                      [placeholder]="'Numero de telephone ' + (i + 1)"
                     />
-                    <label [for]="'numtel' + i">Numéro de téléphone {{ i + 1 }} {{ i === 0 ? '(obligatoire)' : '(optionnel)' }}</label>
-                    <div *ngIf="submitted && i === 0 && numtelArray.at(i)?.invalid" class="invalid-feedback">
-                      Au moins un numéro de téléphone est requis
-                    </div>
+                    <label [for]="'numtel' + i">
+                      Numero de telephone {{ i + 1 }} {{ i === 0 ? '(obligatoire)' : '(optionnel)' }}
+                    </label>
                   </div>
-                  
-                  <button 
+
+                  <button
                     *ngIf="numtelArray.length > 1"
-                    type="button" 
+                    type="button"
                     class="btn btn-outline-danger ms-2"
                     (click)="removePhoneNumber(i)"
-                    title="Supprimer ce numéro"
+                    title="Supprimer ce numero"
                   >
-                    <i class="bi bi-trash"></i>
+                    <i class="ti ti-trash"></i>
                   </button>
                 </div>
               </div>
-              
-              <button 
-                type="button" 
-                class="btn btn-outline-primary btn-sm"
-                (click)="addPhoneNumber()"
-              >
-                <i class="bi bi-plus-circle me-1"></i>
-                Ajouter un numéro de téléphone
+
+              <div *ngIf="submitted && !hasValidPhoneNumber()" class="invalid-feedback d-block">
+                Au moins un numero de telephone est requis
+              </div>
+
+              <button type="button" class="btn btn-outline-primary btn-sm" (click)="addPhoneNumber()">
+                <i class="ti ti-plus me-1"></i>
+                Ajouter un numero de telephone
               </button>
             </div>
 
-            <!-- DTNAISSANCE -->
             <div class="form-floating mb-3">
               <input
                 type="date"
                 class="form-control"
                 id="dtnaissance"
-                name="dtnaissance"
                 formControlName="dtnaissance"
                 [class.is-invalid]="submitted && registerForm.get('dtnaissance')?.invalid"
                 placeholder="Date de naissance"
@@ -152,70 +129,88 @@
               </div>
             </div>
 
-            <!-- EMAIL -->
             <div class="form-floating mb-3">
               <input
                 type="email"
                 class="form-control"
                 id="email"
-                name="email"
                 formControlName="email"
                 [class.is-invalid]="submitted && registerForm.get('email')?.invalid"
                 placeholder="Email"
               />
               <label for="email">Email</label>
               <div *ngIf="submitted && registerForm.get('email')?.invalid" class="invalid-feedback">
-                Email requis
+                Email valide requis
               </div>
             </div>
 
-            <!-- PASSWORD -->
-            <div class="form-floating mb-3">
-              <input
-                type="password"
-                class="form-control"
-                id="password"
-                name="password"
-                formControlName="password"
-                [class.is-invalid]="submitted && registerForm.get('password')?.invalid"
-                placeholder="Mot de passe"
-              />
-              <label for="password">Mot de passe</label>
-              <div *ngIf="submitted && registerForm.get('password')?.invalid" class="invalid-feedback">
-                Mot de passe requis
+            <div class="mb-3">
+              <label for="password" class="form-label">Mot de passe</label>
+              <div class="input-group">
+                <input
+                  [type]="showPassword ? 'text' : 'password'"
+                  class="form-control"
+                  id="password"
+                  formControlName="password"
+                  [class.is-invalid]="submitted && registerForm.get('password')?.invalid"
+                  placeholder="Mot de passe"
+                />
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary"
+                  (click)="togglePasswordVisibility()"
+                  [attr.aria-label]="showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'"
+                >
+                  <i class="ti" [ngClass]="showPassword ? 'ti-eye-off' : 'ti-eye'"></i>
+                </button>
+              </div>
+              <div *ngIf="submitted && registerForm.get('password')?.invalid" class="invalid-feedback d-block">
+                <span *ngIf="registerForm.get('password')?.errors?.['required']">Mot de passe requis</span>
+                <span *ngIf="registerForm.get('password')?.errors?.['minlength']">Minimum 8 caracteres</span>
               </div>
             </div>
 
-            <!-- CONFIRM PASSWORD -->
-            <div class="form-floating mb-3">
-              <input
-                type="password"
-                class="form-control"
-                id="confirmPassword"
-                name="confirmPassword"
-                formControlName="confirmPassword"
-                [class.is-invalid]="submitted && registerForm.get('confirmPassword')?.invalid || (registerForm.value.password !== registerForm.value.confirmPassword && submitted)"
-                placeholder="Confirmer mot de passe"
-              />
-              <label for="confirmPassword">Confirmer le mot de passe</label>
-              <div *ngIf="submitted && (registerForm.get('confirmPassword')?.invalid || (registerForm.value.password !== registerForm.value.confirmPassword))" class="invalid-feedback">
-                Les mots de passe ne correspondent pas
+            <div class="mb-3">
+              <label for="confirmPassword" class="form-label">Confirmer le mot de passe</label>
+              <div class="input-group">
+                <input
+                  [type]="showConfirmPassword ? 'text' : 'password'"
+                  class="form-control"
+                  id="confirmPassword"
+                  formControlName="confirmPassword"
+                  [class.is-invalid]="submitted && (registerForm.get('confirmPassword')?.invalid || isPasswordMismatch())"
+                  placeholder="Confirmer le mot de passe"
+                />
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary"
+                  (click)="toggleConfirmPasswordVisibility()"
+                  [attr.aria-label]="showConfirmPassword ? 'Masquer la confirmation' : 'Afficher la confirmation'"
+                >
+                  <i class="ti" [ngClass]="showConfirmPassword ? 'ti-eye-off' : 'ti-eye'"></i>
+                </button>
+              </div>
+              <div
+                *ngIf="submitted && (registerForm.get('confirmPassword')?.invalid || isPasswordMismatch())"
+                class="invalid-feedback d-block"
+              >
+                <span *ngIf="registerForm.get('confirmPassword')?.errors?.['required']">Confirmation requise</span>
+                <span *ngIf="!registerForm.get('confirmPassword')?.errors?.['required'] && isPasswordMismatch()">
+                  Les mots de passe ne correspondent pas
+                </span>
               </div>
             </div>
 
-            <!-- ERROR -->
-            <div *ngIf="error" class="alert alert-danger">
+            <div *ngIf="error" class="alert alert-danger" role="alert">
               {{ error }}
             </div>
 
-            <!-- SUBMIT -->
             <div class="d-grid mt-4">
-              <button type="submit" class="btn btn-secondary" [disabled]="loading">
-                <span *ngIf="loading" class="spinner-border spinner-border-sm me-2"></span>
+              <button type="submit" class="btn btn-secondary p-2" [disabled]="loading">
+                <span *ngIf="loading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                 Sign Up
               </button>
             </div>
-
           </form>
 
           <hr />
@@ -223,9 +218,10 @@
           <h5 class="d-flex justify-content-center">
             <a [routerLink]="['/login']">Already have an account?</a>
           </h5>
-
         </div>
       </div>
     </div>
   </div>
 </div>
+
+

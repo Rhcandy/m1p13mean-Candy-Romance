@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
-import { Observable, from } from 'rxjs';
-import { map } from 'rxjs/operators';
-import api from './api.service';
+import { Observable } from 'rxjs';
+import { ApiService } from './api.service';
+
 
 export interface UserProfile {
   _id: string;
@@ -43,40 +43,26 @@ export interface UpdateProfilePayload {
   providedIn: 'root'
 })
 export class UserService {
-
+   constructor(private readonly api: ApiService) { }
   getProfile(): Observable<ApiResponse<UserProfile>> {
-    return from(api.get<ApiResponse<UserProfile>>('/users/profile')).pipe(
-      map(r => r.data)
-    );
+    return this.api.get<ApiResponse<UserProfile>>('/users/profile');
   }
 
   getUserById(id: string): Observable<ApiResponse<UserProfile>> {
-    return from(api.get<ApiResponse<UserProfile>>(`/users/${id}`)).pipe(
-      map(r => r.data)
-    );
+    return this.api.get<ApiResponse<UserProfile>>(`/users/${id}`);
   }
 
   updateProfile(payload: UpdateProfilePayload): Observable<ApiResponse<UserProfile>> {
-    return from(api.put<ApiResponse<UserProfile>>('/users/profile', payload)).pipe(
-      map(r => r.data)
-    );
+    return this.api.put<ApiResponse<UserProfile>>('/users/profile', payload);
   }
 
   updateProfileWithPicture(formData: FormData): Observable<ApiResponse<UserProfile>> {
-    return from(
-      api.put<ApiResponse<UserProfile>>('/users/profile/with-profile', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      })
-    ).pipe(map(r => r.data));
+    return this.api.putFile<ApiResponse<UserProfile>>('/users/profile/with-profile', formData);
   }
 
   updateProfilePicture(file: File): Observable<ApiResponse<UserProfile>> {
     const formData = new FormData();
-    formData.append('profilePicture', file);
-    return from(
-      api.put<ApiResponse<UserProfile>>('/users/profile-picture', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      })
-    ).pipe(map(r => r.data));
+    formData.append('photo', file);
+    return this.api.putFile<ApiResponse<UserProfile>>('/users/profile-picture', formData);
   }
 }

@@ -9,6 +9,8 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
+// Enable nested query parsing (e.g. nom[regex]=x, prix.prixUnitaire[gte]=10)
+app.set('query parser', 'extended');
 app.use(express.json());
 
 // Connexion à MongoDB
@@ -66,9 +68,21 @@ const uploadRoutes = require('./routes/uploadRoutes');
 const typeBoxRoutes = require('./routes/typeBoxRoutes');
 const boxRoutes = require('./routes/boxRoutes');
 const boutiqueRoutes = require('./routes/boutiqueRoutes');
+
 const loyers =require('./routes/loyer.routes');
 const histoPrixRoutes = require('./routes/histoPrixCateg.routes');
 const adminStatsRoutes = require("./routes/adminStats.routes");
+
+const categorieProduitRoutes = require('./routes/categorieProduitRoutes');
+const produitRoutes = require('./routes/produitRoutes');
+const panierRoutes = require('./routes/panierRoutes');
+const avisRoutes = require('./routes/avisRoutes');
+const livraisonRoutes = require('./routes/livraisonRoutes');
+const favorisRoutes = require('./routes/favorisRoutes');
+const promotionRoutes = require('./routes/promotionRoutes');
+const commandeBoutiqueRoutes = require('./routes/commandeBoutiqueRoutes');
+const loyerRoutes = require('./routes/loyerRoutes');
+
 
 // Routes API
 app.use('/api/auth', authRoutes);
@@ -77,12 +91,22 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/typebox', typeBoxRoutes);
 app.use('/api/boxes', boxRoutes);
 app.use('/api/boutiques', boutiqueRoutes);
+
 app.use('/api/loyers', loyers);
 app.use('/api/histo-prix', histoPrixRoutes);
 app.use("/api/admin/stats", adminStatsRoutes);
 
-// Servir les fichiers uploadés statiquement
-app.use('/uploads', express.static('uploads'));
+app.use('/api/categories-produit', categorieProduitRoutes);
+app.use('/api/produits', produitRoutes);
+app.use('/api/paniers', panierRoutes);
+app.use('/api/avis', avisRoutes);
+app.use('/api/livraison', livraisonRoutes);
+app.use('/api/favoris', favorisRoutes);
+app.use('/api/promotions', promotionRoutes);
+app.use('/api/commandes-boutique', commandeBoutiqueRoutes);
+app.use('/api/loyers', loyerRoutes);
+
+
 
 /**
  * @swagger

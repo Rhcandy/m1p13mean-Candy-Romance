@@ -1,0 +1,101 @@
+﻿<div class="product-wrapper">
+  <!-- Card avec bordure arrondie épaisse -->
+  <div class="product-card clickable-card" (click)="onProductClick()" (keydown)="onProductClick()" tabindex="0" role="button" [attr.aria-label]="'Voir les détails du produit ' + product.nom">
+    <!-- Section Image avec background coloré et prix flottant -->
+    <div class="image-section">
+      @if (hasActivePromotions()) {
+        <div class="promo-badge">
+          Promo {{ getPromotionBadgeText() }}
+        </div>
+      }
+      <!-- Prix badge en haut à droite -->
+      <div class="price-badge">
+        <span class="price-text">
+          {{ formatPrice(hasActivePromotions() ? getDiscountedPrice() : getBasePrice()) }}
+        </span>
+        @if (hasActivePromotions()) {
+          <small class="d-block text-muted text-decoration-line-through">
+            {{ formatPrice(getBasePrice()) }}
+          </small>
+        }
+      </div>
+
+      <!-- Image du produit -->
+      <div class="product-image-container">
+        <img [src]="product.photo || 'https://via.placeholder.com/400x400'" alt="{{ product.nom }}" class="product-image">
+      </div>
+
+      <!-- Badge livraison en bas -->
+      @if (product.deliveryDate) {
+        <div class="delivery-badge">
+          Livraison gratuite avant le {{ product.deliveryDate }}
+        </div>
+      }
+    </div>
+
+    <!-- Section Nom et Order Now -->
+    <div class="info-section">
+      <div class="header-row">
+        <h3 class="product-name">
+          {{ product.nom }}
+        </h3>
+        <button type="button" class="order-button"
+                (click)="onOrderNow(); $event.stopPropagation()"
+                [disabled]="isAddingToCart || !hasStock()"
+                [class.loading]="isAddingToCart">
+          <i class="ti" [class.ti-shopping-cart-plus]="!isAddingToCart" [class.ti-loader]="isAddingToCart"></i>
+          {{ isAddingToCart ? 'Ajout...' : 'Ajouter Panier' }}
+        </button>
+      </div>
+
+      <!-- Rating sous forme d'étoiles -->
+      @if (hasRating()) {
+        <div class="rating-container">
+          @for (star of getStars(); track $index) {
+            <i
+              class="ti star-icon"
+              [class]="star === 1 ? 'ti-star-filled' : (star === 0.5 ? 'ti-star-half-filled' : 'ti-star')"
+              [class.star-filled]="star === 1"
+              [class.star-half]="star === 0.5"
+              [class.star-empty]="star === 0">
+            </i>
+          }
+          <span class="rating-text">{{ product.averageRating.toFixed(1) }}</span>
+        </div>
+      }
+
+      @if (product.description) {
+        <p class="product-description">{{ product.description }}</p>
+      }
+
+      @if (hasActivePromotions()) {
+        <div class="small text-success mb-2">
+          {{ getPromotionDetailsText() }}
+        </div>
+      }
+
+      <!-- Tags/Chips -->
+      <div class="tags-container">
+        <!-- Tag catégorie -->
+        <span class="tag tag-category">
+          {{ product.categorieId.nom }}
+        </span>
+
+        <!-- Tags des attributs du variant -->
+        <span
+          *ngFor="let tag of variantTags"
+          class="tag tag-variant"
+        >
+          {{ tag.label }}
+        </span>
+
+        @if (product.isFavori) {
+          <span class="tag tag-favori">
+            <i class="ti ti-heart-filled"></i>
+          </span>
+        }
+
+      </div>
+    </div>
+  </div>
+</div>

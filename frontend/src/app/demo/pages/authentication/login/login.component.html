@@ -4,8 +4,9 @@
       <div class="card my-5">
         <div class="card-body">
           <form (ngSubmit)="onSubmit($event)" novalidate>
-  <a href="#" (click)="$event.preventDefault()" class="d-flex justify-content-center">
-    <img src="assets/images/logo-dark.svg" alt="logo" />
+  <a href="/landing" (click)="$event.preventDefault()" class="d-flex justify-content-center">
+    <img src="assets/images/logo3.png" alt="logo" class="auth-logo-img" />
+     <span class="brand-text brand-script">Royal Center</span>
   </a>
 
   <div class="row">
@@ -33,18 +34,28 @@
     </div>
   </div>
 
-  <div class="form-floating mb-3">
-    <input
-      type="password"
-      id="password"
-      class="form-control"
-      name="password"
-      [(ngModel)]="model.password"
-      [class.is-invalid]="submitted && !model.password"
-      placeholder="Password"
-    />
-    <label for="password">Password</label>
-    <div *ngIf="submitted && !model.password" class="invalid-feedback">
+  <div class="mb-3">
+    <label for="password" class="form-label">Password</label>
+    <div class="input-group">
+      <input
+        [type]="showPassword ? 'text' : 'password'"
+        id="password"
+        class="form-control"
+        name="password"
+        [(ngModel)]="model.password"
+        [class.is-invalid]="submitted && !model.password"
+        placeholder="Password"
+      />
+      <button
+        type="button"
+        class="btn btn-outline-secondary"
+        (click)="togglePasswordVisibility()"
+        [attr.aria-label]="showPassword ? 'Hide password' : 'Show password'"
+      >
+        <i class="ti" [ngClass]="showPassword ? 'ti-eye-off' : 'ti-eye'"></i>
+      </button>
+    </div>
+    <div *ngIf="submitted && !model.password" class="invalid-feedback d-block">
       Password is required
     </div>
   </div>
@@ -55,7 +66,7 @@
       <label class="form-check-label text-muted" for="customCheckc1">Remember me</label>
     </div>
     <h5 class="text-secondary">
-      <a href="javascript:">Forgot Password?</a>
+      <a [routerLink]="['/forgot-password']">Forgot Password?</a>
     </h5>
   </div>
 
@@ -81,3 +92,5 @@
     </div>
   </div>
 </div>
+
+

@@ -2,11 +2,11 @@ const express = require('express');
 const router = express.Router();
 const { uploadImage } = require('../services/cloudinary');
 const authMiddleware = require('../middlewares/authMiddleware');
-const { uploadProfilePicture, uploadMultipleImages, handleUploadError } = require('../middlewares/uploadMiddleware');
+const { uploadPicture, uploadMultipleImages, handleUploadError } = require('../middlewares/uploadMiddleware');
 
 router.post('/profile', 
   authMiddleware, 
-  uploadProfilePicture, 
+  uploadPicture, 
   handleUploadError, 
   async (req, res) => {
     try {

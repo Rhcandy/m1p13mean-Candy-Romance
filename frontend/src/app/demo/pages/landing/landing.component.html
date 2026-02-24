@@ -1,0 +1,189 @@
+<nav class="landing-nav" [class.scrolled]="isScrolled">
+  <div class="container nav-inner">
+    <button class="brand" type="button" (click)="scrollTo('hero')">
+      <img src="assets/images/logo3.png" alt="Royal Center logo" class="brand-logo-img" />
+      <span class="brand-text brand-script">Royal Center</span>
+    </button>
+
+    <button class="burger" type="button" (click)="toggleMenu()" aria-label="Ouvrir le menu">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
+    <div class="nav-links" [class.open]="menuOpen">
+      <button type="button" class="nav-link" (click)="scrollTo('hero'); menuOpen = false">Accueil</button>
+      <button type="button" class="nav-link" (click)="scrollTo('functionalities'); menuOpen = false">Fonctionnalites</button>
+      <button type="button" class="nav-link" (click)="scrollTo('about'); menuOpen = false">About us</button>
+      <button type="button" class="nav-link" (click)="scrollTo('center'); menuOpen = false">Royal Center</button>
+      <button type="button" class="btn btn-products" (click)="goToProducts(); menuOpen = false">Voir produits</button>
+      <button type="button" class="btn btn-auth" (click)="handleAuthAction(); menuOpen = false">
+        {{ isAuthenticated ? 'Se deconnecter' : 'Se connecter' }}
+      </button>
+    </div>
+  </div>
+</nav>
+
+<section class="hero" id="hero">
+  <div class="hero-overlay"></div>
+  <div class="container hero-content">
+    <p class="hero-chip">Marketplace locale - Royal Center Antananarivo</p>
+    <h1>Une plateforme claire pour connecter les clients et les boutiques</h1>
+    <p class="hero-text">
+      Nous avons cree ce site pour offrir aux commerces du Royal Center un canal digital solide,
+      et aux clients une facon plus simple de trouver, comparer et commander leurs produits.
+    </p>
+
+    <div class="hero-actions">
+      <button type="button" class="btn btn-products big" (click)="goToProducts()">Voir produits</button>
+      <button type="button" class="btn btn-auth big" (click)="handleAuthAction()">
+        {{ isAuthenticated ? 'Se deconnecter' : 'Se connecter' }}
+      </button>
+      <button type="button" class="btn btn-secondary big" (click)="goToRegister()">Creer un compte boutique</button>
+    </div>
+
+    <div class="role-grid" id="functionalities">
+      <article class="role-card">
+        <h3>Aspect user</h3>
+        <p>Le client peut rechercher des produits, comparer les prix, passer commande et suivre ses achats.</p>
+        <ul>
+          <li>Parcourir les produits disponibles</li>
+          <li>Ajouter au panier et commander</li>
+          <li>Suivre les commandes et l'historique</li>
+        </ul>
+        <button type="button" class="inline-link" (click)="goToUserSpace()">Acceder a l'espace user</button>
+      </article>
+
+      <article class="role-card">
+        <h3>Aspect boutique</h3>
+        <p>Le commercant publie ses articles, organise sa boutique et suit ses ventes depuis un seul outil.</p>
+        <ul>
+          <li>Ajouter et modifier ses produits</li>
+          <li>Gerer promotions et disponibilites</li>
+          <li>Suivre les commandes clients</li>
+        </ul>
+        <button type="button" class="inline-link" (click)="goToBoutiqueSpace()">Acceder a l'espace boutique</button>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="about" id="about">
+  <div class="container about-grid">
+    <div>
+      <p class="section-tag">About us</p>
+      <h2>Pourquoi la plateforme Royal Center a ete lancee</h2>
+      <p>
+        Beaucoup de boutiques locales avaient besoin d'une vitrine numerique simple, sans dependre d'outils complexes.
+        Le projet Royal Center a ete construit pour relier directement les commerces du centre et leurs clients.
+      </p>
+      <p>
+        Notre objectif est double: faciliter l'achat pour les visiteurs, et permettre aux boutiques de mieux
+        presenter leurs produits, gerer leurs stocks et suivre leurs commandes.
+      </p>
+    </div>
+
+    <div class="about-cards">
+      <article class="about-card">
+        <h4>Proximite</h4>
+        <p>Mettre en avant les commerces du Royal Center et renforcer l'economie locale.</p>
+      </article>
+      <article class="about-card">
+        <h4>Confiance</h4>
+        <p>Afficher des informations claires, des statuts de commande et un suivi transparent.</p>
+      </article>
+      <article class="about-card">
+        <h4>Evolution</h4>
+        <p>Donner aux boutiques une base solide pour evoluer du physique vers le digital.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="center" id="center">
+  <div class="container center-grid">
+    <div class="carousel-card">
+      <div class="carousel-stage">
+        <img [src]="centerSlides[activeSlide].src" [alt]="centerSlides[activeSlide].alt" />
+
+        <button type="button" class="carousel-btn prev" (click)="previousSlide()" aria-label="Image precedente">
+          <i class="ti ti-chevron-left"></i>
+        </button>
+        <button type="button" class="carousel-btn next" (click)="nextSlide()" aria-label="Image suivante">
+          <i class="ti ti-chevron-right"></i>
+        </button>
+
+        <div class="carousel-caption">
+          <h3>{{ centerSlides[activeSlide].title }}</h3>
+          <p>{{ centerSlides[activeSlide].description }}</p>
+        </div>
+      </div>
+
+      <div class="carousel-dots">
+        <button
+          *ngFor="let slide of centerSlides; let i = index"
+          type="button"
+          [class.active]="i === activeSlide"
+          (click)="setSlide(i)"
+          [attr.aria-label]="'Aller a l\'image ' + (i + 1)"
+        ></button>
+      </div>
+    </div>
+
+    <aside class="center-text">
+      <p class="section-tag">Royal Center</p>
+      <h2>Un centre vivant, maintenant connecte</h2>
+      <p>
+        Ce carrefour commercial regroupe des boutiques variees. La plateforme Royal Center rend leurs produits
+        visibles dans un meme espace, avec un parcours simple pour chaque client.
+      </p>
+      <p>
+        Le site a ete cree pour reduire la distance entre la vitrine physique et la vente en ligne:
+        une seule presence, deux canaux, une meilleure experience globale.
+      </p>
+      <ul>
+        <li>Visibilite numerique pour les commerces du centre</li>
+        <li>Acces rapide aux produits pour les visiteurs</li>
+        <li>Base solide pour les prochaines evolutions</li>
+      </ul>
+    </aside>
+  </div>
+
+  <div class="container map-grid">
+    <div class="map-wrap">
+      <app-leaflet-map
+        [center]="centerCoordinates"
+        [initialPosition]="centerCoordinates"
+        [zoom]="16"
+        [height]="'360px'"
+        [markerOnClick]="false"
+        [autoSetMarker]="true"
+      ></app-leaflet-map>
+      <span class="map-note"><i class="ti ti-map-pin"></i> C'est ici le Royal Center</span>
+    </div>
+
+    <div class="map-description">
+      <h3>Localisation du centre</h3>
+      <p>
+        Cette position correspond au coeur du <strong>Royal Center</strong>, notre zone de reference
+        pour les activites boutique et la livraison locale.
+      </p>
+      <p>
+        En centralisant les commerces autour de ce point, la plateforme facilite les retraits,
+        les livraisons et la communication entre vendeurs et clients.
+      </p>
+    </div>
+  </div>
+</section>
+
+<footer class="landing-footer">
+  <div class="container footer-inner">
+    <div>
+      <strong>Royal Center</strong>
+      <p>Marketplace locale pour les boutiques et clients du Royal Center.</p>
+       <span>{{ currentYear }} Royal Center - Tous droits reserves.</span>
+    </div>
+    <span>ANDRIAMANANA Romance Patricia -2799</span>
+    <p>RIJARILANTO Helena Candy -2638</p>
+  </div>
+</footer>

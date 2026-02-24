@@ -1,21 +1,40 @@
 const mongoose = require('mongoose');
 
+const variantSchema  = new mongoose.Schema({
+  attributes: {
+    type: Map,
+    of: String
+    // ex:
+    // { taille: "M", couleur: "Rouge" }
+    // { couleur: "Noir" }
+  },
+  qtt: {
+    type: Number,
+    required: true,
+    min: 0  // Permettre stock = 0 (rupture de stock)
+  },
+  reserved: {
+    type: Number,
+    default: 0,
+    min: 0
+  }
+}, { 
+  _id: false,
+  timestamps: true 
+});
+
+
+
 const prixProduitSchema = new mongoose.Schema({
   prixUnitaire: {
     type: Number,
     required: true,
-    min: 0
-  },
-  devise: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Devise',
-    required: true
-  },
-  created: {
-    type: Date,
-    default: Date.now
+    min: 1
   }
-}, { _id: false });
+}, { 
+  _id: false,
+  timestamps: true 
+});
 
 const produitSchema = new mongoose.Schema({
   boutiqueId: {
@@ -23,22 +42,40 @@ const produitSchema = new mongoose.Schema({
     ref: 'Boutique',
     required: true
   },
+  categorieId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'CategorieProduit',
+    required: true
+  },
   nom: {
     type: String,
     required: true,
     trim: true
   },
-  categorie: {
+  photo: {
     type: String,
-    required: true,
+    default: null
+  },
+  description: {
+    type: String,
     trim: true
   },
-  qtt: {
+  variant: [variantSchema],
+  prix: [prixProduitSchema],
+  averageRating: {
     type: Number,
-    required: true,
-    min: 0
+    default: 0,
+    min: 0,
+    max: 5
   },
-  prix: [prixProduitSchema]
+  avis: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Avis'
+  }],
+  promotions: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Promotion'
+  }]
 }, {
   timestamps: true,
   collection: 'produits'

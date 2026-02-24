@@ -55,6 +55,19 @@ const boutiqueSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  isPendingFirstActivation: {
+    type: Boolean,
+    default: false
+  },
+  locataire: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
   promotions: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Promotion'

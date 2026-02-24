@@ -3,6 +3,7 @@ import { Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../../services/auth.service';
+import { BoutiqueService } from '../../../../services/boutique.service';
 
 @Component({
   selector: 'app-login',
@@ -13,17 +14,23 @@ import { AuthService } from '../../../../services/auth.service';
 })
 export class LoginComponent {
   private readonly authService = inject(AuthService);
+  private readonly boutiqueService = inject(BoutiqueService);
   private readonly router = inject(Router);
    private readonly cdr = inject(ChangeDetectorRef);
 
   submitted = false;
   loading = false;
   error = '';
+  showPassword = false;
 
   model = {
     email: '',
     password: ''
   };
+
+  togglePasswordVisibility(): void {
+    this.showPassword = !this.showPassword;
+  }
 
   onSubmit(event: Event) {
     event.preventDefault(); // 🔥 empêche le GET et l’URL bizarre
@@ -40,7 +47,42 @@ export class LoginComponent {
 
     this.authService.login(this.model.email, this.model.password).subscribe({
       next: () => {
-        this.router.navigate(['/default']);
+        if (this.authService.hasRole('user')) {
+          this.router.navigate(['/produits']);
+          this.loading = false;
+          return;
+        }
+
+        if (this.authService.hasRole('admin_boutique')) {
+          this.boutiqueService.refreshMyBoutiqueStatus().subscribe({
+            next: (status) => {
+              if (!status.hasBoutique) {
+                this.router.navigate(['/boutique/boxes']);
+              } else if (!status.isActive) {
+                this.router.navigate(['/boutique/informations']);
+              } else {
+                this.router.navigate(['/default']);
+              }
+              this.loading = false;
+              this.cdr.detectChanges();
+            },
+            error: () => {
+              this.router.navigate(['/default']);
+              this.loading = false;
+              this.cdr.detectChanges();
+            }
+          });
+          return;
+        }
+
+        if (this.authService.isAdminCenterRole()) {
+          this.router.navigate(['/default']);
+          this.loading = false;
+          return;
+        } else {
+          this.router.navigate(['/default']);
+          this.loading = false;
+        }
       },
       error: () => {
         this.error = 'Email ou mot de passe incorrect';
@@ -50,7 +92,9 @@ export class LoginComponent {
         });
       },
       complete: () => {
-        this.loading = false;
+        if (!this.authService.hasRole('admin_boutique')) {
+          this.loading = false;
+        }
       }
     });
   }

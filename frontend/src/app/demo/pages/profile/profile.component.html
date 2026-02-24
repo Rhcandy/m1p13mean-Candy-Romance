@@ -34,7 +34,7 @@
                   <tbody  style="    border-left-width: 18px;" >
                     <tr>
                       <th class="text-muted fw-normal ps-0" >
-                        <i class="ti ti-user me-2"></i>Name
+                        <i class="ti ti-user me-2"></i>Nom
                       </th>
                       <td class="ps-4">{{ profile.nom }}</td>
                     </tr>
@@ -54,13 +54,13 @@
                     </tr>
                     <tr>
                       <th class="text-muted fw-normal ps-0">
-                       <i class="ti ti-gender-bigender"></i>Gender
+                       <i class="ti ti-gender-bigender"></i>Genre
                       </th>
                       <td class="ps-4">
                         @if (profile.sexe === 'M') {
-                          <span>Male <i class="ti ti-mars ms-1 text-primary"></i></span>
+                          <span>Homme <i class="ti ti-mars ms-1 text-primary"></i></span>
                         } @else if (profile.sexe === 'F') {
-                          <span>Female <i class="ti ti-venus ms-1 text-danger"></i></span>
+                          <span> Femme <i class="ti ti-venus ms-1 text-danger"></i></span>
                         } @else {
                           <span>{{ profile.sexe || '—' }}</span>
                         }
@@ -84,7 +84,7 @@
                     </tr>
                     <tr>
                       <th class="text-muted fw-normal ps-0">
-                        <i class="ti ti-calendar me-2"></i>Birth Date
+                        <i class="ti ti-calendar me-2"></i> Date de naissance
                       </th>
                       <td class="ps-4">{{ profile.dtnaissance ? (profile.dtnaissance | date:'longDate') : '—' }}</td>
                     </tr>

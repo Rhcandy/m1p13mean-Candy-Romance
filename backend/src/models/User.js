@@ -53,7 +53,25 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Role',
     required: true
-  }
+  },
+  coderesetpwd: {
+    code: {
+      type: Number,
+      default: null
+    },
+    expiresAt: {
+      type: Date,
+      default: null
+    }
+  },
+  favoris: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Produit'
+  }],
+  promotions: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Promotion'
+  }]
 }, {
   timestamps: true,
   collection: 'users'

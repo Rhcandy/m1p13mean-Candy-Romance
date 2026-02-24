@@ -1,0 +1,203 @@
+// ─── Layout page wrapper ─────────────────────────────────
+// La page occupe toute la hauteur disponible,
+// le contenu scroll, la pagination reste fixée en bas.
+.produits-page-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 70px); // Ajustez 70px selon la hauteur de votre navbar/sidebar header
+  overflow: hidden;
+}
+
+.produits-page-content {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 1rem;
+}
+
+// Barre de pagination collée au bas
+.produits-pagination-bar {
+  flex-shrink: 0;
+  background: #8a848400;
+  border-top: 1px solid #e9ecef;
+  padding: 10px 0;
+  z-index: 10;
+}
+
+// ─── Sélecteur produits par page ─────────────────────────
+.per-page-select {
+  width: auto;
+  min-width: 72px;
+  border-color: #dee2e6;
+  border-radius: 0.5rem;
+  cursor: pointer;
+
+  &:focus {
+    border-color: #5d87ff;
+    box-shadow: 0 0 0 0.2rem rgba(93, 135, 255, 0.15);
+  }
+}
+
+// ─── Pagination moderne ───────────────────────────────────
+.pagination {
+  --bs-pagination-padding-x: 0;
+  --bs-pagination-padding-y: 0;
+  --bs-pagination-border-radius: 50%;
+}
+
+.page-link {
+  border: 2px solid #e0e0e0;
+  color: #5a6a85;
+  transition: all 0.3s ease;
+  margin: 0 2px;
+}
+
+.page-link:hover {
+  background-color: #f5f7fa;
+  border-color: #5d87ff;
+  color: #5d87ff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(93, 135, 255, 0.2);
+}
+
+.page-item.active .page-link {
+  background-color: #5d87ff;
+  border-color: #5d87ff;
+  color: white;
+  box-shadow: 0 4px 12px rgba(93, 135, 255, 0.3);
+}
+
+.page-item.disabled .page-link {
+  background-color: #f5f5f5;
+  border-color: #e0e0e0;
+  color: #ccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.page-link:active {
+  transform: scale(0.95);
+}
+
+.page-nav-btn {
+  width: 38px;
+  height: 38px;
+}
+
+// ─── Filtres ─────────────────────────────────────────────
+.filters-card {
+  border-radius: 1rem !important;
+  transition: box-shadow 0.3s ease;
+
+  &:hover {
+    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.12) !important;
+  }
+
+  .card-body {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border-radius: 1rem;
+  }
+
+  .card-title {
+    font-size: 1.25rem;
+    color: #2c3e50;
+    margin-bottom: 1.5rem !important;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #e9ecef;
+
+    i { font-size: 1.5rem; }
+  }
+}
+
+.form-label {
+  font-size: 0.875rem;
+  color: #495057;
+  margin-bottom: 0.5rem;
+  i { font-size: 1rem; }
+}
+
+.input-group {
+  .input-group-text {
+    border-color: #dee2e6;
+    transition: all 0.3s ease;
+  }
+
+  .form-control,
+  .form-select {
+    border-color: #dee2e6;
+    transition: all 0.3s ease;
+
+    &:focus {
+      border-color: #5d87ff;
+      box-shadow: 0 0 0 0.2rem rgba(93, 135, 255, 0.15);
+    }
+
+    &::placeholder {
+      color: #adb5bd;
+      font-style: italic;
+    }
+  }
+}
+
+.form-select {
+  cursor: pointer;
+  border-color: #dee2e6;
+  transition: all 0.3s ease;
+
+  &:focus {
+    border-color: #5d87ff;
+    box-shadow: 0 0 0 0.2rem rgba(93, 135, 255, 0.15);
+  }
+}
+
+.sort-order { max-width: 80px; }
+
+// ─── Boutons ─────────────────────────────────────────────
+.btn {
+  font-weight: 600;
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.5rem;
+  transition: all 0.3s ease;
+  i { font-size: 1.125rem; }
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #5d87ff 0%, #4570ea 100%);
+  border: none;
+  box-shadow: 0 4px 12px rgba(93, 135, 255, 0.3);
+
+  &:hover {
+    background: linear-gradient(135deg, #4570ea 0%, #3461d9 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(93, 135, 255, 0.4);
+  }
+
+  &:active { transform: translateY(0); }
+}
+
+// ─── Icône état vide ──────────────────────────────────────
+.empty-icon { font-size: 3rem; }
+
+// ─── Responsive ──────────────────────────────────────────
+@media (max-width: 991.98px) {
+  .filters-card .card-body { padding: 1.5rem !important; }
+  .filters-card .card-title { font-size: 1.125rem; }
+}
+
+@media (max-width: 767.98px) {
+  .produits-page-wrapper {
+    height: calc(100vh - 56px);
+  }
+
+  .filters-card .card-body { padding: 1.25rem !important; }
+  .filters-card .card-title { font-size: 1rem; i { font-size: 1.25rem; } }
+  .form-label { font-size: 0.8125rem; }
+
+  .d-flex.justify-content-end {
+    flex-direction: column;
+    .btn { width: 100%; }
+  }
+
+  .produits-pagination-bar {
+    .d-flex { justify-content: center !important; flex-direction: column; align-items: center; gap: 8px; }
+  }
+}

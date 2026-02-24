@@ -103,6 +103,68 @@ router.post('/login', AuthController.login);
 
 /**
  * @swagger
+ * /api/auth/forgot-password:
+ *   post:
+ *     summary: Demander un code de réinitialisation de mot de passe
+ *     tags: [Authentification]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: "user@example.com"
+ *     responses:
+ *       200:
+ *         description: Code de réinitialisation envoyé
+ *       400:
+ *         description: Erreur lors de la demande de réinitialisation
+ */
+router.post('/forgot-password', AuthController.requestPasswordReset);
+
+/**
+ * @swagger
+ * /api/auth/reset-password:
+ *   post:
+ *     summary: Réinitialiser le mot de passe avec un code
+ *     tags: [Authentification]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - code
+ *               - newPassword
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: "user@example.com"
+ *               code:
+ *                 type: number
+ *                 example: 123456
+ *               newPassword:
+ *                 type: string
+ *                 example: "newpassword123"
+ *     responses:
+ *       200:
+ *         description: Mot de passe réinitialisé avec succès
+ *       400:
+ *         description: Erreur lors de la réinitialisation
+ */
+router.post('/reset-password', AuthController.resetPassword);
+
+/**
+ * @swagger
  * /api/auth/refresh-token:
  *   post:
  *     summary: Rafraîchir le token JWT

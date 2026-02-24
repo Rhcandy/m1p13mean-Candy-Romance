@@ -51,6 +51,40 @@ class AuthController {
     }
   }
 
+  async requestPasswordReset(req, res) {
+    try {
+      const { email } = req.body;
+      const result = await authService.requestPasswordReset(email);
+      res.status(200).json({
+        success: true,
+        message: result.message,
+        data: null
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  async resetPassword(req, res) {
+    try {
+      const { email, code, newPassword } = req.body;
+      const result = await authService.resetPassword(email, code, newPassword);
+      res.status(200).json({
+        success: true,
+        message: result.message,
+        data: null
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
   async refreshToken(req, res) {
     try {
       const { token } = req.body;

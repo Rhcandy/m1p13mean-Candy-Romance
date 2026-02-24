@@ -1,0 +1,148 @@
+<div class="avis-container">
+  <div class="avis-body">
+    @if (loading) {
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>Chargement des avis...</p>
+      </div>
+    } @else if (!avis || avis.length === 0) {
+      <div class="empty-state">
+        <div class="empty-icon">
+          <i class="ti ti-message-off"></i>
+        </div>
+        <h3>Aucun avis pour le moment</h3>
+        <p>Soyez le premier a partager votre experience avec ce produit</p>
+        <button class="btn-write-review-large" (click)="openReviewForm()">
+          <i class="ti ti-pencil"></i>
+          <span>Ecrire un avis</span>
+        </button>
+      </div>
+    } @else {
+      <div class="avis-list">
+        @for (review of filteredAvis; track review._id) {
+          <div class="avis-card" [@itemAnimation]>
+            <div class="review-header">
+              <div class="user-info">
+                <div class="user-avatar">
+                  <div class="avatar-placeholder">
+                    {{ getInitials(getUserName(review)) }}
+                  </div>
+                </div>
+
+                <div class="user-details">
+                  <h4 class="user-name">{{ getUserName(review) }}</h4>
+                  <div class="review-meta">
+                    <div class="rating-display">
+                      @for (star of [1,2,3,4,5]; track star) {
+                        <i class="ti"
+                          [class.ti-star-filled]="star <= review.note"
+                          [class.ti-star]="star > review.note">
+                        </i>
+                      }
+                    </div>
+                    <span class="review-date">
+                      <i class="ti ti-calendar"></i>
+                      {{ formatDate(review.createdAt) }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="review-content">
+              <p class="review-text">{{ review.commentaire }}</p>
+            </div>
+          </div>
+        }
+      </div>
+
+      @if (totalPages > 1) {
+        <div class="pagination-container">
+          <div class="pagination">
+            <button
+              class="page-btn"
+              [disabled]="currentPage === 1"
+              (click)="changePage(currentPage - 1)"
+              title="Page precedente">
+              <i class="ti ti-chevron-left"></i>
+            </button>
+
+            @for (page of getPagesArray(); track page) {
+              <button
+                class="page-btn"
+                [class.active]="page === currentPage"
+                (click)="changePage(page)"
+                [title]="'Aller a la page ' + page">
+                {{ page }}
+              </button>
+            }
+
+            <button
+              class="page-btn"
+              [disabled]="currentPage === totalPages"
+              (click)="changePage(currentPage + 1)"
+              title="Page suivante">
+              <i class="ti ti-chevron-right"></i>
+            </button>
+          </div>
+        </div>
+      }
+    }
+
+    <div class="write-review-section">
+      @if (reviewError) {
+        <div class="alert alert-warning mb-3">{{ reviewError }}</div>
+      }
+      @if (checkingEligibility) {
+        <div class="text-muted small mb-2">Verification des conditions...</div>
+      }
+
+      @if (canReview && !hasReviewed) {
+        @if (!showReviewForm) {
+          <button class="btn-write-review" (click)="openReviewForm()">
+            <i class="ti ti-pencil"></i>
+            <span>Ajouter un avis</span>
+          </button>
+        } @else {
+          <div class="review-form">
+            <div class="form-group mb-3">
+              <label for="reviewNote">Note *</label>
+              <select id="reviewNote" name="reviewNote" class="form-control" [(ngModel)]="reviewNote">
+                <option [ngValue]="0">Selectionner une note</option>
+                <option [ngValue]="5">5 - Excellent</option>
+                <option [ngValue]="4">4 - Tres bien</option>
+                <option [ngValue]="3">3 - Bien</option>
+                <option [ngValue]="2">2 - Moyen</option>
+                <option [ngValue]="1">1 - Mauvais</option>
+              </select>
+            </div>
+            <div class="form-group mb-3">
+              <label for="reviewComment">Commentaire *</label>
+              <textarea
+                id="reviewComment"
+                name="reviewComment"
+                class="form-control"
+                rows="4"
+                [(ngModel)]="reviewComment"
+                placeholder="Partagez votre experience..."></textarea>
+            </div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-primary" (click)="submitReview()" [disabled]="submittingReview">
+                {{ submittingReview ? 'Envoi...' : 'Publier l\'avis' }}
+              </button>
+              <button class="btn btn-outline-secondary" (click)="showReviewForm = false" [disabled]="submittingReview">
+                Annuler
+              </button>
+            </div>
+          </div>
+        }
+      } @else if (hasReviewed) {
+        <div class="text-muted">Vous avez deja laisse un avis pour ce produit.</div>
+      } @else if (currentUserId) {
+        <div class="text-muted">Vous devez avoir commande ce produit pour laisser un avis.</div>
+      } @else {
+        <div class="text-muted">Connectez-vous pour laisser un avis.</div>
+      }
+    </div>
+  </div>
+</div>
