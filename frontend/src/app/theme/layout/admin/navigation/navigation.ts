@@ -23,14 +23,15 @@ export function getNavigationItems(): NavigationItem[] {
   const authService = inject(AuthService);
   const boutiqueService = inject(BoutiqueService);
 
-  const isUser = authService.hasRole('user');
-  const isAdminBoutique = authService.hasRole('admin_boutique')|| authService.hasRole('super_admin');
+  const isAdminBoutique = authService.hasRole('admin_boutique');
+  const isAdminCenter = authService.isAdminCenterRole();
+  const canUseUserFeatures = authService.canUseUserFeatures();
 
   const boutiqueStatus = boutiqueService.getCachedBoutiqueStatus();
+
   const hasBoutique = isAdminBoutique && boutiqueStatus.hasBoutique;
 
   const hasActiveBoutique = isAdminBoutique && boutiqueStatus.hasBoutique && boutiqueStatus.isActive;
-  console.log('Navigation - Boutique Status:',boutiqueStatus);
 
   return [
     {
@@ -108,6 +109,51 @@ export function getNavigationItems(): NavigationItem[] {
       ]
     },
     {
+      id: 'Royal center',
+      title: 'Royal center',
+      type: 'collapse',
+      icon: 'ti ti-building-community',
+      hidden: !isAdminCenter,
+      children: [
+        {
+          id: 'dashboard-center',
+          title: 'Dashboard',
+          type: 'item',
+          classes: 'nav-item',
+          url: '/default',
+          icon: 'ti ti-dashboard',
+          breadcrumbs: false
+        },
+        {
+          id: 'royal-loyers',
+          title: 'Loyer',
+          type: 'item',
+          classes: 'nav-item',
+          url: '/royal-center/loyers',
+          icon: 'ti ti-cash',
+          breadcrumbs: true
+        },
+        {
+          id: 'royal-boxes',
+          title: 'Box',
+          type: 'item',
+          classes: 'nav-item',
+          url: '/royal-center/boxes',
+          icon: 'ti ti-box',
+          breadcrumbs: true
+        },
+        {
+          id: 'royal-boutiques',
+          title: 'Boutique',
+          type: 'item',
+          classes: 'nav-item',
+          url: '/royal-center/boutiques',
+          icon: 'ti ti-building-store',
+          breadcrumbs: true
+        }
+      ]
+    },
+    {
       id: 'Produits',
       title: 'Produits',
       type: 'item',
@@ -133,7 +179,7 @@ export function getNavigationItems(): NavigationItem[] {
       classes: 'nav-item',
       url: '/commandes',
       breadcrumbs: true,
-      hidden: !isUser
+      hidden: !canUseUserFeatures
     },
     {
       id: 'Panier',
