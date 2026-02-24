@@ -76,6 +76,7 @@ const livraisonRoutes = require('./routes/livraisonRoutes');
 const favorisRoutes = require('./routes/favorisRoutes');
 const promotionRoutes = require('./routes/promotionRoutes');
 const commandeBoutiqueRoutes = require('./routes/commandeBoutiqueRoutes');
+const loyerRoutes = require('./routes/loyerRoutes');
 
 // Routes API
 app.use('/api/auth', authRoutes);
@@ -92,6 +93,7 @@ app.use('/api/livraison', livraisonRoutes);
 app.use('/api/favoris', favorisRoutes);
 app.use('/api/promotions', promotionRoutes);
 app.use('/api/commandes-boutique', commandeBoutiqueRoutes);
+app.use('/api/loyers', loyerRoutes);
 
 
 /**

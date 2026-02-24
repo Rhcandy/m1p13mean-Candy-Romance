@@ -1,5 +1,6 @@
 const Box = require('../models/Box');
 const TypeBox = require('../models/TypeBox');
+const Boutique = require('../models/Boutique');
 const advancedResults = require('../middlewares/advancedResults');
 const { addDefaultCentre } = require('../helpers/centreHelper');
 
@@ -674,15 +675,37 @@ exports.deleteBox = async (req, res) => {
     if (!box) {
       return res.status(404).json({
         success: false,
-        message: 'Box non trouvée'
+        message: 'Box non trouvee'
       });
     }
+
+    // Regle metier: suppression interdite si la box est occupee
+    // par une boutique active.
+    if (box.isDisponible === false) {
+      const activeOccupyingBoutique = await Boutique.findOne({
+        isActive: true,
+        'contratlocation.boxes': box._id
+      }).select('_id nom');
+
+      if (activeOccupyingBoutique) {
+        return res.status(400).json({
+          success: false,
+          message: 'Suppression impossible: cette box est occupee par une boutique active.'
+        });
+      }
+    }
+
+    // Nettoyage defensif des references de box dans les contrats.
+    await Boutique.updateMany(
+      { 'contratlocation.boxes': box._id },
+      { $pull: { 'contratlocation.boxes': box._id } }
+    );
 
     await Box.findByIdAndDelete(req.params.id);
 
     res.status(200).json({
       success: true,
-      message: 'Box supprimée avec succès'
+      message: 'Box supprimee avec succes'
     });
   } catch (error) {
     console.error('Erreur suppression box:', error);
@@ -839,3 +862,4 @@ exports.getAvailableBoxes = async (req, res) => {
     });
   }
 };
+

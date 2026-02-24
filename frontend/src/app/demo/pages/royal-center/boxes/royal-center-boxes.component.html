@@ -1,0 +1,171 @@
+<div class="container-fluid royal-section">
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+        <h4 class="mb-sm-0">Gestion des box - Royal Center</h4>
+        <button type="button" class="btn btn-primary" (click)="openCreateModal()">
+          <i class="ti ti-plus me-1"></i>Nouvelle box
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="row g-2 align-items-end">
+        <div class="col-md-6">
+          <label class="form-label">Recherche ref</label>
+          <input
+            type="text"
+            class="form-control"
+            [(ngModel)]="filters.search"
+            (keyup.enter)="applyFilters()"
+            placeholder="Ex: A-101"
+          />
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Disponibilite</label>
+          <select class="form-select" [(ngModel)]="filters.disponibilite">
+            <option value="all">Toutes</option>
+            <option value="true">Disponibles</option>
+            <option value="false">Occupees</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <button class="btn btn-warning w-100" (click)="applyFilters()">
+            <i class="ti ti-filter"></i> Filtrer
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status"></div>
+  </div>
+
+  <div *ngIf="!loading" class="card">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-centered mb-0">
+          <thead>
+            <tr>
+              <th>Ref</th>
+              <th>Etage</th>
+              <th>Superficie</th>
+              <th>Type</th>
+              <th>Centre</th>
+              <th>Statut</th>
+              <th>Boutique</th>
+              <th class="text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let box of boxes">
+              <td class="fw-semibold">{{ box.numRef }}</td>
+              <td>{{ box.etage }}</td>
+              <td>{{ box.Superficie }} m2</td>
+              <td>{{ getTypeBoxName(box) }}</td>
+              <td>{{ getCentreName(box) }}</td>
+              <td>
+                <span class="badge" [class.bg-success]="box.isDisponible" [class.bg-danger]="!box.isDisponible">
+                  {{ box.isDisponible ? 'Disponible' : 'Occupee' }}
+                </span>
+              </td>
+              <td>{{ getOccupyingBoutiqueLabel(box) }}</td>
+              <td class="text-center">
+                <button class="btn btn-sm btn-outline-primary me-1" (click)="openEditModal(box)" title="Modifier">
+                  <i class="ti ti-pencil"></i>
+                </button>
+                <button
+                  class="btn btn-sm btn-outline-warning me-1"
+                  (click)="toggleDisponibilite(box)"
+                  [title]="box.isDisponible ? 'Marquer occupee' : 'Marquer disponible'"
+                >
+                  <i class="ti" [ngClass]="box.isDisponible ? 'ti-lock' : 'ti-lock-open'"></i>
+                </button>
+                <button
+                  class="btn btn-sm btn-outline-danger"
+                  (click)="deleteBox(box)"
+                  [disabled]="cannotDeleteBox(box)"
+                  [title]="cannotDeleteBox(box) ? getDeleteBlockedReason(box) : 'Supprimer'"
+                >
+                  <i class="ti ti-trash"></i>
+                </button>
+              </td>
+            </tr>
+            <tr *ngIf="boxes.length === 0">
+              <td colspan="8" class="text-center text-muted py-4">Aucune box.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" [class.show]="showModal" [class.d-block]="showModal" tabindex="-1"
+     [style.background]="showModal ? 'rgba(0,0,0,0.5)' : ''">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          {{ editingBoxId ? 'Modifier box' : 'Creer box' }}
+        </h5>
+        <button type="button" class="btn-close" (click)="closeModal()"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Reference</label>
+            <input type="text" class="form-control" [(ngModel)]="form.numRef" [disabled]="saving" />
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Etage</label>
+            <input type="text" class="form-control" [(ngModel)]="form.etage" [disabled]="saving" />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Superficie (m2)</label>
+            <input type="number" min="1" class="form-control" [(ngModel)]="form.Superficie" [disabled]="saving" />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Type de box</label>
+            <select class="form-select" [(ngModel)]="form.typeBoxId" [disabled]="saving">
+              <option value="">Selectionner</option>
+              <option *ngFor="let type of typeBoxes" [value]="type._id">
+                {{ type.nom }} ({{ type.periode }}m | {{ type.remuneration }}%)
+              </option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">CentreId (optionnel)</label>
+            <input type="text" class="form-control" [(ngModel)]="form.centreId" [disabled]="saving" />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Disponibilite</label>
+            <select class="form-select" [(ngModel)]="form.isDisponible" [disabled]="saving">
+              <option [ngValue]="true">Disponible</option>
+              <option [ngValue]="false">Occupee</option>
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Coordonnees (GeoJSON Polygon)</label>
+            <textarea
+              rows="8"
+              class="form-control font-monospace"
+              [(ngModel)]="form.coordonneesText"
+              [disabled]="saving"
+            ></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeModal()" [disabled]="saving">Annuler</button>
+        <button type="button" class="btn btn-primary" (click)="saveBox()" [disabled]="saving">
+          <span *ngIf="!saving">Enregistrer</span>
+          <span *ngIf="saving">Traitement...</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

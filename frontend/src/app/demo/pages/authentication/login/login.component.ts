@@ -72,6 +72,13 @@ export class LoginComponent {
               this.cdr.detectChanges();
             }
           });
+          return;
+        }
+
+        if (this.authService.isAdminCenterRole()) {
+          this.router.navigate(['/default']);
+          this.loading = false;
+          return;
         } else {
           this.router.navigate(['/default']);
           this.loading = false;

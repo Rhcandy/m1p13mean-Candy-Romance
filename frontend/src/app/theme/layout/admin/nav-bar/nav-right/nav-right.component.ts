@@ -37,7 +37,10 @@ export class NavRightComponent implements OnInit {
             this.userRole = 'Shop Owner';
             break;
           case 'admin_center':
-            this.userRole = 'Royal City Owner';
+            this.userRole = 'Royal Center Admin';
+            break;
+          case 'admin_centre':
+            this.userRole = 'Royal Center Admin';
             break;
           case 'super_admin':
             this.userRole = 'Project Admin';
