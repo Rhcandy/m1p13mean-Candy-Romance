@@ -23,5 +23,9 @@ router.post('/check-late', authMiddleware, adminOnly, loyerController.checkLate)
 // Liste des loyers (admin ou utilisateur selon ton besoin)
 router.get('/', authMiddleware, allRoles, loyerController.listLoyers);
 
+// CRUD classique
+router.post('/', authMiddleware, adminOnly, loyerController.createLoyer);
+router.put('/:id', authMiddleware, adminOnly, loyerController.updateLoyer);
+router.delete('/:id', authMiddleware, adminOnly, loyerController.deleteLoyer);
 
 module.exports = router;

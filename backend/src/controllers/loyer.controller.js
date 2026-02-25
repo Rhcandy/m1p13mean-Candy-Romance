@@ -290,6 +290,37 @@ const checkLate = async (req, res) => {
     });
   }
 };
+// Créer un loyer
+const createLoyer = async (req, res) => {
+  try {
+    const loyer = new Loyer(req.body);
+    await loyer.save();
+    res.status(201).json({ success: true, data: loyer });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+// Mettre à jour un loyer
+const updateLoyer = async (req, res) => {
+  try {
+    const loyer = await Loyer.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json({ success: true, data: loyer });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+// Supprimer un loyer
+const deleteLoyer = async (req, res) => {
+  try {
+    const { loyerId } = req.params;
+    await Loyer.findByIdAndDelete(loyerId);
+    return res.status(200).json({ success: true, message: 'Loyer supprimé.' });
+  } catch (error) {
+    return res.status(400).json({ success: false, message: error.message });
+  }
+};
 
 module.exports = {
   calculate,
@@ -297,5 +328,8 @@ module.exports = {
   pay,
   generateMonthly,
   checkLate,
-  listLoyers
+  listLoyers,
+  createLoyer,
+  updateLoyer,
+  deleteLoyer
 };
