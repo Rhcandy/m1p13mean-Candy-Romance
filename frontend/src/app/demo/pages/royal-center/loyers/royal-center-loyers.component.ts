@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LoyerService } from '../../../../services/loyer.services';
 
@@ -10,7 +10,7 @@ import { LoyerService } from '../../../../services/loyer.services';
   styleUrls: ['./royal-center-loyers.component.scss']
 })
 export class RoyalCenterLoyersComponent implements OnInit {
-
+  private readonly cdr = inject(ChangeDetectorRef);
   loyers: any[] = [];
   loading = false;
 
@@ -35,8 +35,12 @@ export class RoyalCenterLoyersComponent implements OnInit {
             lignes: loyer.paiements?.length || 0,
             details: loyer.details || []
           }));
+          Promise.resolve().then(() => {
+          this.cdr.detectChanges();
+        });
         } else {
           this.loyers = [];
+          this.cdr.detectChanges();
         }
         this.loading = false;
       },
@@ -44,6 +48,7 @@ export class RoyalCenterLoyersComponent implements OnInit {
         console.error('Erreur lors du chargement des loyers', err);
         this.loyers = [];
         this.loading = false;
+        this.cdr.detectChanges(); 
       }
     });
   }
