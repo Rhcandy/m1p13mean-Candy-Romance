@@ -1,5 +1,5 @@
-import { Component, OnInit } from '@angular/core';
-import { CommonModule, CurrencyPipe, DecimalPipe } from '@angular/common';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { BoutiqueService, Boutique } from '../../../../services/boutique.service';
 import { BoutiqueCommandeService, BoutiqueStats as CommandeStats } from '../../../../services/boutique-commande.service';
 
@@ -8,8 +8,7 @@ import { BoutiqueCommandeService, BoutiqueStats as CommandeStats } from '../../.
   templateUrl: './boutique-dashboard.component.html',
   styleUrls: ['./boutique-dashboard.component.scss'],
   standalone: true,
-  imports: [CommonModule, CurrencyPipe, DecimalPipe],
-  providers: [CurrencyPipe, DecimalPipe]
+  imports: [CommonModule]
 })
 export class BoutiqueDashboardComponent implements OnInit {
   boutique: any;
@@ -20,8 +19,7 @@ export class BoutiqueDashboardComponent implements OnInit {
   constructor(
     private boutiqueService: BoutiqueService,
     private commandeService: BoutiqueCommandeService,
-    private currencyPipe: CurrencyPipe,
-    private decimalPipe: DecimalPipe
+    private readonly cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
@@ -38,13 +36,15 @@ export class BoutiqueDashboardComponent implements OnInit {
         if (response.success) {
           this.boutique = response.data;
           this.loadStats();
+          this.cdr.detectChanges();
         } else {
           this.error = response.message;
+          this.cdr.detectChanges();
         }
       },
       error: (err) => {
         this.error = 'Erreur lors du chargement de la boutique';
-        console.error('Erreur boutique:', err);
+        this.cdr.detectChanges();
       },
       complete: () => {
         this.loading = false;
@@ -57,12 +57,15 @@ export class BoutiqueDashboardComponent implements OnInit {
       next: (response) => {
         if (response.success) {
           this.stats = response.data;
+          this.cdr.detectChanges();
         } else {
-          console.error('Erreur stats:', response.message);
+          this.error = response.message;
+          this.cdr.detectChanges();
         }
       },
       error: (err) => {
-        console.error('Erreur statistiques:', err);
+        this.error = 'Erreur lors du chargement des statistiques';
+        this.cdr.detectChanges();
       }
     });
   }
@@ -84,18 +87,18 @@ export class BoutiqueDashboardComponent implements OnInit {
       },
       error: (err) => {
         this.error = 'Erreur lors du changement de statut';
-        console.error('Erreur statut:', err);
+        this.cdr.detectChanges();
       }
     });
   }
 
   onLogoUpload(event: any): void {
     const file = event.target.files[0];
-    if (file) {
-      this.boutiqueService.uploadLogo(file).subscribe({
+    if (file && this.boutique?._id) {
+      this.boutiqueService.uploadLogo(this.boutique._id, file).subscribe({
         next: (response) => {
           if (response.success) {
-            this.boutique = response.data.boutique;
+            this.boutique = response.data;
           } else {
             this.error = response.message;
           }

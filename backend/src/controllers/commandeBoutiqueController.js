@@ -1,8 +1,95 @@
-const mongoose = require('mongoose');
 const Panier = require('../models/Panier');
 const Boutique = require('../models/Boutique');
 const Produit = require('../models/Produit');
-const advancedResults = require('../middlewares/advancedResults');
+
+const CENTRE_SHARE_THRESHOLD = 500000;
+const CENTRE_SHARE_RATE = 0.01;
+
+const roundAmount = (value) => Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+
+const getItemProduitId = (item) => {
+  if (!item?.produit) return null;
+  return item.produit._id ? item.produit._id.toString() : item.produit.toString();
+};
+
+const getItemSousTotal = (item) => {
+  const sousTotal = Number(item?.sousTotal);
+  if (Number.isFinite(sousTotal)) return sousTotal;
+
+  const qtt = Number(item?.qtt) || 0;
+  const prixUnitaire = Number(item?.prixUnitaire) || 0;
+  return qtt * prixUnitaire;
+};
+
+const enrichCommandeForBoutique = (commande, produitIdSet) => {
+  const commandeObject = commande.toObject();
+  const lignesCommande = Array.isArray(commandeObject.produitsachete)
+    ? commandeObject.produitsachete
+    : [];
+
+  const produitsBoutique = lignesCommande.filter((item) => {
+    const produitId = getItemProduitId(item);
+    return !!produitId && produitIdSet.has(produitId);
+  });
+
+  const quantiteBoutique = produitsBoutique.reduce((sum, item) => sum + (Number(item?.qtt) || 0), 0);
+  const sousTotalBoutique = roundAmount(
+    produitsBoutique.reduce((sum, item) => sum + getItemSousTotal(item), 0)
+  );
+
+  const sousTotalCommandeFromLines = roundAmount(
+    lignesCommande.reduce((sum, item) => sum + getItemSousTotal(item), 0)
+  );
+  const sousTotalCommande = Number.isFinite(Number(commandeObject.sousTotal))
+    ? Number(commandeObject.sousTotal)
+    : sousTotalCommandeFromLines;
+
+  const totalCommandeFromDoc = Number(commandeObject.total);
+  const totalCommande = Number.isFinite(totalCommandeFromDoc)
+    ? totalCommandeFromDoc
+    : sousTotalCommande;
+
+  const fraisLivraisonRaw = Number(commandeObject.fraisLivraison);
+  const fraisLivraisonCommande = Number.isFinite(fraisLivraisonRaw) && fraisLivraisonRaw >= 0
+    ? fraisLivraisonRaw
+    : Math.max(0, totalCommande - sousTotalCommande);
+
+  const ratioBoutique = sousTotalCommande > 0 ? sousTotalBoutique / sousTotalCommande : 0;
+  const fraisLivraisonBoutique = roundAmount(fraisLivraisonCommande * ratioBoutique);
+  const totalBoutique = roundAmount(sousTotalBoutique + fraisLivraisonBoutique);
+
+  const partCentre = totalBoutique > CENTRE_SHARE_THRESHOLD
+    ? roundAmount(totalBoutique * CENTRE_SHARE_RATE)
+    : 0;
+  const totalBoutiqueNet = roundAmount(totalBoutique - partCentre);
+
+  const facture = {
+    numeroFacture: commandeObject.numeroCommande ? `FAC-${commandeObject.numeroCommande}` : null,
+    sousTotalCommande: roundAmount(sousTotalCommande),
+    fraisLivraisonCommande: roundAmount(fraisLivraisonCommande),
+    totalCommande: roundAmount(totalCommande),
+    sousTotalBoutique,
+    fraisLivraisonBoutique,
+    totalBoutique,
+    partCentre,
+    totalBoutiqueNet
+  };
+
+  return {
+    ...commandeObject,
+    produitsachete: produitsBoutique,
+    produitsBoutique,
+    quantiteBoutique,
+    sousTotalBoutique,
+    fraisLivraisonBoutique,
+    totalBoutique,
+    partCentre,
+    totalBoutiqueNet,
+    centreShareRate: CENTRE_SHARE_RATE,
+    centreShareThreshold: CENTRE_SHARE_THRESHOLD,
+    facture
+  };
+};
 
 /**
  * @swagger
@@ -69,8 +156,27 @@ exports.getMyBoutiqueCommandes = async (req, res) => {
     }
 
     // Récupérer tous les produits de la boutique
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 10;
+    const skip = (page - 1) * limit;
+
     const produitsBoutique = await Produit.find({ boutiqueId: boutique._id }).select('_id');
-    const produitIds = produitsBoutique.map(p => p._id);
+    const produitIds = produitsBoutique.map((p) => p._id);
+    const produitIdSet = new Set(produitIds.map((id) => id.toString()));
+
+    if (!produitIds.length) {
+      return res.status(200).json({
+        success: true,
+        message: 'Aucune commande pour cette boutique',
+        data: [],
+        pagination: {
+          total: 0,
+          page,
+          limit,
+          totalPages: 0
+        }
+      });
+    }
 
     // Construire le filtre pour les commandes contenant des produits de la boutique
     const filter = {
@@ -97,11 +203,6 @@ exports.getMyBoutiqueCommandes = async (req, res) => {
       }
     }
 
-    // Pagination
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
-
     const commandes = await Panier.find(filter)
       .populate('userId', 'nom email telephone')
       .populate('produitsachete.produit', 'nom photo boutiqueId')
@@ -110,20 +211,9 @@ exports.getMyBoutiqueCommandes = async (req, res) => {
       .limit(limit);
 
     // Filtrer pour ne montrer que les produits de la boutique dans chaque commande
-	    const commandesFiltrees = commandes.map(commande => {
-	      const produitsBoutiqueOnly = commande.produitsachete.filter(item => 
-	        produitIds.some(id => id.toString() === item.produit._id.toString())
-	      );
-	      const sousTotalBoutique = produitsBoutiqueOnly.reduce((sum, item) => sum + item.sousTotal, 0);
-	      
-	      return {
-	        ...commande.toObject(),
-	        produitsachete: produitsBoutiqueOnly,
-	        sousTotalBoutique,
-	        totalBoutique: sousTotalBoutique,
-	        quantiteBoutique: produitsBoutiqueOnly.reduce((sum, item) => sum + item.qtt, 0)
-	      };
-	    });
+    const commandesFiltrees = commandes.map((commande) =>
+      enrichCommandeForBoutique(commande, produitIdSet)
+    );
 
     const total = await Panier.countDocuments(filter);
 
@@ -198,7 +288,7 @@ exports.getMyBoutiqueStatistiques = async (req, res) => {
 
     // Récupérer tous les produits de la boutique
     const produitsBoutique = await Produit.find({ boutiqueId: boutique._id }).select('_id');
-    const produitIds = produitsBoutique.map(p => p._id);
+    const produitIds = produitsBoutique.map((p) => p._id);
 
     // Définir la période
     const periode = req.query.periode || 'mois';
@@ -233,6 +323,31 @@ exports.getMyBoutiqueStatistiques = async (req, res) => {
     }
 
     // Statistiques générales
+    if (!produitIds.length) {
+      return res.status(200).json({
+        success: true,
+        message: 'Statistiques recuperees avec succes',
+        data: {
+          periode: { debut: dateDebut, fin: dateFin },
+          generales: {
+            nombreCommandes: 0,
+            chiffreAffaires: 0,
+            quantiteVendue: 0,
+            chiffreAffairesPaye: 0,
+            tauxConversion: 0,
+            partCentre: 0,
+            partCentrePaye: 0,
+            chiffreAffairesNetBoutique: 0,
+            chiffreAffairesPayeNetBoutique: 0,
+            centreShareRate: CENTRE_SHARE_RATE,
+            centreShareThreshold: CENTRE_SHARE_THRESHOLD
+          },
+          parStatut: [],
+          produitsPlusVendus: []
+        }
+      });
+    }
+
     const statsGenerales = await Panier.aggregate([
       {
         $match: {
@@ -369,18 +484,42 @@ exports.getMyBoutiqueStatistiques = async (req, res) => {
       }
     ]);
 
+    const defaultGenerales = {
+      nombreCommandes: 0,
+      chiffreAffaires: 0,
+      quantiteVendue: 0,
+      chiffreAffairesPaye: 0,
+      tauxConversion: 0
+    };
+    const rawGenerales = statsGenerales[0] || defaultGenerales;
+
+    const chiffreAffaires = Number(rawGenerales.chiffreAffaires) || 0;
+    const chiffreAffairesPaye = Number(rawGenerales.chiffreAffairesPaye) || 0;
+    const partCentre = chiffreAffaires > CENTRE_SHARE_THRESHOLD
+      ? roundAmount(chiffreAffaires * CENTRE_SHARE_RATE)
+      : 0;
+    const partCentrePaye = chiffreAffairesPaye > CENTRE_SHARE_THRESHOLD
+      ? roundAmount(chiffreAffairesPaye * CENTRE_SHARE_RATE)
+      : 0;
+
+    const generales = {
+      ...rawGenerales,
+      chiffreAffaires: roundAmount(chiffreAffaires),
+      chiffreAffairesPaye: roundAmount(chiffreAffairesPaye),
+      partCentre,
+      partCentrePaye,
+      chiffreAffairesNetBoutique: roundAmount(chiffreAffaires - partCentre),
+      chiffreAffairesPayeNetBoutique: roundAmount(chiffreAffairesPaye - partCentrePaye),
+      centreShareRate: CENTRE_SHARE_RATE,
+      centreShareThreshold: CENTRE_SHARE_THRESHOLD
+    };
+
     res.status(200).json({
       success: true,
       message: 'Statistiques récupérées avec succès',
       data: {
         periode: { debut: dateDebut, fin: dateFin },
-        generales: statsGenerales[0] || {
-          nombreCommandes: 0,
-          chiffreAffaires: 0,
-          quantiteVendue: 0,
-          chiffreAffairesPaye: 0,
-          tauxConversion: 0
-        },
+        generales,
         parStatut: statsParStatut,
         produitsPlusVendus
       }
@@ -434,7 +573,15 @@ exports.getMyBoutiqueCommandeById = async (req, res) => {
 
     // Récupérer tous les produits de la boutique
     const produitsBoutique = await Produit.find({ boutiqueId: boutique._id }).select('_id');
-    const produitIds = produitsBoutique.map(p => p._id);
+    const produitIds = produitsBoutique.map((p) => p._id);
+    const produitIdSet = new Set(produitIds.map((id) => id.toString()));
+
+    if (!produitIds.length) {
+      return res.status(403).json({
+        success: false,
+        message: 'Non autorise a voir cette commande'
+      });
+    }
 
     // Récupérer la commande
     const commande = await Panier.findById(req.params.id)
@@ -449,9 +596,10 @@ exports.getMyBoutiqueCommandeById = async (req, res) => {
     }
 
     // Vérifier que la commande contient des produits de la boutique
-    const hasBoutiqueProducts = commande.produitsachete.some(item =>
-      produitIds.some(id => id.toString() === item.produit._id.toString())
-    );
+    const hasBoutiqueProducts = commande.produitsachete.some((item) => {
+      const produitId = getItemProduitId(item);
+      return !!produitId && produitIdSet.has(produitId);
+    });
 
     if (!hasBoutiqueProducts) {
       return res.status(403).json({
@@ -460,18 +608,7 @@ exports.getMyBoutiqueCommandeById = async (req, res) => {
       });
     }
 
-    // Filtrer pour ne montrer que les produits de la boutique
-    const produitsBoutiqueOnly = commande.produitsachete.filter(item => 
-      produitIds.some(id => id.toString() === item.produit._id.toString())
-    );
-
-	    const commandeFiltree = {
-	      ...commande.toObject(),
-	      produitsachete: produitsBoutiqueOnly,
-	      sousTotalBoutique: produitsBoutiqueOnly.reduce((sum, item) => sum + item.sousTotal, 0),
-	      totalBoutique: produitsBoutiqueOnly.reduce((sum, item) => sum + item.sousTotal, 0),
-	      quantiteBoutique: produitsBoutiqueOnly.reduce((sum, item) => sum + item.qtt, 0)
-	    };
+    const commandeFiltree = enrichCommandeForBoutique(commande, produitIdSet);
 
     res.status(200).json({
       success: true,

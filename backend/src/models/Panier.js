@@ -12,6 +12,11 @@ const produitAcheteSchema = new mongoose.Schema({
     ref: 'Produit',
     required: true
   },
+  attributes: {
+    type: Map,
+    of: String,
+    default: {}
+  },
   qtt: {
     type: Number,
     required: true,

@@ -35,7 +35,7 @@ export interface Panier {
   sousTotal: number;
   fraisLivraison: number;
   total: number;
-  statut: 'panier' | 'en_attente' | 'confirmee' | 'preparation' | 'expedie' | 'livre';
+  statut: 'panier' | 'en_attente' | 'confirmee' | 'preparation' | 'expedie' | 'livre' | 'annule';
   isPaye: boolean;
   islivre: boolean;
   produitsBoutique?: ProduitAchete[];
@@ -143,8 +143,12 @@ export class PanierService {
   /**
    * Ajouter un produit au panier (méthode de compatibilitÃ©)
    */
-  ajouterProduit(productId: string, quantity: number = 1): Observable<ApiResponse<Panier>> {
-    return this.addToPanier({ productId, quantity });
+  ajouterProduit(
+    productId: string,
+    quantity: number = 1,
+    attributes?: { [key: string]: string }
+  ): Observable<ApiResponse<Panier>> {
+    return this.addToPanier({ productId, quantity, attributes });
   }
 
   /**

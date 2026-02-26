@@ -1,6 +1,6 @@
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { BoutiqueCommandeService, BoutiqueCommande, PaginationResponse } from '../../../../services/boutique-commande.service';
 import { NotificationService } from 'src/app/services/notification.service';
@@ -10,7 +10,7 @@ import { NotificationService } from 'src/app/services/notification.service';
   templateUrl: './boutique-commandes.component.html',
   styleUrls: ['./boutique-commandes.component.scss'],
   standalone: true,
-  imports: [FormsModule, CommonModule, CurrencyPipe, DatePipe]
+  imports: [FormsModule, CommonModule]
 })
 export class BoutiqueCommandesComponent implements OnInit {
   commandes: BoutiqueCommande[] = [];
@@ -86,6 +86,10 @@ export class BoutiqueCommandesComponent implements OnInit {
     this.loadCommandes();
   }
 
+  goToStats(): void {
+    this.router.navigate(['/default']);
+  }
+
   getCommandeDetails(id: string): void {
     if (!id) {
       this.notificationService.warning('Commande introuvable');
@@ -123,5 +127,47 @@ export class BoutiqueCommandesComponent implements OnInit {
 
   getPagesArray(): number[] {
     return Array.from({ length: this.pagination.totalPages }, (_, i) => i + 1);
+  }
+
+  getCommandeProduits(commande: BoutiqueCommande): any[] {
+    if (Array.isArray(commande.produitsBoutique) && commande.produitsBoutique.length > 0) {
+      return commande.produitsBoutique;
+    }
+    return commande.produitsachete || [];
+  }
+
+  getNumeroFacture(commande: BoutiqueCommande): string {
+    if (commande.facture?.numeroFacture) {
+      return commande.facture.numeroFacture;
+    }
+    return commande.numeroCommande ? `FAC-${commande.numeroCommande}` : 'N/A';
+  }
+
+  getFactureSousTotal(commande: BoutiqueCommande): number {
+    return Number(commande.facture?.sousTotalCommande ?? commande.sousTotal ?? 0);
+  }
+
+  getFactureFraisLivraison(commande: BoutiqueCommande): number {
+    return Number(commande.facture?.fraisLivraisonCommande ?? commande.fraisLivraison ?? 0);
+  }
+
+  getFactureTotal(commande: BoutiqueCommande): number {
+    return Number(commande.facture?.totalCommande ?? commande.total ?? 0);
+  }
+
+  getTotalBoutique(commande: BoutiqueCommande): number {
+    return Number(commande.totalBoutique ?? commande.facture?.totalBoutique ?? 0);
+  }
+
+  getPartCentre(commande: BoutiqueCommande): number {
+    return Number(commande.partCentre ?? commande.facture?.partCentre ?? 0);
+  }
+
+  getNetBoutique(commande: BoutiqueCommande): number {
+    const net = Number(commande.totalBoutiqueNet ?? commande.facture?.totalBoutiqueNet);
+    if (Number.isFinite(net)) {
+      return net;
+    }
+    return this.getTotalBoutique(commande) - this.getPartCentre(commande);
   }
 }
