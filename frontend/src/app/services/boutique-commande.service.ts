@@ -7,13 +7,31 @@ export interface BoutiqueCommande {
   userId: any;
   numeroCommande: string;
   produitsachete: any[];
+  produitsBoutique?: any[];
   qtt: number;
   sousTotal: number;
   remiseAcheteur: number;
   fraisLivraison: number;
   total: number;
+  sousTotalBoutique: number;
+  fraisLivraisonBoutique?: number;
   totalBoutique: number;
   quantiteBoutique: number;
+  partCentre?: number;
+  totalBoutiqueNet?: number;
+  centreShareRate?: number;
+  centreShareThreshold?: number;
+  facture?: {
+    numeroFacture?: string | null;
+    sousTotalCommande: number;
+    fraisLivraisonCommande: number;
+    totalCommande: number;
+    sousTotalBoutique: number;
+    fraisLivraisonBoutique: number;
+    totalBoutique: number;
+    partCentre: number;
+    totalBoutiqueNet: number;
+  };
   statut: 'panier' | 'en_attente' | 'confirmee' | 'preparation' | 'expedie' | 'livre' | 'annule';
   isPaye: boolean;
   islivre: boolean;
@@ -36,6 +54,12 @@ export interface BoutiqueStats {
     quantiteVendue: number;
     chiffreAffairesPaye: number;
     tauxConversion: number;
+    partCentre?: number;
+    partCentrePaye?: number;
+    chiffreAffairesNetBoutique?: number;
+    chiffreAffairesPayeNetBoutique?: number;
+    centreShareRate?: number;
+    centreShareThreshold?: number;
   };
   parStatut: Array<{
     statut: string;

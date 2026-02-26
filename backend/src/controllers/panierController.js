@@ -28,6 +28,123 @@ const getLatestPrixUnitaire = (produit, fallback = 0) => {
   return Number(fallback) || 0;
 };
 
+const TEMPORARY_PANIER_STATUSES = ['panier', 'en_attente'];
+
+const buildNotExpiredTemporaryFilter = (statut, now = new Date()) => ({
+  statut,
+  $or: [
+    { expiresAt: { $exists: false } },
+    { expiresAt: null },
+    { expiresAt: { $gt: now } }
+  ]
+});
+
+const toPlainAttributes = (attributes) => {
+  if (!attributes) return {};
+  if (attributes instanceof Map) {
+    return Object.fromEntries(attributes.entries());
+  }
+  if (typeof attributes.toObject === 'function') {
+    return attributes.toObject();
+  }
+  if (typeof attributes === 'object' && !Array.isArray(attributes)) {
+    return attributes;
+  }
+  return {};
+};
+
+const normalizeAttributes = (attributes) => {
+  const plainAttributes = toPlainAttributes(attributes);
+  const normalized = {};
+
+  Object.keys(plainAttributes)
+    .sort()
+    .forEach((key) => {
+      const normalizedKey = String(key).trim();
+      if (!normalizedKey) return;
+
+      const value = plainAttributes[key];
+      if (value == null) return;
+
+      normalized[normalizedKey] = String(value).trim();
+    });
+
+  return normalized;
+};
+
+const hasAttributes = (attributes) => Object.keys(normalizeAttributes(attributes)).length > 0;
+
+const isSameAttributes = (leftAttributes, rightAttributes) => {
+  const left = normalizeAttributes(leftAttributes);
+  const right = normalizeAttributes(rightAttributes);
+  const leftKeys = Object.keys(left);
+  const rightKeys = Object.keys(right);
+
+  if (leftKeys.length !== rightKeys.length) {
+    return false;
+  }
+
+  return leftKeys.every((key) => left[key] === right[key]);
+};
+
+const parseAttributesPayload = (rawAttributes) => {
+  if (rawAttributes == null || rawAttributes === '') {
+    return null;
+  }
+
+  if (typeof rawAttributes === 'string') {
+    try {
+      return normalizeAttributes(JSON.parse(rawAttributes));
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  if (typeof rawAttributes === 'object') {
+    return normalizeAttributes(rawAttributes);
+  }
+
+  return null;
+};
+
+const findMatchingVariant = (produit, attributes) => {
+  if (!produit?.variant?.length) {
+    return { variant: null, index: -1 };
+  }
+
+  if (hasAttributes(attributes)) {
+    const variantIndex = produit.variant.findIndex((variant) =>
+      isSameAttributes(variant.attributes, attributes)
+    );
+
+    if (variantIndex === -1) {
+      return { variant: null, index: -1 };
+    }
+
+    return { variant: produit.variant[variantIndex], index: variantIndex };
+  }
+
+  return { variant: produit.variant[0], index: 0 };
+};
+
+const findPanierItemIndex = (items, productId, attributes) => {
+  const normalizedAttributes = normalizeAttributes(attributes);
+  const expectsAttributes = Object.keys(normalizedAttributes).length > 0;
+
+  return items.findIndex((item) => {
+    if (item.produit.toString() !== productId) {
+      return false;
+    }
+
+    const itemAttributes = normalizeAttributes(item.attributes);
+    if (!expectsAttributes) {
+      return Object.keys(itemAttributes).length === 0;
+    }
+
+    return isSameAttributes(itemAttributes, normalizedAttributes);
+  });
+};
+
 const normalizeFraisLivraison = (frais) => {
   const baseFrais = Number(frais?.baseFrais);
   const coutParKm = Number(frais?.coutParKm);
@@ -332,12 +449,12 @@ exports.getPanier = async (req, res) => {
       });
     }
 
-    // Chercher le panier actif (non valid??, non pay??)
-    // IMPORTANT : statut 'panier' ET isActive: true, ignore expiresAt
+    // Chercher le panier actif (non valide, non paye) qui n'est pas expire.
+    const now = new Date();
     let panier = await Panier.findOne({
       userId,
-      statut: 'panier',
-      isActive: true
+      isActive: true,
+      ...buildNotExpiredTemporaryFilter('panier', now)
     }).populate({ path: 'produitsachete.produit', select: 'nom photo prix boutiqueId', populate: { path: 'boutiqueId', select: 'nom' } });
 
     // Si aucun panier, retourner un panier virtuel vide
@@ -388,12 +505,12 @@ exports.getCommande = async (req, res) => {
       });
     }
 
-    // Chercher le panier actif (non valid??, non pay??)
-    // Pour le statut "panier", on ignore expiresAt (pas d'expiration)
+    // Recuperer la commande temporaire "en_attente" seulement si non expiree.
+    const now = new Date();
     let panier = await Panier.findOne({
       userId,
-      statut: 'en_attente',
-      isActive: false
+      isActive: false,
+      ...buildNotExpiredTemporaryFilter('en_attente', now)
     }).populate({ path: 'produitsachete.produit', select: 'nom photo prix boutiqueId', populate: { path: 'boutiqueId', select: 'nom' } });
 
     if (panier) {
@@ -425,7 +542,9 @@ exports.addToPanier = async (req, res) => {
   session.startTransaction();
 
   try {
-    const { productId, quantity = 1, userId } = req.body;
+    const { productId, quantity = 1, userId, attributes } = req.body;
+    const hasAttributesPayload = Object.prototype.hasOwnProperty.call(req.body, 'attributes');
+    const normalizedAttributes = parseAttributesPayload(attributes);
 
     // Validation
     if (!productId || !userId) {
@@ -446,6 +565,15 @@ exports.addToPanier = async (req, res) => {
       });
     }
 
+    if (hasAttributesPayload && attributes !== null && attributes !== '' && normalizedAttributes === null) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({
+        success: false,
+        message: 'Format invalide pour les attributs de variante'
+      });
+    }
+
     // R??cup??rer le produit
     const produit = await Product.findById(productId).session(session);
     if (!produit) {
@@ -457,15 +585,17 @@ exports.addToPanier = async (req, res) => {
       });
     }
 
-    // Trouver la variante appropri??e
-    let variant = produit.variant && produit.variant.length > 0 ? produit.variant[0] : null;
-    
+    // Trouver la variante appropriee (ou la premiere si aucun attribut n'est fourni)
+    const { variant } = findMatchingVariant(produit, normalizedAttributes);
+
     if (!variant) {
       await session.abortTransaction();
       session.endSession();
       return res.status(400).json({
         success: false,
-        message: 'Aucune variante disponible pour ce produit'
+        message: hasAttributes(normalizedAttributes)
+          ? 'Variante introuvable pour les attributs fournis'
+          : 'Aucune variante disponible pour ce produit'
       });
     }
 
@@ -484,19 +614,17 @@ exports.addToPanier = async (req, res) => {
     variant.reserved = (variant.reserved || 0) + quantity;
     await produit.save({ session });
 
-    // Chercher le panier actif de l'utilisateur
-    // IMPORTANT : statut 'panier' ET isActive: true pour r??cup??rer le bon panier
+    // Chercher le panier actif non expire de l'utilisateur.
+    const now = new Date();
     let panier = await Panier.findOne({
       userId,
-      statut: 'panier',
       isActive: true,
-      isPaye: false
+      isPaye: false,
+      ...buildNotExpiredTemporaryFilter('panier', now)
     }).session(session);
 
     // R??cup??rer le prix du produit
-    const prixUnitaire = produit.prix && produit.prix.length > 0 
-      ? produit.prix[produit.prix.length - 1].prixUnitaire 
-      : 0;
+    const prixUnitaire = getLatestPrixUnitaire(produit);
 
     if (!panier) {
       // Cr??er un nouveau panier avec num??ro de commande
@@ -515,9 +643,11 @@ exports.addToPanier = async (req, res) => {
       });
     }
 
-    // V??rifier si le produit existe d??j?? dans le panier
-    const existingItemIndex = panier.produitsachete.findIndex(
-      item => item.produit.toString() === productId
+    // Verifier si le produit + variante existe deja dans le panier.
+    const existingItemIndex = findPanierItemIndex(
+      panier.produitsachete,
+      productId,
+      normalizedAttributes
     );
 
     if (existingItemIndex !== -1) {
@@ -528,12 +658,18 @@ exports.addToPanier = async (req, res) => {
         panier.produitsachete[existingItemIndex].qtt * prixUnitaire;
     } else {
       // Produit n'existe pas : l'ajouter
-      panier.produitsachete.push({
+      const lignePanier = {
         produit: productId,
         qtt: quantity,
         prixUnitaire: prixUnitaire,
         sousTotal: quantity * prixUnitaire
-      });
+      };
+
+      if (hasAttributes(normalizedAttributes)) {
+        lignePanier.attributes = normalizedAttributes;
+      }
+
+      panier.produitsachete.push(lignePanier);
     }
 
     await applyPromotionsToPanier(panier, { session });
@@ -547,7 +683,7 @@ exports.addToPanier = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: `Produit ajout?? au panier avec succ??s (quantit??: ${quantity})`,
+      message: `Produit ajouté au panier avec succès (quantité: ${quantity})`,
       data: panier
     });
 
@@ -577,7 +713,9 @@ exports.updateQuantite = async (req, res) => {
     }
 
     const { productId } = req.params;
-    const { quantity } = req.body;
+    const { quantity, attributes } = req.body;
+    const hasAttributesPayload = Object.prototype.hasOwnProperty.call(req.body, 'attributes');
+    const normalizedAttributes = parseAttributesPayload(attributes);
 
     if (!quantity || quantity < 1) {
       return res.status(400).json({
@@ -586,10 +724,18 @@ exports.updateQuantite = async (req, res) => {
       });
     }
 
+    if (hasAttributesPayload && attributes !== null && attributes !== '' && normalizedAttributes === null) {
+      return res.status(400).json({
+        success: false,
+        message: 'Format invalide pour les attributs de variante'
+      });
+    }
+
+    const now = new Date();
     const panier = await Panier.findOne({
       userId,
-      statut: 'panier',
-      isActive: true
+      isActive: true,
+      ...buildNotExpiredTemporaryFilter('panier', now)
     });
 
     if (!panier) {
@@ -599,9 +745,12 @@ exports.updateQuantite = async (req, res) => {
       });
     }
 
-    const itemIndex = panier.produitsachete.findIndex(
-      item => item.produit.toString() === productId
-    );
+    let itemIndex = findPanierItemIndex(panier.produitsachete, productId, normalizedAttributes);
+    if (itemIndex === -1 && !hasAttributes(normalizedAttributes)) {
+      itemIndex = panier.produitsachete.findIndex(
+        (item) => item.produit.toString() === productId
+      );
+    }
 
     if (itemIndex === -1) {
       return res.status(404).json({
@@ -610,37 +759,45 @@ exports.updateQuantite = async (req, res) => {
       });
     }
 
-    const currentQuantity = panier.produitsachete[itemIndex].qtt;
+    const panierItem = panier.produitsachete[itemIndex];
+    const currentQuantity = panierItem.qtt;
     const quantityDifference = quantity - currentQuantity;
+    const produit = await Product.findById(productId);
 
-    if (quantityDifference > 0) {
-      const produit = await Product.findById(productId);
-      if (produit && produit.variant && produit.variant.length > 0) {
-        const variant = produit.variant[0];
-        const availableStock = (variant.qtt || 0) - (variant.reserved || 0);
-
-        if (availableStock < quantityDifference) {
-          return res.status(400).json({
-            success: false,
-            message: `Stock insuffisant. Seulement ${availableStock} articles supplementaires disponibles`
-          });
-        }
-
-        variant.reserved = (variant.reserved || 0) + quantityDifference;
-        await produit.save();
-      }
-    } else if (quantityDifference < 0) {
-      const produit = await Product.findById(productId);
-      if (produit && produit.variant && produit.variant.length > 0) {
-        const variant = produit.variant[0];
-        variant.reserved = Math.max(0, (variant.reserved || 0) + quantityDifference);
-        await produit.save();
-      }
+    if (!produit) {
+      return res.status(404).json({
+        success: false,
+        message: 'Produit introuvable'
+      });
     }
 
-    panier.produitsachete[itemIndex].qtt = quantity;
-    panier.produitsachete[itemIndex].sousTotal =
-      quantity * panier.produitsachete[itemIndex].prixUnitaire;
+    const { variant } = findMatchingVariant(produit, panierItem.attributes || normalizedAttributes);
+    if (!variant) {
+      return res.status(400).json({
+        success: false,
+        message: 'Variante introuvable pour mettre a jour le stock reserve'
+      });
+    }
+
+    if (quantityDifference > 0) {
+      const availableStock = (variant.qtt || 0) - (variant.reserved || 0);
+
+      if (availableStock < quantityDifference) {
+        return res.status(400).json({
+          success: false,
+          message: `Stock insuffisant. Seulement ${availableStock} articles supplementaires disponibles`
+        });
+      }
+
+      variant.reserved = (variant.reserved || 0) + quantityDifference;
+      await produit.save();
+    } else if (quantityDifference < 0) {
+      variant.reserved = Math.max(0, (variant.reserved || 0) + quantityDifference);
+      await produit.save();
+    }
+
+    panierItem.qtt = quantity;
+    panierItem.sousTotal = quantity * panierItem.prixUnitaire;
 
     await applyPromotionsToPanier(panier);
 
@@ -676,11 +833,22 @@ exports.removeFromPanier = async (req, res) => {
     }
 
     const { productId } = req.params;
+    const rawAttributes = req.query.attributes;
+    const hasAttributesPayload = Object.prototype.hasOwnProperty.call(req.query, 'attributes');
+    const normalizedAttributes = parseAttributesPayload(rawAttributes);
 
+    if (hasAttributesPayload && rawAttributes !== null && rawAttributes !== '' && normalizedAttributes === null) {
+      return res.status(400).json({
+        success: false,
+        message: 'Format invalide pour les attributs de variante'
+      });
+    }
+
+    const now = new Date();
     const panier = await Panier.findOne({
       userId,
-      statut: 'panier',
-      isActive: true
+      isActive: true,
+      ...buildNotExpiredTemporaryFilter('panier', now)
     });
 
     if (!panier) {
@@ -690,9 +858,14 @@ exports.removeFromPanier = async (req, res) => {
       });
     }
 
-    const itemToRemove = panier.produitsachete.find(
-      item => item.produit.toString() === productId
-    );
+    let itemIndex = findPanierItemIndex(panier.produitsachete, productId, normalizedAttributes);
+    if (itemIndex === -1 && !hasAttributes(normalizedAttributes)) {
+      itemIndex = panier.produitsachete.findIndex(
+        (item) => item.produit.toString() === productId
+      );
+    }
+
+    const itemToRemove = itemIndex >= 0 ? panier.produitsachete[itemIndex] : null;
 
     if (!itemToRemove) {
       return res.status(404).json({
@@ -702,15 +875,15 @@ exports.removeFromPanier = async (req, res) => {
     }
 
     const produit = await Product.findById(productId);
-    if (produit && produit.variant && produit.variant.length > 0) {
-      const variant = produit.variant[0];
-      variant.reserved = Math.max(0, (variant.reserved || 0) - itemToRemove.qtt);
-      await produit.save();
+    if (produit) {
+      const { variant } = findMatchingVariant(produit, itemToRemove.attributes);
+      if (variant) {
+        variant.reserved = Math.max(0, (variant.reserved || 0) - itemToRemove.qtt);
+        await produit.save();
+      }
     }
 
-    panier.produitsachete = panier.produitsachete.filter(
-      item => item.produit.toString() !== productId
-    );
+    panier.produitsachete.splice(itemIndex, 1);
 
     if (panier.produitsachete.length === 0) {
       await Panier.deleteOne({ _id: panier._id });
@@ -754,11 +927,12 @@ exports.viderPanier = async (req, res) => {
       });
     }
 
-    // R??cup??rer le panier actif
+    // Recuperer le panier actif non expire.
+    const now = new Date();
     const panier = await Panier.findOne({
       userId,
-      statut: 'panier',
-      isActive: true
+      isActive: true,
+      ...buildNotExpiredTemporaryFilter('panier', now)
     });
     
     if (!panier) {
@@ -771,8 +945,11 @@ exports.viderPanier = async (req, res) => {
     // Lib??rer le stock pour tous les produits
     for (const item of panier.produitsachete) {
       const produit = await Product.findById(item.produit);
-      if (produit && produit.variant && produit.variant.length > 0) {
-        const variant = produit.variant[0];
+      if (produit) {
+        const { variant } = findMatchingVariant(produit, item.attributes);
+        if (!variant) {
+          continue;
+        }
         variant.reserved = Math.max(0, (variant.reserved || 0) - item.qtt);
         await produit.save();
       }
@@ -809,11 +986,12 @@ exports.validerPanier = async (req, res) => {
       });
     }
 
-    // R??cup??rer le panier actif
+    // Recuperer le panier actif non expire.
+    const now = new Date();
     const panier = await Panier.findOne({
       userId,
-      statut: 'panier',
-      isActive: true
+      isActive: true,
+      ...buildNotExpiredTemporaryFilter('panier', now)
     });
     
     if (!panier) {
@@ -870,9 +1048,10 @@ exports.mettreAJourCommande = async (req, res) => {
     }
 
     // R??cup??rer la commande en attente
+    const now = new Date();
     const panier = await Panier.findOne({
       userId,
-      statut: 'en_attente'
+      ...buildNotExpiredTemporaryFilter('en_attente', now)
     });
     
     if (!panier) {
@@ -941,10 +1120,11 @@ exports.mettreAJourCommandeById = async (req, res) => {
       });
     }
 
+    const now = new Date();
     const panier = await Panier.findOne({
       _id: id,
       userId,
-      statut: 'en_attente'
+      ...buildNotExpiredTemporaryFilter('en_attente', now)
     });
 
     if (!panier) {
@@ -1005,9 +1185,10 @@ exports.payerCommande = async (req, res) => {
     }
 
     // R??cup??rer la commande en attente
+    const now = new Date();
     const panier = await Panier.findOne({
       userId,
-      statut: 'en_attente'
+      ...buildNotExpiredTemporaryFilter('en_attente', now)
     });
     
     if (!panier) {
@@ -1047,7 +1228,7 @@ exports.payerCommande = async (req, res) => {
     panier.statut = 'confirmee';
     panier.isPaye = true;
     panier.datePaiement = new Date();
-    panier.methodePaiement=paiementDetails.methode;
+    panier.methodePaiement = paiementDetails?.methode || panier.methodePaiement;
     
     // Calculer la date de livraison (1 jour apr??s paiement)
     panier.dateLivraison = calculerDateLivraisonEstimee(new Date());
@@ -1096,10 +1277,11 @@ exports.payerCommandeById = async (req, res) => {
       });
     }
 
+    const now = new Date();
     const panier = await Panier.findOne({
       _id: id,
       userId,
-      statut: 'en_attente'
+      ...buildNotExpiredTemporaryFilter('en_attente', now)
     });
 
     if (!panier) {
@@ -1179,7 +1361,7 @@ exports.annulerCommande = async (req, res) => {
     // R??cup??rer la commande (panier ou en_attente)
     const panier = await Panier.findOne({
       userId,
-      statut: { $in: ['panier', 'en_attente'] }
+      statut: { $in: TEMPORARY_PANIER_STATUSES }
     });
     
     if (!panier) {
@@ -1192,8 +1374,11 @@ exports.annulerCommande = async (req, res) => {
     // Lib??rer le stock r??serv??
     for (const item of panier.produitsachete) {
       const produit = await Product.findById(item.produit);
-      if (produit && produit.variant && produit.variant.length > 0) {
-        const variant = produit.variant[0];
+      if (produit) {
+        const { variant } = findMatchingVariant(produit, item.attributes);
+        if (!variant) {
+          continue;
+        }
         variant.reserved = Math.max(0, (variant.reserved || 0) - item.qtt);
         await produit.save();
       }
