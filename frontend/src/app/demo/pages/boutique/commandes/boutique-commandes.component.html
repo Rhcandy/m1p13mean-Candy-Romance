@@ -4,7 +4,7 @@
       <div class="page-title-box d-sm-flex align-items-center justify-content-between">
         <h4 class="mb-sm-0">Commandes de ma Boutique</h4>
         <div class="page-title-right">
-          <button type="button" class="btn btn-primary">
+          <button type="button" class="btn btn-primary" (click)="goToStats()">
             <i class="ri-bar-chart-line me-2"></i>Statistiques
           </button>
         </div>
@@ -81,6 +81,7 @@
             <tr *ngFor="let commande of commandes">
               <td>
                 <strong>{{ commande.numeroCommande }}</strong>
+                <small class="text-muted d-block">Facture: {{ getNumeroFacture(commande) }}</small>
               </td>
               <td>
                 <div class="d-flex align-items-center">
@@ -97,16 +98,22 @@
               </td>
               <td>
                 <div class="d-flex flex-column">
-                  <small *ngFor="let produit of commande.produitsachete" class="mb-1">
+                  <small *ngFor="let produit of getCommandeProduits(commande)" class="mb-1">
                     {{ produit.qtt }}x {{ produit.produit?.nom }}
                   </small>
                 </div>
               </td>
               <td>
                 <small class="text-muted d-block">
-                  ({{ commande.quantiteBoutique }} articles)
+                  Mes articles ({{ commande.quantiteBoutique }}): {{ getTotalBoutique(commande) | number:'1.0-0' }} Ar
                 </small>
-                <strong >{{ commande.totalBoutique | currency:'Ar ' }}</strong>
+                <small class="text-muted d-block" *ngIf="getPartCentre(commande) > 0">
+                  Part centre (1%): -{{ getPartCentre(commande) | number:'1.0-0' }} Ar
+                </small>
+                <strong class="d-block">Net boutique: {{ getNetBoutique(commande) | number:'1.0-0' }} Ar</strong>
+                <small class="text-muted d-block">
+                  Facture client: {{ getFactureSousTotal(commande) | number:'1.0-0' }} + {{ getFactureFraisLivraison(commande) | number:'1.0-0' }} = {{ getFactureTotal(commande) | number:'1.0-0' }} Ar
+                </small>
               </td>
               <td>
                 <span class="badge bg-{{ getStatusColor(commande.statut) }}">

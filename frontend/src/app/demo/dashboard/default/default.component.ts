@@ -1,5 +1,7 @@
 import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
+
 import { ChangeDetectorRef } from '@angular/core';
 import { AdminStatsService } from '../../../services/admin-stats.service';
 import { AuthService } from '../../../services/auth.service';
@@ -18,10 +20,12 @@ import { ChartDataMonthComponent } from 'src/app/theme/shared/components/apexcha
     BarChartComponent,
     ChartDataMonthComponent
   ],
+
   templateUrl: './default.component.html',
   styleUrls: ['./default.component.scss']
 })
 export class DefaultComponent implements OnInit {
+
   globalStats: any = {
   totalBoutiques: 0,
   totalBoxes: 0,
@@ -39,6 +43,7 @@ export class DefaultComponent implements OnInit {
  loyerStatusArray: { key: string; value: any }[] = [];
  dataLoaded: boolean = false;
 
+
   constructor(
     private authService: AuthService,
     private boutiqueService: BoutiqueService,
@@ -48,6 +53,7 @@ export class DefaultComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+
   console.log('ngOnInit called');
   
   // commente les redirections temporairement pour tester
@@ -168,5 +174,6 @@ loadRevenueByMonth(year?: number) {
     },
     error: (err) => console.error('Revenue By Month Error:', err)
   });
+
 }
 }

@@ -35,6 +35,16 @@ export function getNavigationItems(): NavigationItem[] {
 
   return [
     {
+      id: 'dashboard-user',
+      title: 'Dashboard',
+      type: 'item',
+      icon: 'ti ti-dashboard',
+      classes: 'nav-item',
+      url: '/default',
+      breadcrumbs: false,
+      hidden: isAdminBoutique || isAdminCenter || !canUseUserFeatures
+    },
+    {
       id: 'BoxesDisponibles',
       title: 'Boxes disponibles',
       type: 'item',

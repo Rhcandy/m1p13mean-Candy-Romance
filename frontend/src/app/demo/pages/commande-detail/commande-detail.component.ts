@@ -95,8 +95,12 @@ export class CommandeDetailComponent implements OnInit, OnDestroy {
   }
 
   getCommandeTotal(commande: any): number {
-    if (this.isAdminBoutique && typeof commande.totalBoutique === 'number') {
-      return commande.totalBoutique + this.getFraisLivraison(commande);
+    if (this.isAdminBoutique) {
+      const net = Number(commande.totalBoutiqueNet ?? commande.facture?.totalBoutiqueNet);
+      if (Number.isFinite(net)) {
+        return net;
+      }
+      return this.getTotalBoutiqueBrut(commande) - this.getPartCentre(commande);
     }
     return commande.total || 0;
   }
@@ -113,6 +117,30 @@ export class CommandeDetailComponent implements OnInit, OnDestroy {
 
   formatPrice(price: number): string {
     return this.panierService.formatMontant(price);
+  }
+
+  getFactureSousTotal(commande: any): number {
+    return Number(commande.facture?.sousTotalCommande ?? commande.sousTotal ?? 0);
+  }
+
+  getFactureFraisLivraison(commande: any): number {
+    return Number(commande.facture?.fraisLivraisonCommande ?? commande.fraisLivraison ?? 0);
+  }
+
+  getFactureTotal(commande: any): number {
+    return Number(commande.facture?.totalCommande ?? commande.total ?? 0);
+  }
+
+  getTotalBoutiqueBrut(commande: any): number {
+    return Number(commande.totalBoutique ?? commande.facture?.totalBoutique ?? 0);
+  }
+
+  getBoutiqueFraisLivraison(commande: any): number {
+    return Number(commande.fraisLivraisonBoutique ?? commande.facture?.fraisLivraisonBoutique ?? 0);
+  }
+
+  getPartCentre(commande: any): number {
+    return Number(commande.partCentre ?? commande.facture?.partCentre ?? 0);
   }
 
   getStatutClass(statut: string): string {
