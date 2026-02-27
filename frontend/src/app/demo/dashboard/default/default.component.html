@@ -1,4 +1,6 @@
 <div class="row">
+
+  <!-- Carte : Gains Totals -->
   <div class="col-xl-4 col-md-6">
     <div class="card earning-card bg-secondary-dark text-white overflow-hidden">
       <span class="round secondary-round small"></span>
@@ -16,30 +18,23 @@
                 <i class="ti ti-dots"></i>
               </a>
               <ul class="dropdown-menu dropdown-menu-end" ngbDropdownMenu>
-                <li><button class="dropdown-item" type="button">Import Card</button></li>
-                <li><button class="dropdown-item" type="button">Export</button></li>
+                <li><button class="dropdown-item" type="button">Importer Carte</button></li>
+                <li><button class="dropdown-item" type="button">Exporter</button></li>
               </ul>
             </div>
           </div>
         </div>
         <span class="text-white d-block f-34 f-w-500 my-2">
-          $500.00
+          {{ globalStats.totalEarnings | currency:'USD' }}
           <i class="ti ti-circle-arrow-up-right opacity-50"></i>
         </span>
-        <p class="mb-0 opacity-50">Total Earning</p>
+        <p class="mb-0 opacity-50">Gains Totals</p>
       </div>
     </div>
   </div>
+
+  <!-- Carte : Revenu Total -->
   <div class="col-xl-4 col-md-6">
-    <div class="card earning-card bg-primary-dark text-white overflow-hidden">
-      <span class="round primary-round small"></span>
-      <span class="round primary-round big"></span>
-      <div class="card-body">
-        <app-chart-data-month />
-      </div>
-    </div>
-  </div>
-  <div class="col-xl-4 col-md-12">
     <div class="card total-income-card overflow-hidden bg-primary-dark text-white">
       <div class="card-body">
         <div class="d-flex align-items-center">
@@ -47,80 +42,95 @@
             <i class="text-white ti ti-layout-board-split f-24"></i>
           </div>
           <div class="ms-2">
-            <h4 class="text-white f-w-600 mb-1">$203k</h4>
-            <p class="mb-0 opacity-50 text-sm">Total Income</p>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="card total-income-card warning overflow-hidden">
-      <div class="card-body">
-        <div class="d-flex align-items-center">
-          <div class="avatar avatar-lg icon-warning m-r-5">
-            <i class="text-warning ti ti-layout-board-split f-24"></i>
-          </div>
-          <div class="ms-2">
-            <h4 class="f-w-600 mb-1">$203k</h4>
-            <p class="mb-0 opacity-50 text-sm">Total Income</p>
+            <h4 class="text-white f-w-600 mb-1">
+              {{ globalStats.totalIncome | currency:'USD' }}
+            </h4>
+            <p class="mb-0 opacity-50 text-sm">Revenu Total</p>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="col-xl-8 col-md-12">
-    <app-bar-chart />
-  </div>
+  <!-- Carte : Taux d'Occupation -->
   <div class="col-xl-4 col-md-12">
-    <div class="card">
+    <div class="card total-income-card overflow-hidden bg-warning text-dark">
       <div class="card-body">
-        <div class="row mb-3 align-items-center">
-          <div class="col">
-            <h4>Popular Stocks</h4>
+        <div class="d-flex align-items-center">
+          <div class="avatar avatar-lg icon-warning m-r-5">
+            <i class="text-dark ti ti-box f-24"></i>
           </div>
-          <div class="col-auto"></div>
-        </div>
-        <div class="rounded bg-light-secondary overflow-hidden mb-3">
-          <div class="px-3 pt-3">
-            <div class="row mb-1 align-items-start">
-              <div class="col">
-                <h5 class="text-secondary mb-0">Bajaj Finery</h5>
-                <small class="text-muted">10% Profit</small>
-              </div>
-              <div class="col-auto">
-                <h4 class="mb-0">$1839.00</h4>
-              </div>
-            </div>
+          <div class="ms-2">
+            <h4 class="f-w-600 mb-1">{{ occupancyRate }}%</h4>
+            <p class="mb-0 opacity-50 text-sm">Taux d’occupation des boxes</p>
           </div>
-          <app-bajaj-chart />
-        </div>
-        <ul class="list-group list-group-flush">
-          @for (list of ListGroup; track list) {
-            <li class="list-group-item px-0 {{ list.space }}">
-              <div class="row align-items-start">
-                <div class="col">
-                  <h5 class="mb-0">{{ list.name }}</h5>
-                  <small class="{{ list.color }}">{{ list.profit }}</small>
-                </div>
-                <div class="col-auto">
-                  <h4 class="mb-0">
-                    {{ list.invest }}
-                    <span class="ms-2 align-top avatar avatar-xxs {{ list.bgColor }}">
-                      <i class="{{ list.icon }} {{ list.color }}"></i>
-                    </span>
-                  </h4>
-                </div>
-              </div>
-            </li>
-          }
-        </ul>
-        <div class="text-center">
-          <a href="javascript:" class="b-b-primary text-primary f-w-500">
-            View all
-            <i class="ti ti-chevron-right"></i>
-          </a>
         </div>
       </div>
     </div>
   </div>
+
+  <!-- Graphique : Revenus Mensuels -->
+  <div class="col-xl-8 col-md-12">
+    <app-chart-data-month [monthlyData]="revenueByMonth"></app-chart-data-month>
+  </div>
+
+  <!-- Graphique barre : Revenus par boutique -->
+  <div class="col-xl-4 col-md-12">
+    <div class="card">
+      <div class="card-body">
+        <h4>Revenus par boutique</h4>
+        <ul class="list-group list-group-flush mt-2">
+          <li *ngFor="let b of revenueByBoutique" class="list-group-item px-0">
+            <div class="d-flex justify-content-between">
+              <span>{{ b.boutiqueName }}</span>
+              <span>{{ b.totalRevenue | currency:'USD' }}</span>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Carte : Statut des loyers -->
+ <!-- Carte : Statut des loyers -->
+<!-- Carte : Statut des loyers -->
+<div class="col-xl-6 col-md-12 mt-3">
+  <div class="card">
+    <div class="card-body">
+      <h4>Statuts des loyers</h4>
+      <ul class="list-group list-group-flush mt-2">
+        <!-- 🔹 On utilise loyerStatusArray qui est bien un array -->
+        <li *ngFor="let stat of loyerStatusArray" class="list-group-item px-0">
+          <div class="d-flex justify-content-between">
+            <span>{{ stat.key | titlecase }}</span>
+            <span>{{ stat.value }}</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+  <!-- Carte : Paiements récents -->
+  <div class="col-xl-6 col-md-12 mt-3">
+    <div class="card">
+      <div class="card-body">
+        <h4>Derniers paiements</h4>
+        <ul class="list-group list-group-flush mt-2">
+          <li *ngFor="let p of recentPayments" class="list-group-item px-0">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h5 class="mb-0">{{ p.clientName }}</h5>
+                <small class="text-muted">{{ p.amount | currency:'USD' }}</small>
+              </div>
+              <div>
+                <h6 class="mb-0">{{ p.date | date:'shortDate' }}</h6>
+              </div>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
 </div>
