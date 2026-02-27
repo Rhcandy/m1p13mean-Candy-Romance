@@ -212,11 +212,19 @@ const pay = async (req, res) => {
  */
 const listLoyers = async (req, res) => {
   try {
-    const { boutiqueId } = req.query;
 
-    const filter = boutiqueId ? { boutiqueId } : {};
+    const { boutiqueId, periode } = req.query;
 
-    // populate pour récupérer les infos de la boutique
+    const filter = {};
+
+    if (boutiqueId) {
+      filter.boutiqueId = boutiqueId;
+    }
+
+    if (periode) {
+      filter.periode = periode;
+    }
+
     const loyers = await Loyer.find(filter)
       .populate('boutiqueId', 'nom adresse')
       .sort({ periode: -1 });
@@ -227,10 +235,12 @@ const listLoyers = async (req, res) => {
     });
 
   } catch (error) {
+
     return res.status(400).json({
       success: false,
       message: error.message
     });
+
   }
 };
 
