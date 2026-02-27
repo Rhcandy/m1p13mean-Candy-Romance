@@ -1,0 +1,61 @@
+<div class="container-fluid">
+
+  <div class="row mb-3">
+
+    <div class="col-md-3">
+      <label>Boutique</label>
+      <select class="form-control" [(ngModel)]="selectedBoutique">
+        <option value="">Sélectionnez une boutique</option>
+        <option *ngFor="let b of boutiques" [value]="b._id">{{ b.nom }}</option>
+      </select>
+    </div>
+
+    <div class="col-md-3">
+      <label>Type de Box</label>
+      <select class="form-control" [(ngModel)]="selectedTypeBox">
+        <option value="">Sélectionnez le type de box</option>
+        <option *ngFor="let t of typeBoxes" [value]="t._id">{{ t.nom }}</option>
+      </select>
+    </div>
+
+    <div class="col-md-3">
+      <label>Montant</label>
+      <input type="number" class="form-control" [(ngModel)]="montant" placeholder="Ex : 100000">
+    </div>
+
+    <div class="col-md-3 d-flex align-items-end">
+      <button class="btn btn-primary" (click)="createPrix()">Ajouter Prix</button>
+    </div>
+
+  </div>
+
+  <table class="table table-bordered" *ngIf="prixList.length > 0">
+    <thead>
+      <tr>
+        <th>Type Box</th>
+        <th>Montant</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr *ngFor="let p of prixList">
+            <td>
+            {{ 
+                typeof p.typeboxId === 'string' 
+                ? getTypeBoxName(p.typeboxId) 
+                : p.typeboxId.nom 
+            }}
+            </td>
+            <td>{{ p.prixParM2 }}</td>
+            <td>
+                <button class="btn btn-sm btn-danger" (click)="deletePrix(p)">Supprimer</button>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+  <div *ngIf="prixList.length === 0" class="text-center text-muted py-4">
+    Aucun prix enregistré.
+  </div>
+
+</div>

@@ -149,7 +149,14 @@ const routes: Routes = [
               import('./demo/pages/royal-center/boutiques/royal-center-boutiques.component').then(
                 (c) => c.RoyalCenterBoutiquesComponent
               )
-          }
+          },
+            {
+              path: 'prix',
+              loadComponent: () =>
+                import('./demo/pages/royal-center/prix/royal-center-prix.component').then(
+                  (c) => c.RoyalCenterPrixComponent
+                )
+            }
         ]
       }
     ]
