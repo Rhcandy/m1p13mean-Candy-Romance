@@ -160,6 +160,15 @@ export function getNavigationItems(): NavigationItem[] {
           url: '/royal-center/boutiques',
           icon: 'ti ti-building-store',
           breadcrumbs: true
+        },
+        {
+          id: 'royal-prix',
+          title: 'Prix Boutique',
+          type: 'item',
+          classes: 'nav-item',
+          url: '/royal-center/prix', // c’est le path Angular que tu auras pour ton RoyalCenterPrixComponent
+          icon: 'ti ti-currency-dollar',
+          breadcrumbs: true
         }
       ]
     },
