@@ -4,7 +4,7 @@ const {
   getPrixByTypeBox,
   updatePrix,
   deletePrix
-} = require('../services/HistoPrixCateg.service');
+} = require('../services/histoPrixCateg.service');
 
 // ==========================================
 // Créer un prix
