@@ -70,7 +70,7 @@ const boxRoutes = require('./routes/boxRoutes');
 const boutiqueRoutes = require('./routes/boutiqueRoutes');
 
 const loyers =require('./routes/loyer.routes');
-const histoPrixRoutes = require('./routes/histoPrixCateg.routes');
+const histoPrixRoutes = require('./routes/HistoPrixCateg.routes');
 const adminStatsRoutes = require("./routes/adminStats.routes");
 
 const categorieProduitRoutes = require('./routes/categorieProduitRoutes');

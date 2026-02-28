@@ -6,7 +6,7 @@ const {
   getByTypeBox,
   update,
   remove
-} = require('../controllers/histoPrixCateg.controller');
+} = require('../controllers/HistoPrixCateg.controller');
 
 /**
  * @swagger

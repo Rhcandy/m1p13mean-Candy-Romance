@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const histoPrixCategSchema = new mongoose.Schema({
+const HistoPrixCategSchema = new mongoose.Schema({
   prixParM2: {
     type: Number,
     required: true,
@@ -16,5 +16,5 @@ const histoPrixCategSchema = new mongoose.Schema({
   collection: 'histo_prix_categ'
 });
 
-const HistoPrixCateg = mongoose.models.HistoPrixCateg || mongoose.model('HistoPrixCateg', histoPrixCategSchema);
+const HistoPrixCateg = mongoose.models.HistoPrixCateg || mongoose.model('HistoPrixCateg', HistoPrixCategSchema);
 module.exports = HistoPrixCateg;

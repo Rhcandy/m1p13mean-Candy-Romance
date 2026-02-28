@@ -1,4 +1,4 @@
-const HistoPrixCateg = require('../models/histoPrixCateg');
+const HistoPrixCateg = require('../models/HistoPrixCateg');
 
 const createPrix = async (data) => {
   return await HistoPrixCateg.create(data);
