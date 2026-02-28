@@ -36,7 +36,9 @@ export class BoutiqueDashboardComponent implements OnInit {
         if (response.success) {
           this.boutique = response.data;
           this.loadStats();
-          this.cdr.detectChanges();
+          Promise.resolve().then(() => {
+            this.cdr.detectChanges();
+          });
         } else {
           this.error = response.message;
           this.cdr.detectChanges();
