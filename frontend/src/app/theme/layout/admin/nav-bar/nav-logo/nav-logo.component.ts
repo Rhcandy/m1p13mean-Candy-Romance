@@ -17,17 +17,14 @@ export class NavLogoComponent {
   // public props
   @Input() navCollapsed!: boolean;
   NavCollapse = output();
-  windowWidth: number;
   themeMode!: boolean;
 
   // Constructor
-  constructor() {
-    this.windowWidth = window.innerWidth;
-  }
+  constructor() {}
 
   // public method
   navCollapse() {
-    if (this.windowWidth >= 1025) {
+    if (window.innerWidth >= 1025) {
       this.navCollapsed = !this.navCollapsed;
       this.NavCollapse.emit();
     }

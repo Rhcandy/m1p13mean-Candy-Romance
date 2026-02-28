@@ -19,26 +19,24 @@ export class NavBarComponent {
   NavCollapse = output();
   NavCollapsedMob = output();
   navCollapsed: boolean;
-  windowWidth: number;
   navCollapsedMob: boolean;
 
   // Constructor
   constructor() {
-    this.windowWidth = window.innerWidth;
-    this.navCollapsed = this.windowWidth >= 1025 ? BerryConfig.isCollapse_menu : false;
+    this.navCollapsed = window.innerWidth >= 1025 ? BerryConfig.isCollapse_menu : false;
     this.navCollapsedMob = false;
   }
 
   // public method
   navCollapse() {
-    if (this.windowWidth >= 1025) {
+    if (window.innerWidth >= 1025) {
       this.navCollapsed = !this.navCollapsed;
       this.NavCollapse.emit();
     }
   }
 
   navCollapseMob() {
-    if (this.windowWidth < 1025) {
+    if (window.innerWidth < 1025) {
       this.NavCollapsedMob.emit();
     }
   }

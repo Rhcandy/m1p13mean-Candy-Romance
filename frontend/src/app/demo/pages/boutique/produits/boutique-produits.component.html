@@ -106,27 +106,45 @@
                 </td>
 
                 <!-- Actions -->
-                <td class="text-center" (click)="$event.stopPropagation()">
-                  <button class="btn btn-sm btn-outline-primary me-1"
-                          (click)="editProduit(produit)"
-                          title="Modifier">
-                    <i class="ti ti-pencil"></i>
-                  </button>
-                  <button class="btn btn-sm btn-outline-warning me-1"
-                          (click)="openPromotionModal(produit)"
-                          title="Associer promotions">
-                    <i class="ti ti-percentage"></i>
-                  </button>
-                  <button class="btn btn-sm btn-outline-success me-1"
-                          (click)="openStockEntryModal(produit)"
-                          title="Entree stock">
-                    <i class="ti ti-plus"></i>
-                  </button>
-                  <button class="btn btn-sm btn-outline-danger"
-                          (click)="deleteProduit(produit._id)"
-                          title="Supprimer">
-                    <i class="ti ti-trash"></i>
-                  </button>
+                <td class="text-center action-cell" (click)="$event.stopPropagation()">
+                  <div class="action-buttons action-buttons--table" role="group" aria-label="Actions produit">
+                    <button
+                      type="button"
+                      class="action-btn action-btn--edit"
+                      (click)="editProduit(produit)"
+                      title="Modifier"
+                      aria-label="Modifier"
+                    >
+                      <i class="ti ti-pencil"></i>
+                    </button>
+                    <button
+                      type="button"
+                      class="action-btn action-btn--promo"
+                      (click)="openPromotionModal(produit)"
+                      title="Associer promotions"
+                      aria-label="Associer promotions"
+                    >
+                      <i class="ti ti-percentage"></i>
+                    </button>
+                    <button
+                      type="button"
+                      class="action-btn action-btn--stock"
+                      (click)="openStockEntryModal(produit)"
+                      title="Entree stock"
+                      aria-label="Entree stock"
+                    >
+                      <i class="ti ti-plus"></i>
+                    </button>
+                    <button
+                      type="button"
+                      class="action-btn action-btn--delete"
+                      (click)="deleteProduit(produit._id)"
+                      title="Supprimer"
+                      aria-label="Supprimer"
+                    >
+                      <i class="ti ti-trash"></i>
+                    </button>
+                  </div>
                 </td>
 
               </tr>
@@ -418,26 +436,40 @@
 
   <!-- Footer boutons -->
   <div class="detail-footer border-top" *ngIf="selectedProduit">
-    <button type="button"
-            class="btn btn-danger"
-            (click)="deleteProduit(selectedProduit._id); closeDetail()">
-      <i class="ri-delete-bin-line me-1"></i>Supprimer
-    </button>
-    <button type="button"
-            class="btn btn-warning"
-            (click)="openPromotionModal(selectedProduit); closeDetail()">
-      <i class="ri-percent-line me-1"></i>Associer promotions
-    </button>
-    <button type="button"
-            class="btn btn-success"
-            (click)="openStockEntryModal(selectedProduit); closeDetail()">
-      <i class="ri-add-line me-1"></i>Entree stock
-    </button>
-    <button type="button"
-            class="btn btn-primary"
-            (click)="editProduit(selectedProduit); closeDetail()">
-      <i class="ri-edit-line me-1"></i>Modifier
-    </button>
+    <div class="action-buttons action-buttons--detail" role="group" aria-label="Actions fiche produit">
+      <button
+        type="button"
+        class="action-btn action-btn--delete action-btn--with-label"
+        (click)="deleteProduit(selectedProduit._id); closeDetail()"
+      >
+        <i class="ri-delete-bin-line"></i>
+        <span>Supprimer</span>
+      </button>
+      <button
+        type="button"
+        class="action-btn action-btn--promo action-btn--with-label"
+        (click)="openPromotionModal(selectedProduit); closeDetail()"
+      >
+        <i class="ri-percent-line"></i>
+        <span>Associer promotions</span>
+      </button>
+      <button
+        type="button"
+        class="action-btn action-btn--stock action-btn--with-label"
+        (click)="openStockEntryModal(selectedProduit); closeDetail()"
+      >
+        <i class="ri-add-line"></i>
+        <span>Entree stock</span>
+      </button>
+      <button
+        type="button"
+        class="action-btn action-btn--edit action-btn--with-label"
+        (click)="editProduit(selectedProduit); closeDetail()"
+      >
+        <i class="ri-edit-line"></i>
+        <span>Modifier</span>
+      </button>
+    </div>
   </div>
 
 </div>

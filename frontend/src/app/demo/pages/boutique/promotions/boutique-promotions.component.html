@@ -41,7 +41,7 @@
               <th>Periode</th>
               <th>Statut</th>
               <th>Creee par</th>
-              <th>Actions</th>
+              <th class="text-center">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -74,23 +74,26 @@
               <td>
                 <span class="badge bg-soft-primary text-primary">{{ getCreatorLabel(promotion) }}</span>
               </td>
-              <td>
-                <div class="dropdown">
-                  <button class="btn btn-soft-secondary btn-sm dropdown" type="button" data-bs-toggle="dropdown">
-                    <i class="ri-more-2-fill"></i>
+              <td class="text-center action-cell">
+                <div class="action-buttons" role="group" aria-label="Actions promotion">
+                  <button
+                    type="button"
+                    class="action-btn action-btn--edit"
+                    (click)="openEditModal(promotion)"
+                    title="Modifier"
+                    aria-label="Modifier"
+                  >
+                    <i class="ri-edit-line"></i>
                   </button>
-                  <ul class="dropdown-menu dropdown-menu-end">
-                    <li>
-                      <button class="dropdown-item text-primary" (click)="openEditModal(promotion)">
-                        <i class="ri-edit-line me-2"></i>Modifier
-                      </button>
-                    </li>
-                    <li>
-                      <button class="dropdown-item text-danger" (click)="deletePromotion(promotion._id)">
-                        <i class="ri-delete-bin-line me-2"></i>Supprimer
-                      </button>
-                    </li>
-                  </ul>
+                  <button
+                    type="button"
+                    class="action-btn action-btn--delete"
+                    (click)="deletePromotion(promotion._id)"
+                    title="Supprimer"
+                    aria-label="Supprimer"
+                  >
+                    <i class="ri-delete-bin-line"></i>
+                  </button>
                 </div>
               </td>
             </tr>

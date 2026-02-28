@@ -81,7 +81,9 @@ export class UserDashboardComponent implements OnInit {
         this.currentPanier = panier?.success ? panier.data : null;
         this.historique = Array.isArray(historique?.data) ? historique.data : [];
         this.computeStats();
-        this.cdr.detectChanges();
+        Promise.resolve().then(() => {
+          this.cdr.detectChanges();
+        });
       },
       error: () => {
         this.error = 'Impossible de charger le dashboard utilisateur';
