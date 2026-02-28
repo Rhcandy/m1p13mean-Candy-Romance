@@ -2,7 +2,6 @@ const User = require('../models/User');
 const Role = require('../models/Role');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { uploadImage } = require('./cloudinary');
 const { sendEmail } = require('../utils/send-mail.util');
 
 class AuthService {
@@ -173,7 +172,6 @@ class AuthService {
         email: user.email,
         confirmPassword: code
       });
-
       return { message: 'Code de réinitialisation envoyé par email' };
     } catch (error) {
       throw new Error(`Erreur lors de la demande de réinitialisation: ${error.message}`);

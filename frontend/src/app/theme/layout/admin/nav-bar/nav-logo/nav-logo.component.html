@@ -7,16 +7,16 @@
   </a>
   <!-- ======= Menu collapse Icon ===== -->
   <div class="pc-h-item">
-    <a
-      href="javascript:"
-      class="pc-head-link head-link-secondary m-0 mobile-menu"
+    <button
+      type="button"
+      class="pc-head-link head-link-secondary m-0 mobile-menu border-0 bg-transparent"
       [ngClass]="{ on: navCollapsed }"
-      id="sidebar-hide mobile-collapse"
       (click)="navCollapse()"
-      title="Click to Menu Collapse"
+      title="Cliquer pour replier le menu"
+      aria-label="Replier le menu"
     >
       <i class="ti ti-menu-2"></i>
-    </a>
+    </button>
   </div>
 </div>
 

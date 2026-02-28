@@ -1,4 +1,4 @@
-<div class="container-fluid">
+<div class="container-fluid boutique-commandes">
   <div class="row">
     <div class="col-12">
       <div class="page-title-box d-sm-flex align-items-center justify-content-between">
@@ -74,7 +74,7 @@
               <th>Total</th>
               <th>Statut</th>
               <th>Date</th>
-              <th>Actions</th>
+              <th class="text-center">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -123,12 +123,18 @@
               <td>
                 <small class="text-muted">{{ commande.createdAt | date:'dd/MM/yyyy' }}</small>
               </td>
-              <td>
-                <button type="button" 
-                        class="btn btn-outline-warning btn-sm" 
-                        (click)="getCommandeDetails(commande._id)">
-                  <i class="ti ti-eye"></i>
-                </button>
+              <td class="text-center action-cell">
+                <div class="action-buttons" role="group" aria-label="Actions commande">
+                  <button
+                    type="button"
+                    class="action-btn action-btn--view"
+                    (click)="getCommandeDetails(commande._id)"
+                    title="Voir details"
+                    aria-label="Voir details"
+                  >
+                    <i class="ti ti-eye"></i>
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>

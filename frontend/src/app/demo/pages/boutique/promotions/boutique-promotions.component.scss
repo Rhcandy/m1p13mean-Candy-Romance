@@ -3,6 +3,74 @@
   .table td {
     vertical-align: middle;
   }
+
+  .action-cell {
+    min-width: 108px;
+  }
+
+  .action-buttons {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: nowrap;
+  }
+
+  .action-btn {
+    border: 1px solid transparent;
+    border-radius: 10px;
+    height: 34px;
+    min-width: 34px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition:
+      background-color 0.2s ease,
+      color 0.2s ease,
+      border-color 0.2s ease,
+      transform 0.2s ease,
+      box-shadow 0.2s ease;
+
+    i {
+      font-size: 1rem;
+      line-height: 1;
+    }
+
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 10px rgba(15, 23, 42, 0.12);
+    }
+
+    &:focus-visible {
+      outline: 2px solid rgba(37, 99, 235, 0.35);
+      outline-offset: 2px;
+    }
+  }
+
+  .action-btn--edit {
+    background: #dbeafe;
+    border-color: #bfdbfe;
+    color: #2563eb;
+
+    &:hover {
+      background: #2563eb;
+      border-color: #2563eb;
+      color: #fff;
+    }
+  }
+
+  .action-btn--delete {
+    background: #fee2e2;
+    border-color: #fecaca;
+    color: #b91c1c;
+
+    &:hover {
+      background: #b91c1c;
+      border-color: #b91c1c;
+      color: #fff;
+    }
+  }
 }
 
 .promo-modal-overlay {
@@ -48,5 +116,20 @@
 @media (max-width: 768px) {
   .promo-modal-panel {
     max-width: 100%;
+  }
+
+  .boutique-promotions-page {
+    .action-cell {
+      min-width: 96px;
+    }
+
+    .action-buttons {
+      gap: 6px;
+    }
+
+    .action-btn {
+      height: 30px;
+      min-width: 30px;
+    }
   }
 }
