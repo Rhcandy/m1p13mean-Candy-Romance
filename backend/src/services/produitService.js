@@ -1,6 +1,18 @@
+const mongoose = require('mongoose');
 const Produit = require('../models/Produit');
 const Boutique = require('../models/Boutique');
 const CategorieProduit = require('../models/CategorieProduit');
+
+const createServiceError = (message, statusCode = 400) => {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+};
+
+const normalizeObjectId = (value) => {
+  if (value === undefined || value === null) return '';
+  return String(value).trim();
+};
 
 /**
  * Upload et mettre à jour la photo d'un produit
@@ -53,16 +65,35 @@ const uploadPhoto = async (produitId, file) => {
  * @returns {Object} - Produit créé
  */
 const createProduit = async (produitData, file = null) => {
+  const boutiqueId = normalizeObjectId(produitData?.boutiqueId);
+  const categorieId = normalizeObjectId(produitData?.categorieId);
+
+  if (!boutiqueId) {
+    throw createServiceError('Le champ boutiqueId est obligatoire');
+  }
+  if (!mongoose.Types.ObjectId.isValid(boutiqueId)) {
+    throw createServiceError('ID boutique invalide');
+  }
+
+  if (!categorieId) {
+    throw createServiceError('Le champ categorieId est obligatoire');
+  }
+  if (!mongoose.Types.ObjectId.isValid(categorieId)) {
+    throw createServiceError('ID categorie invalide');
+  }
+
+  produitData.boutiqueId = boutiqueId;
+  produitData.categorieId = categorieId;
   // Vérifier si la boutique existe
-  const boutique = await Boutique.findById(produitData.boutiqueId);
+  const boutique = await Boutique.findById(boutiqueId);
   if (!boutique) {
-    throw new Error('Boutique non trouvée');
+    throw createServiceError('Boutique non trouvee', 404);
   }
 
   // Vérifier si la catégorie existe
-  const categorie = await CategorieProduit.findById(produitData.categorieId);
+  const categorie = await CategorieProduit.findById(categorieId);
   if (!categorie) {
-    throw new Error('Catégorie non trouvée');
+    throw createServiceError('Categorie non trouvee', 404);
   }
 
   // Gérer l'upload de photo si fourni
@@ -98,6 +129,19 @@ const createProduit = async (produitData, file = null) => {
  * @returns {Object} - Produit mis à jour
  */
 const updateProduit = async (produitId, updateData, file = null) => {
+  if (Object.prototype.hasOwnProperty.call(updateData || {}, 'categorieId')) {
+    const categorieId = normalizeObjectId(updateData.categorieId);
+
+    if (!categorieId) {
+      throw createServiceError('Le champ categorieId est obligatoire');
+    }
+    if (!mongoose.Types.ObjectId.isValid(categorieId)) {
+      throw createServiceError('ID categorie invalide');
+    }
+
+    updateData.categorieId = categorieId;
+  }
+
   const produit = await Produit.findById(produitId);
   if (!produit) {
     throw new Error('Produit non trouvé');

@@ -125,4 +125,26 @@ export class BoutiqueProduitService {
   }> {
     return this.api.put(`/produits/${id}/promotions`, { promotionIds });
   }
+
+  createStockEntry(
+    id: string,
+    payload: { quantity: number; variantIndex?: number; variantAttributes?: Record<string, string> }
+  ): Observable<{
+    success: boolean;
+    message: string;
+    data: {
+      produitId: string;
+      variantIndex: number;
+      variant: {
+        attributes: Record<string, string>;
+        qtt: number;
+        reserved: number;
+        available: number;
+      };
+      totalStock: number;
+      availableStock: number;
+    };
+  }> {
+    return this.api.post(`/produits/${id}/stock-entry`, payload);
+  }
 }

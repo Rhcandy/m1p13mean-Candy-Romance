@@ -116,7 +116,8 @@ export class ProfileComponent implements OnInit {
     const map: Record<string, string> = {
       user: 'Client',
       admin_boutique: 'Shop Owner',
-      admin_centre: 'Royal City Owner',
+      admin_center: 'Royal Center Admin',
+      admin_centre: 'Royal Center Owner',
       super_admin: 'Project Admin'
     };
     return map[r] ?? r;

@@ -1,0 +1,62 @@
+<div class="container-fluid royal-section">
+
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+        <h4 class="mb-sm-0">Loyers - Royal Center</h4>
+        <button type="button" class="btn btn-primary" (click)="openCreateModal()">
+          + Ajouter un loyer
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loader -->
+  <div *ngIf="loading" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status"></div>
+  </div>
+
+  <!-- Tableau des loyers -->
+  <div *ngIf="!loading">
+    <div *ngIf="loyers.length === 0" class="text-center text-muted py-4">
+      Aucun loyer enregistré.
+    </div>
+
+    <div *ngIf="loyers.length > 0" class="card">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-centered mb-0">
+            <thead>
+              <tr>
+                <th>Boutique</th>
+                <th>Lignes</th>
+                <th>Montant payé</th>
+                <th>Reste à payer</th>
+                <th>Maj</th>
+                <th class="text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let loyer of loyers">
+                <td>{{ getBoutiqueName(loyer) }}</td>
+                <td>{{ loyer.lignes }}</td>
+                <td>{{ getTotalMontantPaye(loyer) | number }} Ar</td>
+                <td>{{ getTotalRestePaye(loyer) | number }} Ar</td>
+                <td>{{ loyer.updatedAt | date: 'dd/MM/yyyy HH:mm' }}</td>
+                <td class="text-center">
+                  <button class="btn btn-sm btn-outline-primary me-1" (click)="openEditModal(loyer)">
+                    <i class="ti ti-pencil"></i>
+                  </button>
+                  <button class="btn btn-sm btn-outline-danger" (click)="deleteLoyer(loyer)">
+                    <i class="ti ti-trash"></i>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

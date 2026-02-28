@@ -50,6 +50,13 @@ export class BoutiqueProduitsComponent implements OnInit {
   selectedPromotionIds = new Set<string>();
   loadingPromotionsDisponibles = false;
   savingPromotions = false;
+
+  showStockEntryModal = false;
+  selectedProduitForStock: BoutiqueProduit | null = null;
+  selectedStockVariantIndex = 0;
+  stockEntryQuantity = 1;
+  savingStockEntry = false;
+
   private readonly currentUserId: string | null;
 
   openDetail(produit: BoutiqueProduit): void {
@@ -441,6 +448,87 @@ export class BoutiqueProduitsComponent implements OnInit {
     return promotion.createdBy?._id === this.currentUserId;
   }
 
+  openStockEntryModal(produit: BoutiqueProduit): void {
+    if (!Array.isArray(produit.variant) || produit.variant.length === 0) {
+      this.notificationService.warning('Aucune variante disponible pour ce produit');
+      return;
+    }
+
+    this.selectedProduitForStock = produit;
+    this.selectedStockVariantIndex = 0;
+    this.stockEntryQuantity = 1;
+    this.showStockEntryModal = true;
+  }
+
+  closeStockEntryModal(): void {
+    this.showStockEntryModal = false;
+    this.selectedProduitForStock = null;
+    this.selectedStockVariantIndex = 0;
+    this.stockEntryQuantity = 1;
+    this.savingStockEntry = false;
+  }
+
+  getVariantDisplayLabel(variant: any, index: number): string {
+    const attrs = this.getVariantAttrs(variant?.attributes);
+    if (!attrs.length) {
+      return `Variante ${index + 1}`;
+    }
+    return attrs.map((attr) => `${attr.key}: ${attr.value}`).join(' | ');
+  }
+
+  submitStockEntry(): void {
+    const produit = this.selectedProduitForStock;
+    if (!produit?._id) {
+      return;
+    }
+
+    const quantity = Number(this.stockEntryQuantity);
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      this.notificationService.warning('La quantite doit etre superieure a 0');
+      return;
+    }
+
+    this.savingStockEntry = true;
+    this.boutiqueProduitService.createStockEntry(produit._id, {
+      quantity,
+      variantIndex: this.selectedStockVariantIndex
+    }).subscribe({
+      next: (response) => {
+        if (!response.success) {
+          this.notificationService.error('Erreur', response.message || 'Entree stock impossible');
+          return;
+        }
+
+        const updatedProduct = this.produits.find((item) => item._id === produit._id);
+        if (updatedProduct?.variant?.[response.data.variantIndex]) {
+          updatedProduct.variant[response.data.variantIndex].qtt = response.data.variant.qtt;
+          updatedProduct.variant[response.data.variantIndex].reserved = response.data.variant.reserved;
+        }
+
+        if (this.selectedProduit?._id === produit._id && this.selectedProduit.variant?.[response.data.variantIndex]) {
+          this.selectedProduit.variant[response.data.variantIndex].qtt = response.data.variant.qtt;
+          this.selectedProduit.variant[response.data.variantIndex].reserved = response.data.variant.reserved;
+        }
+
+        this.stockByProduitId[produit._id] = {
+          totalStock: response.data.totalStock,
+          availableStock: response.data.availableStock
+        };
+
+        this.notificationService.success('Entree en stock enregistree avec succes');
+        this.closeStockEntryModal();
+      },
+      error: (error) => {
+        console.error('Erreur entree stock:', error);
+        this.notificationService.error('Erreur', 'Impossible d enregistrer l entree stock');
+      },
+      complete: () => {
+        this.savingStockEntry = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
   // â”€â”€ Conversion : objet attributes â†” attrList â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   private attrsToList(attributes: any): AttrEntry[] {
@@ -502,6 +590,10 @@ export class BoutiqueProduitsComponent implements OnInit {
       this.notificationService.error('Erreur', 'Veuillez remplir les champs obligatoires (nom et prix)');
       return;
     }
+    if (!this.addProduitForm.categorieId?.trim()) {
+      this.notificationService.error('Erreur', 'Veuillez selectionner une categorie');
+      return;
+    }
     for (let i = 0; i < this.addProduitForm.variant.length; i++) {
       if (!this.addProduitForm.variant[i].qtt || this.addProduitForm.variant[i].qtt < 1) {
         this.notificationService.error('Erreur', `La variante ${i + 1} doit avoir une quantitÃ© supÃ©rieure Ã  0`);
@@ -512,10 +604,10 @@ export class BoutiqueProduitsComponent implements OnInit {
     this.isSubmitting = true;
     const formData = new FormData();
     formData.append('nom', this.addProduitForm.nom);
-    formData.append('descriptionProduit', this.addProduitForm.description);
+    formData.append('description', this.addProduitForm.description);
     formData.append('prix', JSON.stringify([{ prixUnitaire: this.addProduitForm.prix }]));
     formData.append('boutiqueId', this.boutique?._id || '');
-    formData.append('categorieId', this.addProduitForm.categorieId);
+    formData.append('categorieId', this.addProduitForm.categorieId.trim());
     if (this.addProduitForm.variant.length > 0) {
       formData.append('variant', JSON.stringify(this.variantsToFormData(this.addProduitForm.variant)));
     }
@@ -526,7 +618,7 @@ export class BoutiqueProduitsComponent implements OnInit {
     this.boutiqueProduitService.createMyBoutiqueProduit(formData).subscribe({
       next: (response) => {
         if (response.success) {
-          this.notificationService.success('Produit ajoutÃ© avec succÃ¨s');
+          this.notificationService.success('Produit ajouté avec succès');
           this.closeAddModal();
           this.loadProduits();
         } else {
@@ -542,7 +634,6 @@ export class BoutiqueProduitsComponent implements OnInit {
     });
   }
 
-  // â”€â”€ Modal Modification â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   editProduit(produit: BoutiqueProduit): void {
     const catId = typeof produit.categorieId === 'object'
@@ -599,6 +690,10 @@ export class BoutiqueProduitsComponent implements OnInit {
       this.notificationService.error('Erreur', 'Veuillez remplir les champs obligatoires');
       return;
     }
+    if (!this.editProduitForm.categorieId?.trim()) {
+      this.notificationService.error('Erreur', 'Veuillez selectionner une categorie');
+      return;
+    }
     for (let i = 0; i < this.editProduitForm.variant.length; i++) {
       if (!this.editProduitForm.variant[i].qtt || this.editProduitForm.variant[i].qtt < 1) {
         this.notificationService.error('Erreur', `La variante ${i + 1} doit avoir une quantitÃ© supÃ©rieure Ã  0`);
@@ -609,9 +704,9 @@ export class BoutiqueProduitsComponent implements OnInit {
     this.isUpdating = true;
     const formData = new FormData();
     formData.append('nom', this.editProduitForm.nom);
-    formData.append('descriptionProduit', this.editProduitForm.description);
+    formData.append('description', this.editProduitForm.description);
     formData.append('prix', JSON.stringify([{ prixUnitaire: this.editProduitForm.prix }]));
-    formData.append('categorieId', this.editProduitForm.categorieId);
+    formData.append('categorieId', this.editProduitForm.categorieId.trim());
     if (this.editProduitForm.variant.length > 0) {
       formData.append('variant', JSON.stringify(this.variantsToFormData(this.editProduitForm.variant)));
     }

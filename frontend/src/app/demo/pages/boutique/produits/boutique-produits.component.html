@@ -117,6 +117,11 @@
                           title="Associer promotions">
                     <i class="ti ti-percentage"></i>
                   </button>
+                  <button class="btn btn-sm btn-outline-success me-1"
+                          (click)="openStockEntryModal(produit)"
+                          title="Entree stock">
+                    <i class="ti ti-plus"></i>
+                  </button>
                   <button class="btn btn-sm btn-outline-danger"
                           (click)="deleteProduit(produit._id)"
                           title="Supprimer">
@@ -241,6 +246,54 @@
 <!-- ══════════════════════════════════════════════════════
      OFFCANVAS — FICHE DÉTAIL PRODUIT
 ══════════════════════════════════════════════════════ -->
+
+<!-- Modal entree stock -->
+<div class="modal fade" [class.show]="showStockEntryModal" [class.d-block]="showStockEntryModal"
+     tabindex="-1" [style.background]="showStockEntryModal ? 'rgba(0,0,0,0.5)' : ''">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="ri-add-circle-line text-success me-2"></i>Entree en stock
+        </h5>
+        <button type="button" class="btn-close" (click)="closeStockEntryModal()"></button>
+      </div>
+
+      <div class="modal-body" *ngIf="selectedProduitForStock">
+        <div class="mb-3 p-3 rounded bg-light border">
+          <div class="fw-semibold">{{ selectedProduitForStock.nom }}</div>
+          <div class="small text-muted">Selectionnez la variante puis la quantite a ajouter.</div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Variante</label>
+          <select class="form-select" [(ngModel)]="selectedStockVariantIndex" name="stock_variant">
+            <option *ngFor="let variant of selectedProduitForStock.variant; let i = index" [ngValue]="i">
+              {{ getVariantDisplayLabel(variant, i) }}
+            </option>
+          </select>
+        </div>
+
+        <div>
+          <label class="form-label">Quantite a ajouter</label>
+          <input type="number" class="form-control" [(ngModel)]="stockEntryQuantity" name="stock_quantity" min="1" />
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeStockEntryModal()" [disabled]="savingStockEntry">
+          Annuler
+        </button>
+        <button type="button" class="btn btn-success" (click)="submitStockEntry()" [disabled]="savingStockEntry">
+          <span *ngIf="!savingStockEntry">Valider</span>
+          <span *ngIf="savingStockEntry">
+            <span class="spinner-border spinner-border-sm me-1"></span>Enregistrement...
+          </span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- Backdrop cliquable -->
 <div *ngIf="showDetail" class="detail-backdrop" (click)="closeDetail()"></div>
@@ -376,6 +429,11 @@
       <i class="ri-percent-line me-1"></i>Associer promotions
     </button>
     <button type="button"
+            class="btn btn-success"
+            (click)="openStockEntryModal(selectedProduit); closeDetail()">
+      <i class="ri-add-line me-1"></i>Entree stock
+    </button>
+    <button type="button"
             class="btn btn-primary"
             (click)="editProduit(selectedProduit); closeDetail()">
       <i class="ri-edit-line me-1"></i>Modifier
@@ -428,7 +486,7 @@
                 <small class="text-muted">Chargement...</small>
               </div>
               <select *ngIf="!loadingCategories" class="form-select"
-                      [(ngModel)]="addProduitForm.categorieId" name="add_cat">
+                      [(ngModel)]="addProduitForm.categorieId" name="add_cat" required>
                 <option value="">Sélectionner une catégorie</option>
                 <option *ngFor="let cat of categories" [value]="cat._id">{{ cat.nom }}</option>
               </select>
@@ -562,7 +620,7 @@
             <div class="col-md-6">
               <label class="form-label">Catégorie <span class="text-danger">*</span></label>
               <select class="form-select"
-                      [(ngModel)]="editProduitForm.categorieId" name="edit_cat">
+                      [(ngModel)]="editProduitForm.categorieId" name="edit_cat" required>
                 <option value="">Sélectionner une catégorie</option>
                 <option *ngFor="let cat of categories" [value]="cat._id">{{ cat.nom }}</option>
               </select>

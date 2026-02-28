@@ -6,10 +6,10 @@
   "private": false,
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
-    "build": "ng build",
-    "build-prod": "ng build --configuration production",
-    "watch": "ng build --watch --configuration development",
+    "start": "cross-env SASS_SILENCE_DEPRECATIONS=import ng serve",
+    "build": "cross-env SASS_SILENCE_DEPRECATIONS=import ng build",
+    "build-prod": "cross-env SASS_SILENCE_DEPRECATIONS=import ng build --configuration production",
+    "watch": "cross-env SASS_SILENCE_DEPRECATIONS=import ng build --watch --configuration development",
     "test": "ng test",
     "lint": "ng lint",
     "lint:fix": "ng lint --fix",
@@ -52,6 +52,7 @@
     "@types/leaflet": "^1.9.21",
     "@typescript-eslint/eslint-plugin": "8.49.0",
     "@typescript-eslint/parser": "8.49.0",
+    "cross-env": "^7.0.3",
     "eslint": "9.39.1",
     "prettier": "3.7.4",
     "typescript": "5.9.3"

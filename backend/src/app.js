@@ -68,6 +68,11 @@ const uploadRoutes = require('./routes/uploadRoutes');
 const typeBoxRoutes = require('./routes/typeBoxRoutes');
 const boxRoutes = require('./routes/boxRoutes');
 const boutiqueRoutes = require('./routes/boutiqueRoutes');
+
+const loyers =require('./routes/loyer.routes');
+const histoPrixRoutes = require('./routes/histoPrixCateg.routes');
+const adminStatsRoutes = require("./routes/adminStats.routes");
+
 const categorieProduitRoutes = require('./routes/categorieProduitRoutes');
 const produitRoutes = require('./routes/produitRoutes');
 const panierRoutes = require('./routes/panierRoutes');
@@ -76,6 +81,8 @@ const livraisonRoutes = require('./routes/livraisonRoutes');
 const favorisRoutes = require('./routes/favorisRoutes');
 const promotionRoutes = require('./routes/promotionRoutes');
 const commandeBoutiqueRoutes = require('./routes/commandeBoutiqueRoutes');
+const loyerRoutes = require('./routes/loyerRoutes');
+
 
 // Routes API
 app.use('/api/auth', authRoutes);
@@ -84,6 +91,11 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/typebox', typeBoxRoutes);
 app.use('/api/boxes', boxRoutes);
 app.use('/api/boutiques', boutiqueRoutes);
+
+app.use('/api/loyers', loyers);
+app.use('/api/histo-prix', histoPrixRoutes);
+app.use("/api/admin/stats", adminStatsRoutes);
+
 app.use('/api/categories-produit', categorieProduitRoutes);
 app.use('/api/produits', produitRoutes);
 app.use('/api/paniers', panierRoutes);
@@ -92,6 +104,8 @@ app.use('/api/livraison', livraisonRoutes);
 app.use('/api/favoris', favorisRoutes);
 app.use('/api/promotions', promotionRoutes);
 app.use('/api/commandes-boutique', commandeBoutiqueRoutes);
+app.use('/api/loyers', loyerRoutes);
+
 
 
 /**

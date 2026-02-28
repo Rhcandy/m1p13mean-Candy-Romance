@@ -78,6 +78,10 @@ const routes: Routes = [
         loadComponent: () => import('./demo/pages/panier/panier.component').then((c) => c.PanierComponent)
       },
       {
+        path: 'wishlist',
+        loadComponent: () => import('./demo/pages/wishlist/wishlist.component').then((c) => c.WishlistComponent)
+      },
+      {
         path: 'checkout',
         loadComponent: () => import('./demo/pages/checkout/checkout.component').then((c) => c.CheckoutComponent)
       },
@@ -121,6 +125,32 @@ const routes: Routes = [
             loadComponent: () => import('./demo/pages/boutique/commandes/boutique-commandes.component').then((c) => c.BoutiqueCommandesComponent)
           }
         ]
+      },
+      {
+        path: 'royal-center',
+        children: [
+          {
+            path: 'loyers',
+            loadComponent: () =>
+              import('./demo/pages/royal-center/loyers/royal-center-loyers.component').then(
+                (c) => c.RoyalCenterLoyersComponent
+              )
+          },
+          {
+            path: 'boxes',
+            loadComponent: () =>
+              import('./demo/pages/royal-center/boxes/royal-center-boxes.component').then(
+                (c) => c.RoyalCenterBoxesComponent
+              )
+          },
+          {
+            path: 'boutiques',
+            loadComponent: () =>
+              import('./demo/pages/royal-center/boutiques/royal-center-boutiques.component').then(
+                (c) => c.RoyalCenterBoutiquesComponent
+              )
+          }
+        ]
       }
     ]
   },
@@ -145,7 +175,13 @@ const routes: Routes = [
         loadComponent: () => import('./demo/pages/authentication/reset-password/reset-password.component').then((c) => c.ResetPasswordComponent)
       }
     ]
-  }
+  },
+  {
+      path: 'loyers',
+      loadComponent: () =>
+        import('./components/loyer-list/loyer-list.component')
+          .then(m => m.LoyerListComponent)
+    }
 ];
 
 @NgModule({
