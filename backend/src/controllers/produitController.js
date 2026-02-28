@@ -7,6 +7,95 @@ const produitService = require('../services/produitService');
 const Devise = require('../models/Devise');
 const advancedResults = require('../middlewares/advancedResults');
 
+const normalizeDescriptionField = (payload = {}) => {
+  if (
+    (payload.description === undefined || payload.description === null || payload.description === '') &&
+    typeof payload.descriptionProduit === 'string'
+  ) {
+    payload.description = payload.descriptionProduit;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'descriptionProduit')) {
+    delete payload.descriptionProduit;
+  }
+
+  return payload;
+};
+
+const toPlainVariantAttributes = (attributes) => {
+  if (!attributes) return {};
+  if (attributes instanceof Map) {
+    return Object.fromEntries(attributes.entries());
+  }
+  if (typeof attributes?.toObject === 'function') {
+    return attributes.toObject();
+  }
+  if (typeof attributes === 'object' && !Array.isArray(attributes)) {
+    return attributes;
+  }
+  return {};
+};
+
+const normalizeVariantAttributes = (attributes) => {
+  const raw = toPlainVariantAttributes(attributes);
+  const normalized = {};
+
+  Object.keys(raw)
+    .sort()
+    .forEach((key) => {
+      const normalizedKey = String(key).trim();
+      if (!normalizedKey) return;
+
+      const value = raw[key];
+      if (value == null) return;
+      normalized[normalizedKey] = String(value).trim();
+    });
+
+  return normalized;
+};
+
+const isSameVariantAttributes = (leftAttributes, rightAttributes) => {
+  const left = normalizeVariantAttributes(leftAttributes);
+  const right = normalizeVariantAttributes(rightAttributes);
+  const leftKeys = Object.keys(left);
+  const rightKeys = Object.keys(right);
+
+  if (leftKeys.length !== rightKeys.length) {
+    return false;
+  }
+
+  return leftKeys.every((key) => left[key] === right[key]);
+};
+
+const parseJsonBodyField = (payload, fieldName) => {
+  if (!payload || !Object.prototype.hasOwnProperty.call(payload, fieldName)) {
+    return { ok: true };
+  }
+
+  const rawValue = payload[fieldName];
+  if (typeof rawValue !== 'string') {
+    return { ok: true };
+  }
+
+  const trimmedValue = rawValue.trim();
+  if (!trimmedValue) {
+    delete payload[fieldName];
+    return { ok: true };
+  }
+
+  try {
+    payload[fieldName] = JSON.parse(trimmedValue);
+    return { ok: true };
+  } catch (_error) {
+    return { ok: false };
+  }
+};
+
+const toTrimmedString = (value) => {
+  if (value === undefined || value === null) return '';
+  return String(value).trim();
+};
+
 /**
  * @swagger
  * components:
@@ -158,29 +247,24 @@ exports.createProduit = async (req, res) => {
     let produitData = req.body;
     const file = req.file;
     // Parser les champs JSON si ils sont envoyés comme strings
-    if (produitData.variant && typeof produitData.variant === 'string') {
-      try {
-        produitData.variant = JSON.parse(produitData.variant);
-      } catch (e) {
-        return res.status(400).json({
-          success: false,
-          message: 'Format invalide pour le champ variant'
-        });
-      }
+    const parsedVariant = parseJsonBodyField(produitData, 'variant');
+    if (!parsedVariant.ok) {
+      return res.status(400).json({
+        success: false,
+        message: 'Format invalide pour le champ variant'
+      });
     }
 
-    if (produitData.prix && typeof produitData.prix === 'string') {
-      try {
-        produitData.prix = JSON.parse(produitData.prix);
-      } catch (e) {
-        return res.status(400).json({
-          success: false,
-          message: 'Format invalide pour le champ prix'
-        });
-      }
+    const parsedPrix = parseJsonBodyField(produitData, 'prix');
+    if (!parsedPrix.ok) {
+      return res.status(400).json({
+        success: false,
+        message: 'Format invalide pour le champ prix'
+      });
     }
 
-  
+    produitData = normalizeDescriptionField(produitData);
+
     const produit = await produitService.createProduit(produitData, file);
 
     res.status(201).json({
@@ -190,9 +274,11 @@ exports.createProduit = async (req, res) => {
     });
   } catch (error) {
     console.error('Erreur création produit:', error);
-    res.status(500).json({
+    const status = Number(error?.statusCode);
+    const isClientError = Number.isInteger(status) && status >= 400 && status < 500;
+    res.status(isClientError ? status : 500).json({
       success: false,
-      message: 'Erreur serveur',
+      message: isClientError ? error.message : 'Erreur serveur',
       error: error.message
     });
   }
@@ -411,6 +497,8 @@ exports.updateProduit = async (req, res) => {
     }
     
     // Vérifier si la catégorie existe si fournie
+    updateData = normalizeDescriptionField(updateData);
+
     if (updateData.categorieId) {
       const categorie = await CategorieProduit.findById(updateData.categorieId);
       if (!categorie) {
@@ -431,9 +519,11 @@ exports.updateProduit = async (req, res) => {
     });
   } catch (error) {
     console.error('Erreur mise à jour produit:', error);
-    res.status(500).json({
+    const status = Number(error?.statusCode);
+    const isClientError = Number.isInteger(status) && status >= 400 && status < 500;
+    res.status(isClientError ? status : 500).json({
       success: false,
-      message: 'Erreur serveur',
+      message: isClientError ? error.message : 'Erreur serveur',
       error: error.message
     });
   }
@@ -525,6 +615,115 @@ exports.getProduitStock = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Erreur serveur',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * POST - Enregistrer une entree en stock pour une variante d'un produit
+ */
+exports.createStockEntry = async (req, res) => {
+  try {
+    const quantity = Number(req.body?.quantity);
+
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'La quantite ajoutee doit etre superieure a 0'
+      });
+    }
+
+    const produit = await Produit.findById(req.params.id);
+    if (!produit) {
+      return res.status(404).json({
+        success: false,
+        message: 'Produit non trouve'
+      });
+    }
+
+    if (!Array.isArray(produit.variant) || produit.variant.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Aucune variante disponible pour ce produit'
+      });
+    }
+
+    let selectedVariantIndex = -1;
+    if (req.body?.variantIndex !== undefined && req.body?.variantIndex !== null && req.body?.variantIndex !== '') {
+      const parsedIndex = Number(req.body.variantIndex);
+      if (!Number.isInteger(parsedIndex) || parsedIndex < 0 || parsedIndex >= produit.variant.length) {
+        return res.status(400).json({
+          success: false,
+          message: 'variantIndex invalide'
+        });
+      }
+      selectedVariantIndex = parsedIndex;
+    }
+
+    let parsedVariantAttributes = null;
+    if (selectedVariantIndex === -1 && req.body?.variantAttributes !== undefined) {
+      if (typeof req.body.variantAttributes === 'string') {
+        try {
+          parsedVariantAttributes = JSON.parse(req.body.variantAttributes);
+        } catch (_error) {
+          return res.status(400).json({
+            success: false,
+            message: 'Format invalide pour variantAttributes'
+          });
+        }
+      } else {
+        parsedVariantAttributes = req.body.variantAttributes;
+      }
+
+      const normalizedAttributes = normalizeVariantAttributes(parsedVariantAttributes);
+      const hasAttributes = Object.keys(normalizedAttributes).length > 0;
+
+      if (hasAttributes) {
+        selectedVariantIndex = produit.variant.findIndex((variant) =>
+          isSameVariantAttributes(variant.attributes, normalizedAttributes)
+        );
+      }
+    }
+
+    if (selectedVariantIndex === -1) {
+      return res.status(400).json({
+        success: false,
+        message: 'Veuillez selectionner une variante valide'
+      });
+    }
+
+    const variant = produit.variant[selectedVariantIndex];
+    variant.qtt = (Number(variant.qtt) || 0) + quantity;
+    await produit.save();
+
+    const totalStock = produit.variant.reduce((sum, item) => sum + (Number(item.qtt) || 0), 0);
+    const totalReserved = produit.variant.reduce((sum, item) => sum + (Number(item.reserved) || 0), 0);
+    const availableStock = Math.max(0, totalStock - totalReserved);
+
+    res.status(200).json({
+      success: true,
+      message: 'Entree en stock enregistree avec succes',
+      data: {
+        produitId: produit._id,
+        variantIndex: selectedVariantIndex,
+        variant: {
+          attributes: toPlainVariantAttributes(variant.attributes),
+          qtt: Number(variant.qtt) || 0,
+          reserved: Number(variant.reserved) || 0,
+          available: Math.max(0, (Number(variant.qtt) || 0) - (Number(variant.reserved) || 0))
+        },
+        totalStock,
+        availableStock
+      }
+    });
+  } catch (error) {
+    console.error('Erreur entree stock produit:', error);
+    const status = Number(error?.statusCode);
+    const isClientError = Number.isInteger(status) && status >= 400 && status < 500;
+    res.status(isClientError ? status : 500).json({
+      success: false,
+      message: isClientError ? error.message : 'Erreur serveur',
       error: error.message
     });
   }
@@ -724,6 +923,36 @@ exports.getMyBoutiqueProduits = async (req, res) => {
  *         description: Erreur serveur
  */
 exports.createMyBoutiqueProduit = async (req, res) => {
+  const parsedVariant = parseJsonBodyField(req.body, 'variant');
+  if (!parsedVariant.ok) {
+    return res.status(400).json({
+      success: false,
+      message: 'Format invalide pour le champ variant'
+    });
+  }
+
+  const parsedPrix = parseJsonBodyField(req.body, 'prix');
+  if (!parsedPrix.ok) {
+    return res.status(400).json({
+      success: false,
+      message: 'Format invalide pour le champ prix'
+    });
+  }
+
+  const categorieId = toTrimmedString(req.body?.categorieId);
+  if (!categorieId) {
+    return res.status(400).json({
+      success: false,
+      message: 'Le champ categorieId est obligatoire'
+    });
+  }
+  if (!mongoose.Types.ObjectId.isValid(categorieId)) {
+    return res.status(400).json({
+      success: false,
+      message: 'ID categorie invalide'
+    });
+  }
+
   try {
     // Récupérer la boutique de l'utilisateur
     const boutique = await Boutique.findOne({ locataire: req.user.id });
@@ -737,6 +966,8 @@ exports.createMyBoutiqueProduit = async (req, res) => {
 
     // Ajouter l'ID de la boutique aux données du produit
     req.body.boutiqueId = boutique._id;
+    req.body.categorieId = categorieId;
+    normalizeDescriptionField(req.body);
 
     // Utiliser le service existant pour créer le produit
     const produit = await produitService.createProduit(req.body, req.file);
@@ -748,9 +979,11 @@ exports.createMyBoutiqueProduit = async (req, res) => {
     });
   } catch (error) {
     console.error('Erreur création produit boutique:', error);
-    res.status(500).json({
+    const status = Number(error?.statusCode);
+    const isClientError = Number.isInteger(status) && status >= 400 && status < 500;
+    res.status(isClientError ? status : 500).json({
       success: false,
-      message: 'Erreur serveur',
+      message: isClientError ? error.message : 'Erreur serveur',
       error: error.message
     });
   }
@@ -782,6 +1015,39 @@ exports.createMyBoutiqueProduit = async (req, res) => {
  *         description: Erreur serveur
  */
 exports.updateMyBoutiqueProduit = async (req, res) => {
+  const parsedVariant = parseJsonBodyField(req.body, 'variant');
+  if (!parsedVariant.ok) {
+    return res.status(400).json({
+      success: false,
+      message: 'Format invalide pour le champ variant'
+    });
+  }
+
+  const parsedPrix = parseJsonBodyField(req.body, 'prix');
+  if (!parsedPrix.ok) {
+    return res.status(400).json({
+      success: false,
+      message: 'Format invalide pour le champ prix'
+    });
+  }
+
+  if (Object.prototype.hasOwnProperty.call(req.body || {}, 'categorieId')) {
+    const categorieId = toTrimmedString(req.body.categorieId);
+    if (!categorieId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le champ categorieId est obligatoire'
+      });
+    }
+    if (!mongoose.Types.ObjectId.isValid(categorieId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID categorie invalide'
+      });
+    }
+    req.body.categorieId = categorieId;
+  }
+
   try {
     // Récupérer la boutique de l'utilisateur
     const boutique = await Boutique.findOne({ locataire: req.user.id });
@@ -807,6 +1073,7 @@ exports.updateMyBoutiqueProduit = async (req, res) => {
     }
 
     // Utiliser le service existant pour mettre à jour le produit
+    normalizeDescriptionField(req.body);
     const updatedProduit = await produitService.updateProduit(req.params.id, req.body, req.file);
 
     res.status(200).json({
@@ -816,9 +1083,11 @@ exports.updateMyBoutiqueProduit = async (req, res) => {
     });
   } catch (error) {
     console.error('Erreur mise à jour produit boutique:', error);
-    res.status(500).json({
+    const status = Number(error?.statusCode);
+    const isClientError = Number.isInteger(status) && status >= 400 && status < 500;
+    res.status(isClientError ? status : 500).json({
       success: false,
-      message: 'Erreur serveur',
+      message: isClientError ? error.message : 'Erreur serveur',
       error: error.message
     });
   }
@@ -988,3 +1257,4 @@ exports.deleteMyBoutiqueProduit = async (req, res) => {
     });
   }
 };
+

@@ -271,7 +271,7 @@ exports.createBoutique = async (req, res) => {
       data: boutique
     });
   } catch (error) {
-    console.error('Erreur cr??ation boutique:', error);
+    console.error('Erreur création boutique:', error);
     res.status(500).json({
       success: false,
       message: 'Erreur serveur',
@@ -399,12 +399,12 @@ exports.getBoutiquesResults = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Boutiques r??cup??r??es avec succ??s',
+      message: 'Boutiques récupérées avec succès',
       items: populatedResults,
       pagination: res.advancedResults.pagination
     });
   } catch (error) {
-    console.error('Erreur r??cup??ration boutiques:', error);
+    console.error('Erreur récupération boutiques:', error);
     res.status(500).json({
       success: false,
       message: 'Erreur serveur',
@@ -432,11 +432,11 @@ exports.getAllBoutiquesSimple = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Boutiques r??cup??r??es avec succ??s',
+      message: 'Boutiques récupérées avec succès',
       data: boutiques
     });
   } catch (error) {
-    console.error('Erreur r??cup??ration boutiques simples:', error);
+    console.error('Erreur récupération boutiques simples:', error);
     res.status(500).json({
       success: false,
       message: 'Erreur serveur',
@@ -498,11 +498,11 @@ exports.getBoutiqueById = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Boutique r??cup??r??e avec succ??s',
+      message: 'Boutique récupérée avec succès',
       data: boutique
     });
   } catch (error) {
-    console.error('Erreur r??cup??ration boutique:', error);
+    console.error('Erreur récupération boutique:', error);
     res.status(500).json({
       success: false,
       message: 'Erreur serveur',
@@ -541,11 +541,11 @@ exports.updateBoutique = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Boutique mise ?? jour avec succ??s',
+      message: 'Boutique mise à jour avec succès',
       data: updatedBoutique
     });
   } catch (error) {
-    console.error('Erreur mise ?? jour boutique:', error);
+    console.error('Erreur mise à jour boutique:', error);
     res.status(500).json({
       success: false,
       message: 'Erreur serveur',
@@ -678,7 +678,7 @@ exports.uploadLogo = async (req, res) => {
     if (!boutique) {
       return res.status(404).json({
         success: false,
-        message: 'Boutique non trouv??e'
+        message: 'Boutique non trouvée'
       });
     }
 
@@ -773,7 +773,7 @@ exports.deleteBoutique = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Boutique supprim??e avec succ??s'
+      message: 'Boutique supprimée avec succès'
     });
   } catch (error) {
     console.error('Erreur suppression boutique:', error);
@@ -811,17 +811,17 @@ exports.getMyBoutique = async (req, res) => {
     if (!boutique) {
       return res.status(404).json({
         success: false,
-        message: 'Boutique non trouv??e'
+        message: 'Boutique non trouvée'
       });
     }
 
     res.status(200).json({
       success: true,
-      message: 'Boutique r??cup??r??e avec succ??s',
+      message: 'Boutique récupérée avec succès',
       data: boutique
     });
   } catch (error) {
-    console.error('Erreur r??cup??ration boutique utilisateur:', error);
+    console.error('Erreur récupération boutique utilisateur:', error);
     res.status(500).json({
       success: false,
       message: 'Erreur serveur',

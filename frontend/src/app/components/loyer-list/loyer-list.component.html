@@ -1,0 +1,20 @@
+<h2>Liste des Loyers</h2>
+
+<table border="1" width="100%">
+  <thead>
+    <tr>
+      <th>Boutique</th>
+      <th>Montant total</th>
+      <th>Reste à payer</th>
+      <th>Statut</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let loyer of loyers">
+      <td>{{ loyer.boutiqueId.nom }}</td>
+      <td>{{ loyer.total }} €</td>
+      <td>{{ loyer.reste }} €</td>
+      <td>{{ loyer.statut }}</td>
+    </tr>
+  </tbody>
+</table>

@@ -1,0 +1,43 @@
+<h2>Statistiques globales</h2>
+<ul>
+  <li>Total boutiques: {{ globalStats.totalBoutiques }}</li>
+  <li>Total boxes: {{ globalStats.totalBoxes }}</li>
+  <li>Total loyers: {{ globalStats.totalLoyers }}</li>
+  <li>Total revenus: {{ globalStats.totalRevenus }}</li>
+  <li>Total impayés: {{ globalStats.totalImpayes }}</li>
+  <li>Total retards: {{ globalStats.totalRetards }}</li>
+</ul>
+
+<h2>Revenus par mois</h2>
+<ul>
+  <li *ngFor="let rev of revenueMonthly; let i = index">Mois {{ i + 1 }}: {{ rev }}</li>
+</ul>
+
+<h2>Revenus par boutique</h2>
+<ul>
+  <li *ngFor="let boutique of revenueByBoutique | keyvalue">
+    {{ boutique.key }} : {{ boutique.value }}
+  </li>
+</ul>
+
+<h2>Taux d'occupation</h2>
+<ul>
+  <li>Total boxes: {{ occupancy.totalBoxes }}</li>
+  <li>Occupied boxes: {{ occupancy.occupiedBoxes }}</li>
+  <li>Taux d'occupation: {{ occupancy.tauxOccupation }}%</li>
+</ul>
+
+<h2>Status des loyers</h2>
+<ul>
+  <li>Paye: {{ loyerStatus.paye }}</li>
+  <li>Partiel: {{ loyerStatus.partiel }}</li>
+  <li>Impayé: {{ loyerStatus.impaye }}</li>
+  <li>Retard: {{ loyerStatus.retard }}</li>
+</ul>
+
+<h2>Derniers paiements</h2>
+<ul>
+  <li *ngFor="let paiement of recentPayments">
+    {{ paiement.title }} - {{ paiement.montant }} - {{ paiement.createdAt | date:'short' }}
+  </li>
+</ul>

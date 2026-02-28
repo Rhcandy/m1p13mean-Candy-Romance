@@ -1,0 +1,49 @@
+<div class="wishlist-page container-fluid py-4">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+    <h4 class="mb-0">Mes produits favoris</h4>
+    @if (!isLoading) {
+      <span class="badge text-bg-light">{{ favoris.length }} produit(s)</span>
+    }
+  </div>
+
+  @if (isLoading) {
+    <div class="text-center py-5">
+      <div class="spinner-border text-danger" role="status">
+        <span class="visually-hidden">Chargement...</span>
+      </div>
+      <p class="text-muted mt-2 mb-0">Chargement de votre wishlist...</p>
+    </div>
+  } @else if (favoris.length === 0) {
+    <div class="empty-state text-center py-5">
+      <i class="ti ti-heart-off mb-3"></i>
+      <h5>Aucun favori pour le moment</h5>
+      <p class="text-muted mb-3">Ajoutez des produits en favoris puis revenez ici.</p>
+      <a class="btn btn-primary" routerLink="/produits">Voir les produits</a>
+    </div>
+  } @else {
+    <div class="row g-3">
+      @for (favori of favoris; track favori._id) {
+        <div class="col-xl-3 col-lg-4 col-md-6">
+          <a class="wishlist-card text-decoration-none d-block h-100" [routerLink]="['/product', favori._id]">
+            <div class="wishlist-image-wrapper">
+              <img
+                [src]="favori.photo || 'https://via.placeholder.com/640x420?text=Produit'"
+                [alt]="favori.nom"
+                loading="lazy" />
+            </div>
+
+            <div class="wishlist-card-body">
+              <h6 class="wishlist-title mb-1">{{ favori.nom }}</h6>
+              <p class="wishlist-subtitle mb-2">{{ favori.categorieId?.nom || 'Produit favori' }}</p>
+
+              <div class="d-flex justify-content-between align-items-center">
+                <span class="wishlist-price">{{ formatPrice(getProductPrice(favori)) }}</span>
+                <span class="wishlist-link">Voir details</span>
+              </div>
+            </div>
+          </a>
+        </div>
+      }
+    </div>
+  }
+</div>

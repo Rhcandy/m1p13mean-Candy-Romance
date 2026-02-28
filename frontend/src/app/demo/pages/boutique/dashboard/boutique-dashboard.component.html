@@ -51,7 +51,7 @@
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
                   <li>
-                    <button class="dropdown-item" (click)="onLogoUpload($event)">
+                    <button class="dropdown-item" (click)="logoInput.click()">
                       <i class="ri-image-line me-2"></i>Changer le logo
                     </button>
                   </li>
@@ -101,8 +101,8 @@
                   </div>
                 </div>
                 <div class="flex-grow-1 ms-3">
-                  <p class="text-muted mb-1">Chiffre d'affaires</p>
-                  <h4 class="mb-0">{{ (stats?.generales?.chiffreAffaires || 0) | currency:'EUR' }}</h4>
+                  <p class="text-muted mb-1">Chiffre d'affaires brut</p>
+                  <h4 class="mb-0">{{ (stats?.generales?.chiffreAffaires || 0) | number:'1.0-0' }} Ar</h4>
                 </div>
               </div>
             </div>
@@ -121,6 +121,60 @@
                 <div class="flex-grow-1 ms-3">
                   <p class="text-muted mb-1">Taux de conversion</p>
                   <h4 class="mb-0">{{ (stats?.generales?.tauxConversion || 0) | number:'1.2-2' }}%</h4>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="card">
+            <div class="card-body">
+              <div class="d-flex align-items-center">
+                <div class="flex-shrink-0">
+                  <div class="avatar-sm bg-danger-subtle rounded p-1">
+                    <i class="ri-building-line text-danger fs-20"></i>
+                  </div>
+                </div>
+                <div class="flex-grow-1 ms-3">
+                  <p class="text-muted mb-1">Part centre</p>
+                  <h4 class="mb-0">{{ (stats?.generales?.partCentre || 0) | number:'1.0-0' }} Ar</h4>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="card">
+            <div class="card-body">
+              <div class="d-flex align-items-center">
+                <div class="flex-shrink-0">
+                  <div class="avatar-sm bg-success-subtle rounded p-1">
+                    <i class="ri-wallet-3-line text-success fs-20"></i>
+                  </div>
+                </div>
+                <div class="flex-grow-1 ms-3">
+                  <p class="text-muted mb-1">CA net boutique</p>
+                  <h4 class="mb-0">{{ (stats?.generales?.chiffreAffairesNetBoutique || 0) | number:'1.0-0' }} Ar</h4>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="card">
+            <div class="card-body">
+              <div class="d-flex align-items-center">
+                <div class="flex-shrink-0">
+                  <div class="avatar-sm bg-info-subtle rounded p-1">
+                    <i class="ri-stack-line text-info fs-20"></i>
+                  </div>
+                </div>
+                <div class="flex-grow-1 ms-3">
+                  <p class="text-muted mb-1">Quantité vendue</p>
+                  <h4 class="mb-0">{{ stats?.generales?.quantiteVendue || 0 }}</h4>
                 </div>
               </div>
             </div>
@@ -164,7 +218,7 @@
                       </div>
                     </td>
                     <td>{{ produit.quantiteVendue }}</td>
-                    <td>{{ produit.chiffreAffaires | currency:'EUR' }}</td>
+                    <td>{{ produit.chiffreAffaires | number:'1.0-0' }} Ar</td>
                   </tr>
                 </tbody>
               </table>
@@ -203,7 +257,7 @@
                       </span>
                     </td>
                     <td>{{ stat.nombreCommandes }}</td>
-                    <td>{{ stat.chiffreAffaires | currency:'EUR' }}</td>
+                    <td>{{ stat.chiffreAffaires | number:'1.0-0' }} Ar</td>
                   </tr>
                 </tbody>
               </table>

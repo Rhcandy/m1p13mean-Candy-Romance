@@ -9,7 +9,7 @@ export interface User {
   id: string;
   nom?: string;
   email: string;
-  role: 'user' | 'admin_boutique' | 'admin_center' | 'super_admin';
+  role: 'user' | 'admin_boutique' | 'admin_center' | 'admin_centre' | 'super_admin';
   pdppath?: string;
   numtel?: string[];
   dtnaissance?: string;
@@ -79,7 +79,7 @@ export class AuthService {
       this.currentUserSubject.next(user);
       this.isAuthenticatedSubject.next(true);
     } else {
-      this.logout();
+      this.clearAuthState();
     }
   }
 
@@ -89,7 +89,7 @@ export class AuthService {
         if (response.success && response.data) {
           this.setToken(response.data.token);
           this.setUser(response.data.user);
-          this.currentUserSubject.next(response.data.user);
+          this.currentUserSubject.next(this.getUser());
           this.isAuthenticatedSubject.next(true);
         }
       })
@@ -112,20 +112,27 @@ export class AuthService {
         if (response.success && response.data) {
           this.setToken(response.data.token);
           this.setUser(response.data.user);
-          this.currentUserSubject.next(response.data.user);
+          this.currentUserSubject.next(this.getUser());
           this.isAuthenticatedSubject.next(true);
         }
       })
     );
   }
 
-  logout(): void {
+  logout(redirectToLogin = true): void {
+    this.clearAuthState();
+
+    if (redirectToLogin) {
+      this.router.navigate(['/login']);
+    }
+  }
+
+  private clearAuthState(): void {
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.USER_KEY);
     localStorage.removeItem('boutique_status_cache');
     this.currentUserSubject.next(null);
     this.isAuthenticatedSubject.next(false);
-    this.router.navigate(['/login']);
   }
 
   getToken(): string | null {
@@ -138,11 +145,24 @@ export class AuthService {
 
   getUser(): User | null {
     const userStr = localStorage.getItem(this.USER_KEY);
-    return userStr ? JSON.parse(userStr) : null;
+    if (!userStr) return null;
+    try {
+      const parsed = JSON.parse(userStr) as User;
+      return {
+        ...parsed,
+        role: this.normalizeRole(parsed.role)
+      };
+    } catch {
+      return null;
+    }
   }
 
   private setUser(user: User): void {
-    localStorage.setItem(this.USER_KEY, JSON.stringify(user));
+    const normalizedUser: User = {
+      ...user,
+      role: this.normalizeRole(user.role)
+    };
+    localStorage.setItem(this.USER_KEY, JSON.stringify(normalizedUser));
   }
 
   get currentUser(): User | null {
@@ -166,7 +186,7 @@ export class AuthService {
       dtnaissance: backendUser.dtnaissance ?? current.dtnaissance,
       sexe: backendUser.sexe ?? current.sexe,
       adresse: backendUser.adresse ?? current.adresse,
-      role: (roleName as User['role']) ?? current.role
+      role: this.normalizeRole((roleName as User['role']) ?? current.role)
     };
     this.setUser(updated);
     this.currentUserSubject.next(updated);
@@ -214,8 +234,26 @@ export class AuthService {
     return user.id;
   }
 
-  hasRole(role: 'user' | 'admin_boutique' | 'admin_center' | 'super_admin'): boolean {
-    return this.currentUser?.role === role;
+  hasRole(role: 'user' | 'admin_boutique' | 'admin_center' | 'admin_centre' | 'super_admin'): boolean {
+    const currentRole = this.normalizeRole(this.currentUser?.role);
+    const expectedRole = this.normalizeRole(role);
+    return currentRole === expectedRole;
+  }
+
+  isAdminCenterRole(): boolean {
+    return this.hasRole('admin_center') || this.hasRole('super_admin');
+  }
+
+  canUseUserFeatures(): boolean {
+    return this.hasRole('user') || this.isAdminCenterRole();
+  }
+
+  private normalizeRole(role: User['role'] | string | undefined | null): User['role'] {
+    if (role === 'admin_centre') return 'admin_center';
+    if (role === 'admin_center') return 'admin_center';
+    if (role === 'admin_boutique') return 'admin_boutique';
+    if (role === 'super_admin') return 'super_admin';
+    return 'user';
   }
 
   forgotPassword(email: string): Observable<ForgotPasswordResponse> {

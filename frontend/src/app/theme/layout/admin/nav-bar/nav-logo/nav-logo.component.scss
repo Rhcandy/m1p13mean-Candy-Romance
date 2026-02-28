@@ -1,1 +1,41 @@
-// This file is intentionally left empty to allow customers to add custom CSS if needed.
+:host {
+  --grenat-700: #6d1835;
+  --grenat-500: #8a2748;
+  --gold-500: #d4aa54;
+  --beige-100: #fdf8ef;
+  --beige-200: #f7efe1;
+  --beige-300: #efe3cf;
+  --white: #ffffff;
+  --text-main: #3f2430;
+  --text-muted: #705565;
+
+  display: block;
+  background: linear-gradient(180deg, var(--beige-100) 0%, var(--beige-200) 100%);
+  color: var(--text-main);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.b-brand {
+  display: inline-flex;
+  align-items: center;
+}
+
+.logo {
+  height: 38px;
+  width: auto;
+  object-fit: contain;
+  border-radius: 50%;
+}
+  .brand-text {
+    color: var(--grenat-700);
+  }
+  .brand-script {
+    font-family: 'Brush Script MT', 'Segoe Script', 'Lucida Handwriting', cursive;
+    font-size: 2rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    line-height: 1;
+    background: linear-gradient(135deg, var(--grenat-500), var(--gold-500));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }

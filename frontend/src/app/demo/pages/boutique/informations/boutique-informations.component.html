@@ -62,7 +62,7 @@
             </div>
             <div class="col-sm-4">
               <div class="info-block">
-                <span class="info-label"><i class="ri-building-line me-1"></i>??tage</span>
+                <span class="info-label"><i class="ri-building-line me-1"></i>éage</span>
                 <span class="info-value fw-semibold">{{ box.etage }}</span>
               </div>
             </div>
@@ -80,7 +80,7 @@
           <div class="row g-3" *ngIf="boutique.contratlocation">
             <div class="col-sm-4">
               <div class="info-block">
-                <span class="info-label"><i class="ri-calendar-line me-1"></i>D??but de location</span>
+                <span class="info-label"><i class="ri-calendar-line me-1"></i>Début de location</span>
                 <span class="info-value">{{ boutique.contratlocation.dateDebutLocation | date:'dd/MM/yyyy' }}</span>
               </div>
             </div>
@@ -92,7 +92,7 @@
             </div>
             <div class="col-sm-4">
               <div class="info-block">
-                <span class="info-label"><i class="ri-time-line me-1"></i>Cr????e le</span>
+                <span class="info-label"><i class="ri-time-line me-1"></i>Créé le</span>
                 <span class="info-value">{{ boutique.createdAt | date:'dd/MM/yyyy' }}</span>
               </div>
             </div>
@@ -135,7 +135,7 @@
                          placeholder="Entrez le nom de votre boutique">
                   <div *ngIf="nom?.invalid && nom?.touched" class="invalid-feedback">
                     <div *ngIf="nom?.errors?.['required']">Le nom est requis</div>
-                    <div *ngIf="nom?.errors?.['maxlength']">Le nom ne doit pas d??passer 100 caract??res</div>
+                    <div *ngIf="nom?.errors?.['maxlength']">Le nom ne doit pas dépasser 100 caractères</div>
                   </div>
                 </div>
               </div>

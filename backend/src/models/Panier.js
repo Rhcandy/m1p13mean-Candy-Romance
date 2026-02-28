@@ -1,10 +1,21 @@
 const mongoose = require('mongoose');
 
+const TEMPORARY_STATUSES = ['panier', 'en_attente'];
+const DEFAULT_EXPIRES_IN_MS = 24 * 60 * 60 * 1000;
+const TEMPORARY_TTL_INDEX_NAME = 'expiresAt_temp_status_ttl';
+
+const isTemporaryStatus = (status) => TEMPORARY_STATUSES.includes(status);
+
 const produitAcheteSchema = new mongoose.Schema({
   produit: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Produit',
     required: true
+  },
+  attributes: {
+    type: Map,
+    of: String,
+    default: {}
   },
   qtt: {
     type: Number,
@@ -141,8 +152,12 @@ const panierSchema = new mongoose.Schema({
   // Expiration du panier
   expiresAt: {
     type: Date,
-    required: true,
-    default: () => new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 heures par défaut
+    required() {
+      return isTemporaryStatus(this.statut);
+    },
+    default() {
+      return isTemporaryStatus(this.statut) ? new Date(Date.now() + DEFAULT_EXPIRES_IN_MS) : null;
+    }
   }
 }, {
   timestamps: true,
@@ -156,20 +171,26 @@ panierSchema.index({ createdAt: -1 });
 // - panier: panier actif non payé
 // - en_attente: commande en attente de paiement
 // Les commandes confirmées (confirmee, preparation, expedie, livre) ne doivent pas expirer.
-panierSchema.index({ 
-  expiresAt: 1 
-}, { 
-  expireAfterSeconds: 0,
-  partialFilterExpression: {
-    statut: { $in: ['panier', 'en_attente'] }
-  }
-});
 
 // Middleware pour générer le numéro de commande automatiquement
 panierSchema.pre('save', async function() {
   if (this.isNew && !this.numeroCommande) {
     const count = await this.constructor.countDocuments();
     this.numeroCommande = `CMD-${Date.now()}-${String(count + 1).padStart(4, '0')}`;
+  }
+});
+
+// Garantir que l'expiration ne s'applique qu'aux statuts temporaires.
+panierSchema.pre('save', function() {
+  if (isTemporaryStatus(this.statut)) {
+    if (!this.expiresAt) {
+      this.expiresAt = new Date(Date.now() + DEFAULT_EXPIRES_IN_MS);
+    }
+    return;
+  }
+
+  if (this.expiresAt) {
+    this.expiresAt = null;
   }
 });
 
@@ -350,6 +371,80 @@ panierSchema.statics.getChiffreAffaires = function(dateDebut, dateFin) {
     }
   ]);
 };
+
+const hasExpectedTemporaryStatuses = (statuses) => {
+  if (!Array.isArray(statuses) || statuses.length !== TEMPORARY_STATUSES.length) {
+    return false;
+  }
+
+  const expected = new Set(TEMPORARY_STATUSES);
+  return statuses.every((status) => expected.has(status));
+};
+
+const ensurePanierTTLIndex = async () => {
+  if (mongoose.connection.readyState !== 1) {
+    return;
+  }
+
+  const collection = mongoose.connection.collection('paniers');
+  const indexes = await collection.indexes();
+
+  // Supprimer les anciens TTL expiresAt non conformes (ex: expiresAt_1 global).
+  const expiresAtIndexes = indexes.filter((index) => index?.key?.expiresAt === 1);
+  for (const index of expiresAtIndexes) {
+    if (index.name !== TEMPORARY_TTL_INDEX_NAME) {
+      await collection.dropIndex(index.name);
+    }
+  }
+
+  const targetIndex = indexes.find((index) => index.name === TEMPORARY_TTL_INDEX_NAME);
+  const hasValidTarget =
+    !!targetIndex &&
+    targetIndex.expireAfterSeconds === 0 &&
+    hasExpectedTemporaryStatuses(targetIndex.partialFilterExpression?.statut?.$in);
+
+  if (!hasValidTarget) {
+    if (targetIndex) {
+      await collection.dropIndex(TEMPORARY_TTL_INDEX_NAME);
+    }
+
+    await collection.createIndex(
+      { expiresAt: 1 },
+      {
+        name: TEMPORARY_TTL_INDEX_NAME,
+        expireAfterSeconds: 0,
+        partialFilterExpression: { statut: { $in: TEMPORARY_STATUSES } }
+      }
+    );
+  }
+
+  // Nettoyer les anciennes commandes finalisées qui portaient encore une date d'expiration.
+  await collection.updateMany(
+    { statut: { $nin: TEMPORARY_STATUSES }, expiresAt: { $ne: null } },
+    { $set: { expiresAt: null } }
+  );
+
+  // Normaliser les paniers temporaires sans date d'expiration.
+  await collection.updateMany(
+    {
+      statut: { $in: TEMPORARY_STATUSES },
+      $or: [{ expiresAt: { $exists: false } }, { expiresAt: null }]
+    },
+    { $set: { expiresAt: new Date(Date.now() + DEFAULT_EXPIRES_IN_MS) } }
+  );
+};
+
+const runPanierStartupMaintenance = () => {
+  ensurePanierTTLIndex().catch((error) => {
+    console.error('Erreur maintenance index TTL panier:', error);
+  });
+};
+
+if (mongoose.connection.readyState === 1) {
+  runPanierStartupMaintenance();
+} else {
+  mongoose.connection.once('open', runPanierStartupMaintenance);
+}
 
 const Panier = mongoose.model('Panier', panierSchema);
 module.exports = Panier;
