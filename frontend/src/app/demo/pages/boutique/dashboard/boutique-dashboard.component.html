@@ -1,280 +1,154 @@
-<div class="container-fluid">
-  <div class="row">
-    <div class="col-12">
-      <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-        <h4 class="mb-sm-0">Tableau de bord - Ma Boutique</h4>
-      </div>
-    </div>
-  </div>
-
-  <!-- Messages d'erreur -->
-  <div *ngIf="error" class="alert alert-danger alert-dismissible fade show" role="alert">
-    {{ error }}
-    <button type="button" class="btn-close" (click)="error = null"></button>
-  </div>
-
-  <!-- Loading -->
-  <div *ngIf="loading" class="text-center py-5">
-    <div class="spinner-border text-primary" role="status">
-      <span class="visually-hidden">Chargement...</span>
-    </div>
-  </div>
-
-  <!-- Contenu principal -->
-  <div *ngIf="!loading && boutique" class="row">
-    <!-- Carte d'information boutique -->
-    <div class="col-xl-4">
-      <div class="card">
-        <div class="card-body">
-          <div class="d-flex align-items-center">
-            <div class="flex-shrink-0">
-              <div class="avatar-xl bg-light rounded p-1">
-                <img [src]="boutique.logo || 'assets/images/boutique-placeholder.png'" 
-                     [alt]="boutique.nom" 
-                     class="img-fluid rounded" 
-                     style="max-height: 80px; max-width: 80px;">
-              </div>
-            </div>
-            <div class="flex-grow-1 ms-3">
-              <h5 class="mb-1">{{ boutique.nom }}</h5>
-              <p class="text-muted mb-0">
-                <span class="badge" 
-                      [class]="boutique.isActive ? 'bg-success' : 'bg-danger'">
-                  {{ boutique.isActive ? 'Active' : 'Inactive' }}
-                </span>
-              </p>
-            </div>
-            <div class="flex-shrink-0">
-              <div class="dropdown">
-                <button class="btn btn-soft-secondary btn-sm dropdown" type="button" data-bs-toggle="dropdown">
-                  <i class="ri-more-2-fill"></i>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end">
-                  <li>
-                    <button class="dropdown-item" (click)="logoInput.click()">
-                      <i class="ri-image-line me-2"></i>Changer le logo
-                    </button>
-                  </li>
-                  <li>
-                    <button class="dropdown-item" (click)="toggleBoutiqueStatus()">
-                      <i [class]="boutique.isActive ? 'ri-pause-circle-line' : 'ri-play-circle-line'" 
-                         class="me-2"></i>
-                      {{ boutique.isActive ? 'Désactiver' : 'Activer' }}
-                    </button>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
+<section class="boutique-dashboard">
+  <div class="head-card">
+    <div class="identity" *ngIf="boutique">
+      <img [src]="boutique.logo || 'assets/images/boutique-placeholder.png'" [alt]="boutique.nom" class="logo" />
+      <div>
+        <h4>{{ boutique.nom }}</h4>
+        <div class="meta-line">
+          <span class="status-chip" [class.active]="isActive" [class.inactive]="!isActive">
+            {{ isActive ? 'Active' : 'Inactive' }}
+          </span>
+          <span class="period">Periode: {{ periodText }}</span>
         </div>
       </div>
     </div>
 
-    <!-- Statistiques -->
-    <div class="col-xl-8">
-      <div class="row">
-        <div class="col-md-4">
-          <div class="card">
-            <div class="card-body">
-              <div class="d-flex align-items-center">
-                <div class="flex-shrink-0">
-                  <div class="avatar-sm bg-success-subtle rounded p-1">
-                    <i class="ri-shopping-cart-2-line text-success fs-20"></i>
-                  </div>
-                </div>
-                <div class="flex-grow-1 ms-3">
-                  <p class="text-muted mb-1">Commandes</p>
-                  <h4 class="mb-0">{{ stats?.generales?.nombreCommandes || 0 }}</h4>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-md-4">
-          <div class="card">
-            <div class="card-body">
-              <div class="d-flex align-items-center">
-                <div class="flex-shrink-0">
-                  <div class="avatar-sm bg-primary-subtle rounded p-1">
-                    <i class="ri-money-dollar-circle-line text-primary fs-20"></i>
-                  </div>
-                </div>
-                <div class="flex-grow-1 ms-3">
-                  <p class="text-muted mb-1">Chiffre d'affaires brut</p>
-                  <h4 class="mb-0">{{ (stats?.generales?.chiffreAffaires || 0) | number:'1.0-0' }} Ar</h4>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-md-4">
-          <div class="card">
-            <div class="card-body">
-              <div class="d-flex align-items-center">
-                <div class="flex-shrink-0">
-                  <div class="avatar-sm bg-warning-subtle rounded p-1">
-                    <i class="ri-percent-line text-warning fs-20"></i>
-                  </div>
-                </div>
-                <div class="flex-grow-1 ms-3">
-                  <p class="text-muted mb-1">Taux de conversion</p>
-                  <h4 class="mb-0">{{ (stats?.generales?.tauxConversion || 0) | number:'1.2-2' }}%</h4>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-md-4">
-          <div class="card">
-            <div class="card-body">
-              <div class="d-flex align-items-center">
-                <div class="flex-shrink-0">
-                  <div class="avatar-sm bg-danger-subtle rounded p-1">
-                    <i class="ri-building-line text-danger fs-20"></i>
-                  </div>
-                </div>
-                <div class="flex-grow-1 ms-3">
-                  <p class="text-muted mb-1">Part centre</p>
-                  <h4 class="mb-0">{{ (stats?.generales?.partCentre || 0) | number:'1.0-0' }} Ar</h4>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-md-4">
-          <div class="card">
-            <div class="card-body">
-              <div class="d-flex align-items-center">
-                <div class="flex-shrink-0">
-                  <div class="avatar-sm bg-success-subtle rounded p-1">
-                    <i class="ri-wallet-3-line text-success fs-20"></i>
-                  </div>
-                </div>
-                <div class="flex-grow-1 ms-3">
-                  <p class="text-muted mb-1">CA net boutique</p>
-                  <h4 class="mb-0">{{ (stats?.generales?.chiffreAffairesNetBoutique || 0) | number:'1.0-0' }} Ar</h4>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-md-4">
-          <div class="card">
-            <div class="card-body">
-              <div class="d-flex align-items-center">
-                <div class="flex-shrink-0">
-                  <div class="avatar-sm bg-info-subtle rounded p-1">
-                    <i class="ri-stack-line text-info fs-20"></i>
-                  </div>
-                </div>
-                <div class="flex-grow-1 ms-3">
-                  <p class="text-muted mb-1">Quantité vendue</p>
-                  <h4 class="mb-0">{{ stats?.generales?.quantiteVendue || 0 }}</h4>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div class="period-switch">
+      <button
+        type="button"
+        class="btn btn-sm"
+        *ngFor="let option of periodeOptions"
+        [class.btn-primary]="selectedPeriode === option.key"
+        [class.btn-outline-secondary]="selectedPeriode !== option.key"
+        [disabled]="loading || loadingStats"
+        (click)="changePeriode(option.key)"
+      >
+        {{ option.label }}
+      </button>
     </div>
   </div>
 
-  <!-- Graphiques et détails -->
-  <div *ngIf="!loading && boutique && stats" class="row mt-4">
-    <!-- Produits les plus vendus -->
-    <div class="col-xl-6">
-      <div class="card">
-        <div class="card-header">
-          <h5 class="card-title mb-0">Produits les plus vendus</h5>
-        </div>
-        <div class="card-body">
-          <div *ngIf="stats.produitsPlusVendus && stats.produitsPlusVendus.length > 0">
-            <div class="table-responsive">
-              <table class="table table-nowrap table-centered mb-0">
-                <thead>
-                  <tr>
-                    <th>Produit</th>
-                    <th>Quantité</th>
-                    <th>CA</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr *ngFor="let produit of stats.produitsPlusVendus">
-                    <td>
-                      <div class="d-flex align-items-center">
-                        <div class="flex-shrink-0">
-                          <img [src]="produit.photo || 'assets/images/product-placeholder.png'" 
-                               [alt]="produit.nom" 
-                               class="avatar-xs rounded">
-                        </div>
-                        <div class="flex-grow-1 ms-2">
-                          <h5 class="mb-0">{{ produit.nom }}</h5>
-                        </div>
-                      </div>
-                    </td>
-                    <td>{{ produit.quantiteVendue }}</td>
-                    <td>{{ produit.chiffreAffaires | number:'1.0-0' }} Ar</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-          <div *ngIf="!stats.produitsPlusVendus || stats.produitsPlusVendus.length === 0" class="text-center py-4">
-            <p class="text-muted mb-0">Aucune vente enregistrée</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Commandes par statut -->
-    <div class="col-xl-6">
-      <div class="card">
-        <div class="card-header">
-          <h5 class="card-title mb-0">Commandes par statut</h5>
-        </div>
-        <div class="card-body">
-          <div *ngIf="stats.parStatut && stats.parStatut.length > 0">
-            <div class="table-responsive">
-              <table class="table table-nowrap table-centered mb-0">
-                <thead>
-                  <tr>
-                    <th>Statut</th>
-                    <th>Nombre</th>
-                    <th>CA</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr *ngFor="let stat of stats.parStatut">
-                    <td>
-                      <span class="badge" 
-                            [class]="'bg-' + getStatusColor(stat.statut)">
-                        {{ getStatusLabel(stat.statut) }}
-                      </span>
-                    </td>
-                    <td>{{ stat.nombreCommandes }}</td>
-                    <td>{{ stat.chiffreAffaires | number:'1.0-0' }} Ar</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-          <div *ngIf="!stats.parStatut || stats.parStatut.length === 0" class="text-center py-4">
-            <p class="text-muted mb-0">Aucune commande enregistrée</p>
-          </div>
-        </div>
-      </div>
-    </div>
+  <div *ngIf="loading" class="loading-box">
+    <div class="spinner-border text-primary" role="status"></div>
+    <span>Chargement du dashboard...</span>
   </div>
-</div>
 
-<!-- Input caché pour le upload de logo -->
-<input type="file" 
-       #logoInput 
-       style="display: none;" 
-       accept="image/*" 
-       (change)="onLogoUpload($event)">
+  <ng-container *ngIf="!loading && stats">
+    <div class="kpi-grid">
+      <article class="kpi-card">
+        <p class="label">Commandes</p>
+        <h5>{{ stats.generales.nombreCommandes || 0 }}</h5>
+      </article>
+
+      <article class="kpi-card">
+        <p class="label">CA brut</p>
+        <h5>{{ grossRevenue | number: '1.0-0' }} Ar</h5>
+      </article>
+
+      <article class="kpi-card">
+        <p class="label">CA paye</p>
+        <h5>{{ paidRevenue | number: '1.0-0' }} Ar</h5>
+      </article>
+
+      <article class="kpi-card">
+        <p class="label">Reste a encaisser</p>
+        <h5>{{ pendingRevenue | number: '1.0-0' }} Ar</h5>
+      </article>
+
+      <article class="kpi-card">
+        <p class="label">Part centre</p>
+        <h5>{{ (stats.generales.partCentre || 0) | number: '1.0-0' }} Ar</h5>
+      </article>
+
+      <article class="kpi-card">
+        <p class="label">CA net boutique</p>
+        <h5>{{ (stats.generales.chiffreAffairesNetBoutique || 0) | number: '1.0-0' }} Ar</h5>
+        <small>{{ paidRate | number: '1.0-2' }}% recouvre</small>
+      </article>
+    </div>
+
+    <div *ngIf="loadingStats" class="inline-loading">
+      <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+      <span>Mise a jour des statistiques...</span>
+    </div>
+
+    <div class="content-grid">
+      <article class="card panel">
+        <header class="panel-header">
+          <h5>Produits les plus vendus</h5>
+          <span class="badge bg-light text-dark">{{ stats.produitsPlusVendus?.length || 0 }}</span>
+        </header>
+
+        <div *ngIf="!stats.produitsPlusVendus || stats.produitsPlusVendus.length === 0" class="empty-state">
+          Aucune vente enregistree sur cette periode.
+        </div>
+
+        <div class="table-responsive" *ngIf="stats.produitsPlusVendus && stats.produitsPlusVendus.length > 0">
+          <table class="table align-middle mb-0 products-table">
+            <thead>
+              <tr>
+                <th>Produit</th>
+                <th class="text-end">Quantite</th>
+                <th class="text-end">CA</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let produit of stats.produitsPlusVendus; trackBy: trackByName">
+                <td>
+                  <div class="product-cell">
+                    <img [src]="produit.photo || 'assets/images/product-placeholder.png'" [alt]="produit.nom" class="product-img" />
+                    <div class="product-meta">
+                      <p class="name">{{ produit.nom }}</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="text-end">{{ produit.quantiteVendue || 0 }}</td>
+                <td class="text-end">{{ (produit.chiffreAffaires || 0) | number: '1.0-0' }} Ar</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="card panel">
+        <header class="panel-header">
+          <h5>Commandes par statut</h5>
+          <span class="badge bg-light text-dark">{{ stats.parStatut?.length || 0 }}</span>
+        </header>
+
+        <div *ngIf="!stats.parStatut || stats.parStatut.length === 0" class="empty-state">
+          Aucune commande enregistree sur cette periode.
+        </div>
+
+        <div class="table-responsive" *ngIf="stats.parStatut && stats.parStatut.length > 0">
+          <table class="table align-middle mb-0 status-table">
+            <thead>
+              <tr>
+                <th>Statut</th>
+                <th class="text-end">Nombre</th>
+                <th class="text-end">CA</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let stat of stats.parStatut; trackBy: trackByStatus">
+                <td>
+                  <span class="badge" [class]="'bg-' + getStatusColor(stat.statut)">
+                    {{ getStatusLabel(stat.statut) }}
+                  </span>
+                </td>
+                <td class="text-end">{{ stat.nombreCommandes || 0 }}</td>
+                <td class="text-end">{{ (stat.chiffreAffaires || 0) | number: '1.0-0' }} Ar</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+    </div>
+
+    <div class="actions-row">
+      <a routerLink="/boutique/commandes" class="btn btn-outline-primary">Voir toutes les commandes</a>
+      <a routerLink="/boutique/produits" class="btn btn-outline-secondary">Gerer les produits</a>
+      <a routerLink="/boutique/promotions" class="btn btn-outline-secondary">Gerer les promotions</a>
+    </div>
+  </ng-container>
+</section>

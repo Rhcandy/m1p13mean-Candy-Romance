@@ -202,7 +202,6 @@ export class BoutiqueProduitsComponent implements OnInit {
     this.loadProduits();
   }
 
-  // â”€â”€ Suppression â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   async deleteProduit(id: string): Promise<void> {
     const confirmed = await this.notificationService.confirm({
@@ -229,7 +228,6 @@ export class BoutiqueProduitsComponent implements OnInit {
     });
   }
 
-  // â”€â”€ Helpers affichage â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   calculateTotalStock(produit: BoutiqueProduit): number {
     if (!produit.variant || !Array.isArray(produit.variant)) return 0;
@@ -312,7 +310,6 @@ export class BoutiqueProduitsComponent implements OnInit {
     return cat ? cat.nom : 'Non catÃ©gorisÃ©';
   }
 
-  /** Transforme un objet attributes en tableau [{key, value}] pour l'affichage */
   getVariantAttrs(attributes: any): { key: string; value: string }[] {
     if (!attributes) return [];
     return Object.entries(attributes).map(([key, value]) => ({ key, value: String(value) }));
