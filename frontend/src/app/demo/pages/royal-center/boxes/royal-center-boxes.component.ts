@@ -6,7 +6,6 @@ import {
   AdminCenterBox,
   AdminCenterService,
   BoutiqueModel,
-  CoordonneesPolygon,
   CreateBoxPayload,
   TypeBoxModel,
   UpdateBoxPayload
@@ -99,8 +98,7 @@ export class RoyalCenterBoxesComponent implements OnInit {
       Superficie: Number(box.Superficie || 0),
       typeBoxId: this.extractTypeBoxId(box),
       centreId: this.extractCentreId(box),
-      isDisponible: !!box.isDisponible,
-      coordonneesText: JSON.stringify(box.coordonnees || this.getDefaultCoordonneesObject(), null, 2)
+      isDisponible: !!box.isDisponible
     };
     this.showModal = true;
   }
@@ -121,21 +119,6 @@ export class RoyalCenterBoxesComponent implements OnInit {
       return;
     }
 
-    let coordonnees: CoordonneesPolygon;
-    try {
-      const parsed = JSON.parse(this.form.coordonneesText) as CoordonneesPolygon;
-      if (parsed?.type !== 'Polygon' || !Array.isArray(parsed?.coordinates)) {
-        throw new Error('invalid polygon');
-      }
-      coordonnees = parsed;
-    } catch {
-      this.notificationService.warning(
-        'Validation',
-        'Le JSON des coordonnees est invalide. Utilisez un objet Polygon GeoJSON.'
-      );
-      return;
-    }
-
     this.saving = true;
 
     if (this.editingBoxId) {
@@ -145,7 +128,6 @@ export class RoyalCenterBoxesComponent implements OnInit {
         Superficie: Number(this.form.Superficie),
         typeBoxId: this.form.typeBoxId,
         isDisponible: this.form.isDisponible,
-        coordonnees,
         centreId: this.form.centreId.trim() || undefined
       };
 
@@ -172,8 +154,7 @@ export class RoyalCenterBoxesComponent implements OnInit {
       etage: this.form.etage.trim(),
       Superficie: Number(this.form.Superficie),
       typeBoxId: this.form.typeBoxId,
-      isDisponible: this.form.isDisponible,
-      coordonnees
+      isDisponible: this.form.isDisponible
     };
     if (this.form.centreId.trim()) {
       payload.centreId = this.form.centreId.trim();
@@ -203,8 +184,7 @@ export class RoyalCenterBoxesComponent implements OnInit {
       etage: box.etage,
       numRef: box.numRef,
       typeBoxId: this.extractTypeBoxId(box),
-      centreId: this.extractCentreId(box),
-      coordonnees: box.coordonnees
+      centreId: this.extractCentreId(box)
     };
 
     this.adminCenterService.updateBox(box._id, payload).subscribe({
@@ -221,13 +201,20 @@ export class RoyalCenterBoxesComponent implements OnInit {
     });
   }
 
-  deleteBox(box: AdminCenterBox): void {
+  async deleteBox(box: AdminCenterBox): Promise<void> {
     if (this.cannotDeleteBox(box)) {
       this.notificationService.warning('Action bloquee', this.getDeleteBlockedReason(box));
       return;
     }
 
-    if (!confirm(`Supprimer la box ${box.numRef} ?`)) return;
+    const confirmed = await this.notificationService.confirm({
+      title: 'Suppression box',
+      message: `Supprimer la box ${box.numRef} ?`,
+      confirmLabel: 'Supprimer',
+      cancelLabel: 'Annuler',
+      confirmStyle: 'danger'
+    });
+    if (!confirmed) return;
 
     this.adminCenterService.deleteBox(box._id).subscribe({
       next: () => {
@@ -308,7 +295,6 @@ export class RoyalCenterBoxesComponent implements OnInit {
     typeBoxId: string;
     centreId: string;
     isDisponible: boolean;
-    coordonneesText: string;
   } {
     return {
       numRef: '',
@@ -316,23 +302,7 @@ export class RoyalCenterBoxesComponent implements OnInit {
       Superficie: 1,
       typeBoxId: '',
       centreId: '',
-      isDisponible: true,
-      coordonneesText: JSON.stringify(this.getDefaultCoordonneesObject(), null, 2)
-    };
-  }
-
-  private getDefaultCoordonneesObject(): CoordonneesPolygon {
-    return {
-      type: 'Polygon',
-      coordinates: [
-        [
-          [47.5, -18.9],
-          [47.5002, -18.9],
-          [47.5002, -18.9002],
-          [47.5, -18.9002],
-          [47.5, -18.9]
-        ]
-      ]
+      isDisponible: true
     };
   }
 }

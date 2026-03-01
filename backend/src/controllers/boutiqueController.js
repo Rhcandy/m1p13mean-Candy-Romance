@@ -6,6 +6,12 @@ const advancedResults = require('../middlewares/advancedResults');
 const boutiqueService = require('../services/boutiqueService');
 const authService = require('../services/authService');
 
+const boxContractPopulate = {
+  path: 'contratlocation.boxes',
+  select: 'Superficie etage numRef isDisponible typeBoxId',
+  populate: { path: 'typeBoxId', select: 'nom minOccupationDays periode remuneration' }
+};
+
 /**
  * @swagger
  * components:
@@ -393,7 +399,7 @@ exports.getBoutiquesResults = async (req, res) => {
     // Populer les r??sultats avec les bons chemins
     const populatedResults = await Boutique.populate(res.advancedResults.items, [
       { path: 'locataire', select: 'nom email numtel' },
-      { path: 'contratlocation.boxes', select: 'Superficie etage numRef isDisponible' },
+      boxContractPopulate,
       { path: 'locataire', select: 'nom email numtel' }
     ]);
 
@@ -426,7 +432,7 @@ exports.getBoutiquesResults = async (req, res) => {
 exports.getAllBoutiquesSimple = async (req, res) => {
   try {
     const boutiques = await Boutique.find()
-      .populate('contratlocation.boxes', 'Superficie etage numRef isDisponible')
+      .populate(boxContractPopulate)
       .populate('locataire', 'nom email')
       .sort({ createdAt: -1 });
 
@@ -486,7 +492,7 @@ exports.getAllBoutiquesSimple = async (req, res) => {
 exports.getBoutiqueById = async (req, res) => {
   try {
     const boutique = await Boutique.findById(req.params.id)
-      .populate('contratlocation.boxes', 'Superficie etage numRef isDisponible typeBoxId')
+      .populate(boxContractPopulate)
       .populate('locataire', 'nom email');
 
     if (!boutique) {
@@ -706,7 +712,7 @@ exports.uploadLogo = async (req, res) => {
     // Retourner la boutique avec populate
     const updatedBoutique = await Boutique.findById(boutique._id)
       .populate('locataire', 'nom email')
-      .populate('contratlocation.boxes', 'Superficie etage numRef isDisponible');
+      .populate(boxContractPopulate);
 
     res.status(200).json({
       success: true,
@@ -805,7 +811,7 @@ exports.getMyBoutique = async (req, res) => {
   try {
     const userId =await authService.getUserIdByToken(req);
     const boutique = await Boutique.findOne({ locataire: userId })
-      .populate('contratlocation.boxes', 'Superficie etage numRef isDisponible typeBoxId')
+      .populate(boxContractPopulate)
       .populate('locataire', 'nom email');
 
     if (!boutique) {
@@ -974,6 +980,94 @@ exports.activateMyBoutique = async (req, res) => {
   } catch (error) {
     console.error('Erreur activation boutique:', error);
     res.status(500).json({
+      success: false,
+      message: 'Erreur serveur',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Renouveler la date de fin de contrat de la boutique connectee.
+ * Regle: nouvelle date >= aujourd'hui + minOccupationDays du type de box.
+ */
+exports.renewMyBoutiqueContract = async (req, res) => {
+  try {
+    const userId = await authService.getUserIdByToken(req);
+    const boutique = await Boutique.findOne({ locataire: userId }).populate({
+      path: 'contratlocation.boxes',
+      populate: { path: 'typeBoxId', select: 'minOccupationDays periode nom' }
+    });
+
+    if (!boutique) {
+      return res.status(404).json({
+        success: false,
+        message: 'Boutique non trouvee'
+      });
+    }
+
+    const newDateRaw = req.body?.dateFinLocation;
+    if (!newDateRaw) {
+      return res.status(400).json({
+        success: false,
+        message: 'dateFinLocation est obligatoire'
+      });
+    }
+
+    const today = new Date();
+    const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const newDate = new Date(newDateRaw);
+    const newDateOnly = new Date(newDate.getFullYear(), newDate.getMonth(), newDate.getDate());
+
+    if (Number.isNaN(newDateOnly.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: 'dateFinLocation invalide'
+      });
+    }
+
+    const boxes = Array.isArray(boutique?.contratlocation?.boxes) ? boutique.contratlocation.boxes : [];
+    if (!boxes.length) {
+      return res.status(400).json({
+        success: false,
+        message: 'Aucune box associee a la boutique'
+      });
+    }
+
+    const minDays = boxes.reduce((max, box) => {
+      const type = box?.typeBoxId;
+      const current = Number(type?.minOccupationDays || type?.periode || 1);
+      return current > max ? current : max;
+    }, 1);
+
+    const minAllowedDate = new Date(todayOnly);
+    minAllowedDate.setDate(minAllowedDate.getDate() + minDays);
+
+    if (newDateOnly < minAllowedDate) {
+      return res.status(400).json({
+        success: false,
+        message: `La date de fin doit etre au moins ${minDays} jours apres aujourd'hui.`,
+        data: {
+          minDays,
+          minAllowedDate
+        }
+      });
+    }
+
+    boutique.contratlocation.dateFinLocation = newDateOnly;
+    await boutique.save();
+
+    const refreshed = await Boutique.findById(boutique._id)
+      .populate(boxContractPopulate)
+      .populate('locataire', 'nom email');
+
+    return res.status(200).json({
+      success: true,
+      message: 'Contrat renouvele avec succes',
+      data: refreshed
+    });
+  } catch (error) {
+    return res.status(500).json({
       success: false,
       message: 'Erreur serveur',
       error: error.message

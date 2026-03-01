@@ -1,36 +1,37 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { ApiService } from './api.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AdminStatsService {
-  private apiUrl = 'http://localhost:3000/api/admin/stats';
+  private readonly endpoint = '/admin/stats';
 
-  constructor(private http: HttpClient) {}
+  constructor(private readonly apiService: ApiService) {}
 
   getGlobalStats(): Observable<any> {
-    return this.http.get(`${this.apiUrl}/global`);
+    return this.apiService.get<any>(`${this.endpoint}/global`);
   }
 
-  getRevenueByMonth(year: number): Observable<any> {
-    return this.http.get(`${this.apiUrl}/revenue-monthly?year=${year}`);
+  getRevenueByMonth(year?: number): Observable<any> {
+    const suffix = year ? `?year=${year}` : '';
+    return this.apiService.get<any>(`${this.endpoint}/revenue-monthly${suffix}`);
   }
 
   getRevenueByBoutique(): Observable<any> {
-    return this.http.get(`${this.apiUrl}/revenue-boutique`);
+    return this.apiService.get<any>(`${this.endpoint}/revenue-boutique`);
   }
 
   getOccupancy(): Observable<any> {
-    return this.http.get(`${this.apiUrl}/occupancy`);
+    return this.apiService.get<any>(`${this.endpoint}/occupancy`);
   }
 
   getLoyerStatus(): Observable<any> {
-    return this.http.get(`${this.apiUrl}/loyer-status`);
+    return this.apiService.get<any>(`${this.endpoint}/loyer-status`);
   }
 
   getRecentPayments(limit: number = 5): Observable<any> {
-    return this.http.get(`${this.apiUrl}/recent-payments?limit=${limit}`);
+    return this.apiService.get<any>(`${this.endpoint}/recent-payments?limit=${limit}`);
   }
 }

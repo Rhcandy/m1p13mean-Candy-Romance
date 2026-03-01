@@ -14,11 +14,18 @@ const validateObjectId = (paramName) => (req, res, next) => {
 
 // Vérifie que le montant de paiement est correct
 const validatePaiement = (req, res, next) => {
-  const { montant } = req.body;
+  const { montant, reference } = req.body;
   if (typeof montant !== 'number' || montant <= 0) {
     return res.status(400).json({
       success: false,
       message: 'Montant de paiement invalide'
+    });
+  }
+
+  if (!reference || String(reference).trim() === '') {
+    return res.status(400).json({
+      success: false,
+      message: 'Reference de paiement obligatoire'
     });
   }
   next();

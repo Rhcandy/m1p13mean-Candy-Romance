@@ -1,0 +1,162 @@
+<section class="admin-center-dashboard">
+  <div class="header-card">
+    <div>
+      <h3 class="title">Dashboard Admin Centre</h3>
+      <p class="subtitle">Suivi des loyers, recouvrements et activite des boutiques.</p>
+    </div>
+
+    <div class="quick-actions">
+      <a routerLink="/royal-center/loyers" class="btn btn-primary">Gerer loyers</a>
+      <a routerLink="/royal-center/tarification" class="btn btn-outline-primary">Prix m2</a>
+      <a routerLink="/royal-center/boxes" class="btn btn-outline-secondary">Boxes</a>
+      <a routerLink="/royal-center/boutiques" class="btn btn-outline-secondary">Boutiques</a>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="loading-state">
+    <div class="spinner-border text-primary" role="status"></div>
+    <span>Chargement des donnees...</span>
+  </div>
+
+  <ng-container *ngIf="!loading">
+    <div class="kpi-grid">
+      <article class="kpi-card primary">
+        <p class="label">Total loyers factures</p>
+        <h4>{{ globalStats.totalLoyers | number }} Ar</h4>
+      </article>
+
+      <article class="kpi-card success">
+        <p class="label">Total encaisse</p>
+        <h4>{{ globalStats.totalRevenus | number }} Ar</h4>
+        <small class="hint">Recouvrement: {{ recoveryRate | number: '1.0-2' }}%</small>
+      </article>
+
+      <article class="kpi-card danger">
+        <p class="label">Reste a regler</p>
+        <h4>{{ globalStats.totalImpayes | number }} Ar</h4>
+      </article>
+
+      <article class="kpi-card warning">
+        <p class="label">Retards cumules</p>
+        <h4>{{ globalStats.totalRetards | number }} Ar</h4>
+      </article>
+
+      <article class="kpi-card neutral">
+        <p class="label">Total boutiques</p>
+        <h4>{{ globalStats.totalBoutiques | number }}</h4>
+      </article>
+
+      <article class="kpi-card neutral">
+        <p class="label">Boxes occupees</p>
+        <h4>{{ occupancyRate | number: '1.0-2' }}%</h4>
+        <small class="hint">{{ globalStats.totalBoxes | number }} boxes au total</small>
+      </article>
+    </div>
+
+    <div class="content-grid">
+      <article class="card panel wide">
+        <div class="panel-head">
+          <h5>Revenus mensuels {{ currentYear }}</h5>
+          <span class="badge bg-light text-dark">{{ monthlyTotalRevenue | number }} Ar</span>
+        </div>
+
+        <div *ngIf="revenueByMonth.length === 0" class="empty-state">Aucune donnee mensuelle.</div>
+
+        <div *ngIf="revenueByMonth.length > 0" class="month-list">
+          <div *ngFor="let month of revenueByMonth" class="month-item">
+            <span class="month-name">{{ getMonthLabel(month.month) }}</span>
+            <div class="bar-wrap">
+              <div class="bar-fill" [style.width.%]="getMonthBarWidth(month.total)"></div>
+            </div>
+            <span class="month-value">{{ month.total | number }} Ar</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="card panel">
+        <div class="panel-head">
+          <h5>Statut loyers</h5>
+          <span class="badge bg-light text-dark">{{ totalLoyerStatuses }} lignes</span>
+        </div>
+
+        <div class="status-grid">
+          <div class="status-item">
+            <span class="dot success"></span>
+            <div>
+              <p>Paye</p>
+              <h6>{{ loyerStatus.paye }}</h6>
+              <small>{{ getStatusPercent(loyerStatus.paye) }}%</small>
+            </div>
+          </div>
+
+          <div class="status-item">
+            <span class="dot info"></span>
+            <div>
+              <p>Partiel</p>
+              <h6>{{ loyerStatus.partiel }}</h6>
+              <small>{{ getStatusPercent(loyerStatus.partiel) }}%</small>
+            </div>
+          </div>
+
+          <div class="status-item">
+            <span class="dot warning"></span>
+            <div>
+              <p>Impaye</p>
+              <h6>{{ loyerStatus.impaye }}</h6>
+              <small>{{ getStatusPercent(loyerStatus.impaye) }}%</small>
+            </div>
+          </div>
+
+          <div class="status-item">
+            <span class="dot danger"></span>
+            <div>
+              <p>Retard</p>
+              <h6>{{ loyerStatus.retard }}</h6>
+              <small>{{ getStatusPercent(loyerStatus.retard) }}%</small>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="card panel">
+        <div class="panel-head">
+          <h5>Top boutiques par revenu</h5>
+          <span class="badge bg-light text-dark">{{ topBoutiques.length }} boutiques</span>
+        </div>
+
+        <div *ngIf="topBoutiques.length === 0" class="empty-state">Aucun revenu enregistre.</div>
+
+        <div *ngIf="topBoutiques.length > 0" class="list">
+          <div *ngFor="let item of topBoutiques; let i = index" class="list-row">
+            <div class="left">
+              <span class="rank">{{ i + 1 }}</span>
+              <span class="name">{{ item.boutiqueName }}</span>
+            </div>
+            <span class="amount">{{ item.totalRevenue | number }} Ar</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="card panel">
+        <div class="panel-head">
+          <h5>Paiements recents</h5>
+          <span class="badge bg-light text-dark">{{ recentPayments.length }}</span>
+        </div>
+
+        <div *ngIf="recentPayments.length === 0" class="empty-state">Aucun paiement recent.</div>
+
+        <div *ngIf="recentPayments.length > 0" class="list">
+          <div *ngFor="let payment of recentPayments" class="list-row payment">
+            <div class="left">
+              <span class="name">{{ payment.boutiqueNom }}</span>
+              <small class="meta">
+                {{ payment.periode }} · Ref {{ payment.reference || '-' }} · {{ payment.date | date: 'dd/MM/yyyy' }}
+              </small>
+            </div>
+            <span class="amount">{{ payment.amount | number }} Ar</span>
+          </div>
+        </div>
+      </article>
+    </div>
+  </ng-container>
+</section>

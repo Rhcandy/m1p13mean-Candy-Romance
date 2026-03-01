@@ -63,6 +63,23 @@ const boutiqueSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  isBlockedForLoyer: {
+    type: Boolean,
+    default: false
+  },
+  autoDeactivatedForLoyer: {
+    type: Boolean,
+    default: false
+  },
+  loyerBlockedReason: {
+    type: String,
+    default: null
+  },
+  totalResteLoyer: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
   locataire: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

@@ -5,27 +5,30 @@ const authMiddleware = require('../middlewares/authMiddleware');
 const { adminOnly, allRoles } = require('../middlewares/roleMiddleware');
 const { validateObjectId, validatePaiement, validatePeriode } = require('../middlewares/loyer.middleware');
 
-// Calculer loyer (utilisateur connecté)
-router.post('/calculate', authMiddleware, allRoles, validatePeriode, loyerController.calculate);
+router.use(authMiddleware);
 
-// Générer loyer (admin)
-router.post('/generate', authMiddleware, adminOnly, validatePeriode, loyerController.generate);
+// Calcul metier (simulation)
+router.post('/calculate', allRoles, validatePeriode, loyerController.calculate);
 
-// Payer un loyer
-router.post('/pay/:loyerId', authMiddleware, allRoles, validateObjectId('loyerId'), validatePaiement, loyerController.pay);
+// Generation de facture de loyer
+router.post('/generate', adminOnly, validatePeriode, loyerController.generate);
+router.post('/generate-monthly', adminOnly, loyerController.generateMonthly);
+router.post('/check-late', adminOnly, loyerController.checkLate);
 
-// Génération mensuelle automatique (admin)
-router.post('/generate-monthly', authMiddleware, adminOnly, loyerController.generateMonthly);
+// Paiement
+router.post('/pay/:loyerId', allRoles, validateObjectId('loyerId'), validatePaiement, loyerController.pay);
+router.post('/my-boutique/pay', allRoles, validatePaiement, loyerController.payMyBoutique);
 
-// Vérification des loyers en retard (admin)
-router.post('/check-late', authMiddleware, adminOnly, loyerController.checkLate);
+// Syntheses argent
+router.get('/summary', adminOnly, loyerController.getAllSummaries);
+router.get('/summary/:boutiqueId', adminOnly, loyerController.getSummaryByBoutique);
+router.get('/my-summary', allRoles, loyerController.getMySummary);
 
-// Liste des loyers (admin ou utilisateur selon ton besoin)
-router.get('/', authMiddleware, allRoles, loyerController.listLoyers);
-
-// CRUD classique
-router.post('/', authMiddleware, adminOnly, loyerController.createLoyer);
-router.put('/:id', authMiddleware, adminOnly, loyerController.updateLoyer);
-router.delete('/:id', authMiddleware, adminOnly, loyerController.deleteLoyer);
+// Liste / edition
+router.get('/', allRoles, loyerController.listLoyers);
+router.post('/', adminOnly, loyerController.createLoyer);
+router.put('/:id', adminOnly, loyerController.updateLoyer);
+router.patch('/status/:loyerId', adminOnly, validateObjectId('loyerId'), loyerController.updateStatus);
+router.delete('/:id', adminOnly, loyerController.deleteLoyer);
 
 module.exports = router;

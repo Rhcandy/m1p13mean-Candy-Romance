@@ -20,6 +20,12 @@ export interface BoxLocation {
   etage: string;
   numRef: string;
   isDisponible: boolean;
+  typeBoxId?: {
+    _id: string;
+    nom: string;
+    minOccupationDays?: number;
+    periode?: number;
+  };
 }
 
 export interface AvailableBox extends BoxLocation {
@@ -27,6 +33,7 @@ export interface AvailableBox extends BoxLocation {
     _id: string;
     nom: string;
     periode?: number;
+    minOccupationDays?: number;
     remuneration?: number;
     description?: string;
   };
@@ -34,10 +41,6 @@ export interface AvailableBox extends BoxLocation {
     _id: string;
     nom: string;
     adresse?: any;
-  };
-  coordonnees?: {
-    type: string;
-    coordinates: number[][][];
   };
 }
 
@@ -61,6 +64,9 @@ export interface Boutique {
   logo: string | null;
   isActive: boolean;
   isPendingFirstActivation?: boolean;
+  isBlockedForLoyer?: boolean;
+  loyerBlockedReason?: string | null;
+  totalResteLoyer?: number;
   promotions: string[];
   locataire: Locataire[];
   contratlocation: ContratLocation;
@@ -225,6 +231,12 @@ export class BoutiqueService {
         }
       })
     );
+  }
+
+  renewMyBoutiqueContract(dateFinLocation: string): Observable<{ success: boolean; message: string; data: Boutique }> {
+    return this.api.patch<{ success: boolean; message: string; data: Boutique }>('/boutiques/my-boutique/renew', {
+      dateFinLocation
+    });
   }
 
   deactivateMyBoutique(): Observable<{ success: boolean; message: string; data: Boutique }> {

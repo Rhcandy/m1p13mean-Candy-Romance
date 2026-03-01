@@ -1,136 +1,95 @@
-// services/adminStats.service.js
-
 const Loyer = require('../models/Loyer');
-const Boutique = require("../models/Boutique");
-const Box = require("../models/Box");
-
-const {
-  sumTotalRevenus,
-  groupByMonth,
-  calculateOccupancy,
-  groupLoyersByStatus,
-  countOccupiedBoxes,
-} = require("../helpers/statsCalculator.helper");
-
-const { getYearStartEnd } = require("../helpers/date.helper");
-
-// ========================================
-// 🔹 GLOBAL STATS
-// ========================================
+const Boutique = require('../models/Boutique');
+const Box = require('../models/Box');
 
 async function getGlobalStats() {
-  const totalBoutiques = await Boutique.countDocuments();
-  const totalBoxes = await Box.countDocuments();
-  const loyers = await Loyer.find().populate('paiements');
+  const [totalBoutiques, totalBoxes, loyers] = await Promise.all([
+    Boutique.countDocuments(),
+    Box.countDocuments(),
+    Loyer.find().lean()
+  ]);
 
-  const totalLoyers = loyers.reduce((sum, loyer) => sum + (loyer.total || 0), 0);
-
+  const totalLoyers = loyers.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
   const totalRevenus = loyers.reduce(
-    (sum, loyer) =>
-      sum + (loyer.paiements ? loyer.paiements.reduce((pSum, p) => pSum + (p.montant || 0), 0) : 0),
+    (sum, item) =>
+      sum + (item.paiements || []).reduce((acc, p) => acc + (Number(p.montant) || 0), 0),
     0
   );
-
-  const totalImpayes = loyers.reduce((sum, loyer) => sum + (loyer.reste || 0), 0);
+  const totalImpayes = loyers.reduce((sum, item) => sum + (Number(item.reste) || 0), 0);
 
   const now = new Date();
-  const totalRetards = loyers.reduce(
-    (sum, loyer) =>
-      sum + (new Date(loyer.dateEcheance) < now ? (loyer.reste || 0) : 0),
-    0
-  );
+  const totalRetards = loyers.reduce((sum, item) => {
+    if ((Number(item.reste) || 0) <= 0) return sum;
+    return new Date(item.dateEcheance) < now ? sum + (Number(item.reste) || 0) : sum;
+  }, 0);
 
   return {
     totalBoutiques,
     totalBoxes,
-    totalLoyers,
-    totalRevenus,
-    totalImpayes,
-    totalRetards,
+    totalLoyers: Math.round(totalLoyers),
+    totalRevenus: Math.round(totalRevenus),
+    totalImpayes: Math.round(totalImpayes),
+    totalRetards: Math.round(totalRetards)
   };
 }
-
-
-// ========================================
-// 🔹 REVENUE BY MONTH
-// ========================================
 
 async function getRevenueByMonth(year) {
-  const loyers = await Loyer.find({ "periode": new RegExp(`^${year}-`) }).populate('paiements');
+  const yearNum = Number(year);
+  const loyers = await Loyer.find({ periode: new RegExp(`^${yearNum}-`) }).lean();
 
-  // tableau 12 mois initialisé à 0
-  const revenues = Array(12).fill(0);
+  const revenues = Array(12)
+    .fill(0)
+    .map((_, index) => ({
+      month: index + 1,
+      total: 0
+    }));
 
-  loyers.forEach(loyer => {
-    const monthIndex = parseInt(loyer.periode.split('-')[1], 10) - 1; // 0 = janvier
-    if (loyer.paiements && loyer.paiements.length) {
-      const totalPaiements = loyer.paiements.reduce((sum, p) => sum + (p.montant || 0), 0);
-      revenues[monthIndex] += totalPaiements;
-    }
+  loyers.forEach((loyer) => {
+    const month = Number(String(loyer.periode || '').split('-')[1] || 0);
+    const monthIndex = month - 1;
+    if (monthIndex < 0 || monthIndex > 11) return;
+
+    const paid = (loyer.paiements || []).reduce((sum, p) => sum + (Number(p.montant) || 0), 0);
+    revenues[monthIndex].total += paid;
   });
 
-  return revenues;
+  return revenues.map((item) => ({ ...item, total: Math.round(item.total) }));
 }
-
-
-// ========================================
-// 🔹 REVENUE BY BOUTIQUE
-// ========================================
 
 async function getRevenueByBoutique() {
-  const loyers = await Loyer.find().populate('boutiqueId');
+  const loyers = await Loyer.find()
+    .populate('boutiqueId', 'nom')
+    .lean();
 
-  const revenues = {};
+  const map = new Map();
 
-  loyers.forEach(loyer => {
-    const boutiqueName = loyer.boutiqueId.nom || 'Inconnu';
-    const totalPaiements = loyer.paiements?.reduce((sum, p) => sum + (p.montant || 0), 0) || 0;
-
-    if (!revenues[boutiqueName]) {
-      revenues[boutiqueName] = 0;
-    }
-    revenues[boutiqueName] += totalPaiements;
+  loyers.forEach((loyer) => {
+    const boutiqueName = loyer?.boutiqueId?.nom || 'Inconnu';
+    const paid = (loyer.paiements || []).reduce((sum, p) => sum + (Number(p.montant) || 0), 0);
+    const prev = map.get(boutiqueName) || 0;
+    map.set(boutiqueName, prev + paid);
   });
 
-  return revenues;
+  return Array.from(map.entries())
+    .map(([boutiqueName, totalRevenue]) => ({
+      boutiqueName,
+      totalRevenue: Math.round(totalRevenue)
+    }))
+    .sort((a, b) => b.totalRevenue - a.totalRevenue);
 }
-
-
-// ========================================
-// 🔹 OCCUPANCY RATE
-// ========================================
 
 async function getOccupancyRate() {
-  const totalBoxes = await Box.countDocuments();
+  const [totalBoxes, occupiedBoxes] = await Promise.all([
+    Box.countDocuments(),
+    Box.countDocuments({ isDisponible: false })
+  ]);
 
-  // Trouver toutes les boxes qui sont liées à un loyer existant
-  const loyers = await Loyer.find();
-  const occupiedBoxIds = new Set();
-
-  loyers.forEach(loyer => {
-    // si ton loyer a un champ type `boxIds` qui liste les boxes louées :
-    if (loyer.boxIds && Array.isArray(loyer.boxIds)) {
-      loyer.boxIds.forEach(id => occupiedBoxIds.add(id.toString()));
-    }
-  });
-
-  const occupiedBoxes = occupiedBoxIds.size;
-  const tauxOccupation = totalBoxes === 0 ? 0 : ((occupiedBoxes / totalBoxes) * 100).toFixed(2);
-
-  return {
-    totalBoxes,
-    occupiedBoxes,
-    tauxOccupation
-  };
+  if (totalBoxes === 0) return 0;
+  return Number(((occupiedBoxes / totalBoxes) * 100).toFixed(2));
 }
 
-
-// ========================================
-// 🔹 LOYER STATUS STATS
-// ========================================
-
 async function getLoyerStatusStats() {
-  const loyers = await Loyer.find();
+  const loyers = await Loyer.find().lean();
 
   const stats = {
     PAYE: 0,
@@ -139,11 +98,9 @@ async function getLoyerStatusStats() {
     RETARD: 0
   };
 
-  loyers.forEach(loyer => {
-    const statut = loyer.statut.toUpperCase(); // normaliser pour éviter casse
-    if (stats.hasOwnProperty(statut)) {
-      stats[statut]++;
-    }
+  loyers.forEach((loyer) => {
+    const key = String(loyer.statut || '').toUpperCase();
+    if (stats[key] !== undefined) stats[key] += 1;
   });
 
   return {
@@ -154,36 +111,29 @@ async function getLoyerStatusStats() {
   };
 }
 
-
-// ========================================
-// 🔹 RECENT PAYMENTS
-// ========================================
-
-// adminStats.service.js
-
 async function getRecentPayments(limit = 5) {
-  // récupère tous les paiements, triés par datePaiement décroissante
-  const loyers = await Loyer.find({ "paiements.0": { $exists: true } })
-    .select("boutiqueId paiements")
+  const loyers = await Loyer.find({ 'paiements.0': { $exists: true } })
+    .select('boutiqueId periode paiements')
+    .populate('boutiqueId', 'nom')
     .lean();
 
-  let allPaiements = [];
-
-  loyers.forEach(loyer => {
-    loyer.paiements.forEach(p => {
-      allPaiements.push({
-        boutiqueId: loyer.boutiqueId,
-        ...p
+  const all = [];
+  loyers.forEach((loyer) => {
+    (loyer.paiements || []).forEach((paiement) => {
+      all.push({
+        boutiqueId: loyer.boutiqueId?._id || loyer.boutiqueId,
+        boutiqueNom: loyer.boutiqueId?.nom || 'Inconnu',
+        periode: loyer.periode,
+        reference: paiement.reference,
+        amount: Number(paiement.montant) || 0,
+        date: paiement.datePaiement || paiement.createdAt
       });
     });
   });
 
-  // trier par datePaiement
-  allPaiements.sort((a, b) => new Date(b.datePaiement) - new Date(a.datePaiement));
-
-  return allPaiements.slice(0, limit);
+  all.sort((a, b) => new Date(b.date) - new Date(a.date));
+  return all.slice(0, Number(limit));
 }
-
 
 module.exports = {
   getGlobalStats,
@@ -191,5 +141,5 @@ module.exports = {
   getRevenueByBoutique,
   getOccupancyRate,
   getLoyerStatusStats,
-  getRecentPayments,
+  getRecentPayments
 };

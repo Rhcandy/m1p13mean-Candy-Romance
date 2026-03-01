@@ -350,12 +350,19 @@ export class BoutiquePromotionsComponent implements OnInit {
     });
   }
 
-  deletePromotion(id: string): void {
+  async deletePromotion(id: string): Promise<void> {
     if (!id) {
       return;
     }
 
-    if (!confirm('Etes-vous sur de vouloir supprimer cette promotion ?')) {
+    const confirmed = await this.notificationService.confirm({
+      title: 'Suppression promotion',
+      message: 'Etes-vous sur de vouloir supprimer cette promotion ?',
+      confirmLabel: 'Supprimer',
+      cancelLabel: 'Annuler',
+      confirmStyle: 'danger'
+    });
+    if (!confirmed) {
       return;
     }
 

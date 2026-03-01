@@ -12,6 +12,7 @@ import { FavorisService } from "../../../services/favoris.service";
 import { AuthService } from "../../../services/auth.service";
 import { CategorieProduit, CategorieProduitService } from "../../../services/categorie-produit.service";
 import { Boutique, BoutiqueService } from "../../../services/boutique.service";
+import { NotificationService } from "../../../services/notification.service";
 
 interface Pagination {
   totalDocs: number;
@@ -41,6 +42,7 @@ export class ProduitsComponent implements OnInit {
   private readonly authService: AuthService = inject(AuthService);
   private readonly categorieService = inject(CategorieProduitService);
   private readonly boutiqueService = inject(BoutiqueService);
+  private readonly notificationService = inject(NotificationService);
   private readonly route = inject(ActivatedRoute);
 
   produits: Product[] = [];
@@ -314,7 +316,7 @@ export class ProduitsComponent implements OnInit {
     // Vérifier le stock disponible
     const stockDisponible = product.variant?.[0]?.qtt || 999;
     if (quantity > stockDisponible) {
-      alert(`Stock insuffisant. Seulement ${stockDisponible} articles disponibles.`);
+      this.notificationService.warning('Stock insuffisant', `Seulement ${stockDisponible} articles disponibles.`);
       return;
     }
 
@@ -360,13 +362,10 @@ export class ProduitsComponent implements OnInit {
    * Afficher une notification à l'utilisateur
    */
   private showNotification(message: string, type: 'success' | 'error' = 'success'): void {
-    // Implémenter selon votre système de notification
-    // Pour l'instant, on utilise une simple alerte
     if (type === 'success') {
-      // Vous pourriez utiliser un toast service ici
-      alert(message);
+      this.notificationService.success('Succes', message);
     } else {
-      alert(message);
+      this.notificationService.error('Erreur', message);
     }
   }
 
@@ -393,3 +392,5 @@ export class ProduitsComponent implements OnInit {
     return this.panierService.formatMontant(prix);
   }
 }
+
+

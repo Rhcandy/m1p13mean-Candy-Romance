@@ -5,16 +5,18 @@ import { AuthService } from 'src/app/services/auth.service';
 import { BoutiqueService } from 'src/app/services/boutique.service';
 import { BoutiqueDashboardComponent } from '../../pages/boutique/dashboard/boutique-dashboard.component';
 import { UserDashboardComponent } from '../../pages/user/dashboard/user-dashboard.component';
+import { AdminDashboardComponent } from '../../pages/royal-center/dashboar/admin-dashboard.component';
 
 @Component({
   selector: 'app-default',
   standalone: true,
-  imports: [CommonModule, BoutiqueDashboardComponent, UserDashboardComponent],
+  imports: [CommonModule, BoutiqueDashboardComponent, UserDashboardComponent, AdminDashboardComponent],
   templateUrl: './default.component.html',
   styleUrls: ['./default.component.scss']
 })
 export class DefaultComponent implements OnInit {
   loading = true;
+  showAdminCenterDashboard = false;
   showBoutiqueDashboard = false;
   showUserDashboard = false;
 
@@ -25,6 +27,14 @@ export class DefaultComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    const isAdminCenter = this.authService.isAdminCenterRole();
+
+    if (isAdminCenter) {
+      this.showAdminCenterDashboard = true;
+      this.loading = false;
+      return;
+    }
+
     const isAdminBoutique = this.authService.hasRole('admin_boutique');
 
     if (isAdminBoutique) {

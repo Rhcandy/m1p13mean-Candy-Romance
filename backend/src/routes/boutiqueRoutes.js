@@ -19,6 +19,7 @@ router.get('/my-boutique', boutiqueController.getMyBoutique);
 router.put('/my-boutique', boutiqueController.updateMyBoutique);
 router.patch('/my-boutique/deactivate', boutiqueController.deactivateMyBoutique);
 router.patch('/my-boutique/activate', boutiqueController.activateMyBoutique);
+router.patch('/my-boutique/renew', boutiqueController.renewMyBoutiqueContract);
 router.delete('/my-boutique/quitter-centre', boutiqueController.quitterCentre);
 
 // Upload logo pour une boutique (remplace l'ancien logo si existe)

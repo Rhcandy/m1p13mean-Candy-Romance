@@ -328,8 +328,15 @@ export class PanierComponent implements OnInit, OnDestroy {
 
   // ─── Suppression / vidage ────────────────────────────────
 
-  removeItem(item: ProduitAchete): void {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cet article du panier ?')) return;
+  async removeItem(item: ProduitAchete): Promise<void> {
+    const confirmed = await this.notificationService.confirm({
+      title: 'Suppression article',
+      message: 'Etes-vous sur de vouloir supprimer cet article du panier ?',
+      confirmLabel: 'Supprimer',
+      cancelLabel: 'Annuler',
+      confirmStyle: 'danger'
+    });
+    if (!confirmed) return;
 
     this.panierService.removeFromPanier(item.produit._id)
       .pipe(takeUntil(this.destroy$))
@@ -361,8 +368,15 @@ export class PanierComponent implements OnInit, OnDestroy {
       });
   }
 
-  viderPanier(): void {
-    if (!confirm('Êtes-vous sûr de vouloir vider votre panier ?')) return;
+  async viderPanier(): Promise<void> {
+    const confirmed = await this.notificationService.confirm({
+      title: 'Vider le panier',
+      message: 'Etes-vous sur de vouloir vider votre panier ?',
+      confirmLabel: 'Vider',
+      cancelLabel: 'Annuler',
+      confirmStyle: 'danger'
+    });
+    if (!confirmed) return;
 
     this.panierService.viderPanier()
       .pipe(takeUntil(this.destroy$))

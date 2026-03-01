@@ -135,6 +135,15 @@ export function getNavigationItems(): NavigationItem[] {
           breadcrumbs: false
         },
         {
+          id: 'royal-pricing',
+          title: 'Tarification',
+          type: 'item',
+          classes: 'nav-item',
+          url: '/royal-center/tarification',
+          icon: 'ti ti-chart-line',
+          breadcrumbs: true
+        },
+        {
           id: 'royal-loyers',
           title: 'Loyer',
           type: 'item',

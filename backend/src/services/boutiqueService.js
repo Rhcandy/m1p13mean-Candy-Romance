@@ -2,6 +2,12 @@ const Boutique = require('../models/Boutique');
 const Box = require('../models/Box');
 const TypeBox = require('../models/TypeBox');
 
+const boxContractPopulate = {
+  path: 'contratlocation.boxes',
+  select: 'Superficie etage numRef isDisponible typeBoxId',
+  populate: { path: 'typeBoxId', select: 'nom minOccupationDays periode remuneration' }
+};
+
 /**
  * Valider les donn??es d'une boutique
  * @param {Object} boutiqueData - Donn??es de la boutique
@@ -118,14 +124,15 @@ const validateRentalDuration = async (boxes, dateDebut, dateFin) => {
   
   for (const box of boxes) {
     const typeBox = await TypeBox.findById(box.typeBoxId);
-    if (typeBox && dureeJours < typeBox.periode) { // p??riode en jours (pas en mois)
+    const minDays = typeBox?.minOccupationDays || typeBox?.periode || 1;
+    if (typeBox && dureeJours < minDays) {
       return {
         isValid: false,
-        error: `La dur??e de location pour la box ${box.numRef} doit ??tre d'au moins ${typeBox.periode} jours`,
+        error: `La duree de location pour la box ${box.numRef} doit etre d'au moins ${minDays} jours`,
         statusCode: 400,
         data: {
           boxRef: box.numRef,
-          requiredDays: typeBox.periode,
+          requiredDays: minDays,
           providedDays: dureeJours
         }
       };
@@ -193,7 +200,7 @@ const createBoutique = async (boutiqueData, userId) => {
   // Retourner avec populate
   return await Boutique.findById(boutique._id)
     .populate('locataire', 'nom email')
-    .populate('contratlocation.boxes', 'Superficie etage numRef isDisponible');
+    .populate(boxContractPopulate);
 };
 
 /**
@@ -233,7 +240,7 @@ const uploadLogo = async (boutiqueId, file) => {
   return {
     boutique: await Boutique.findById(boutique._id)
       .populate('locataire', 'nom email')
-      .populate('contratlocation.boxes', 'Superficie etage numRef isDisponible'),
+      .populate(boxContractPopulate),
     logo: boutique.logo,
     public_id: logoUrl.split('/').pop().split('.')[0],
     url: logoUrl
@@ -355,7 +362,7 @@ const updateBoutique = async (boutiqueId, boutiqueData) => {
   // Retourner avec populate
   return await Boutique.findById(boutique._id)
     .populate('locataire', 'nom email')
-    .populate('contratlocation.boxes', 'Superficie etage numRef isDisponible');
+    .populate(boxContractPopulate);
 };
 
 module.exports = {

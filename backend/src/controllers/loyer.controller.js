@@ -1,66 +1,34 @@
+const Boutique = require('../models/Boutique');
+const Loyer = require('../models/Loyer');
 const {
   calculateLoyer,
   generateLoyer,
   generateMonthlyLoyers,
   payLoyer,
-  checkLateLoyers
+  payBoutiqueLoyer,
+  checkLateLoyers,
+  setLoyerStatus,
+  getBoutiqueLoyerSummary,
+  getAllBoutiquesLoyerSummary,
+  syncBoutiqueDebtState
 } = require('../services/loyer.service');
-const Loyer = require('../models/Loyer');
-/**
- * @swagger
- * tags:
- *   name: Loyers
- *   description: Gestion des loyers
- */
 
-// ==========================================
-// 1️⃣ CALCULATE LOYER (simulation sans créer)
-// ==========================================
-/**
- * @swagger
- * /api/loyers/calculate:
- *   post:
- *     summary: Calcul du loyer (simulation sans sauvegarder)
- *     tags: [Loyers]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               boutiqueId:
- *                 type: string
- *               periode:
- *                 type: string
- *                 example: "2026-02"
- *     responses:
- *       200:
- *         description: Calcul effectué avec succès
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 message:
- *                   type: string
- *                 data:
- *                   type: object
- *                   properties:
- *                     total:
- *                       type: number
- *                     startDate:
- *                       type: string
- */
+async function resolveBoutiqueIdForUser(req) {
+  const userId = req.user?.userId || req.user?.id;
+  const boutique = await Boutique.findOne({ locataire: userId }).select('_id');
+  if (!boutique) {
+    throw new Error('Aucune boutique associee a votre compte');
+  }
+  return boutique._id;
+}
+
 const calculate = async (req, res) => {
   try {
     const { boutiqueId, periode } = req.body;
     const result = await calculateLoyer(boutiqueId, periode);
     return res.status(200).json({
       success: true,
-      message: 'Calcul effectué avec succès',
+      message: 'Calcul effectue avec succes',
       data: result
     });
   } catch (error) {
@@ -71,38 +39,13 @@ const calculate = async (req, res) => {
   }
 };
 
-// ==========================================
-// 2️⃣ GENERATE LOYER
-// ==========================================
-/**
- * @swagger
- * /api/loyers/generate:
- *   post:
- *     summary: Génère et sauvegarde un loyer
- *     tags: [Loyers]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               boutiqueId:
- *                 type: string
- *               periode:
- *                 type: string
- *                 example: "2026-02"
- *     responses:
- *       201:
- *         description: Loyer généré avec succès
- */
 const generate = async (req, res) => {
   try {
     const { boutiqueId, periode } = req.body;
     const loyer = await generateLoyer(boutiqueId, periode);
     return res.status(201).json({
       success: true,
-      message: 'Loyer généré avec succès',
+      message: 'Loyer genere avec succes',
       data: loyer
     });
   } catch (error) {
@@ -113,77 +56,15 @@ const generate = async (req, res) => {
   }
 };
 
-// ==========================================
-// 3️⃣ PAY LOYER
-// ==========================================
-/**
- * @swagger
- * /api/loyers/pay/{loyerId}:
- *   post:
- *     summary: Effectuer un paiement pour un loyer
- *     tags: [Loyers]
- *     parameters:
- *       - in: path
- *         name: loyerId
- *         required: true
- *         schema:
- *           type: string
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               montant:
- *                 type: number
- *                 example: 100000
- *               modePaiement:
- *                 type: string
- *                 example: "Virement"
- *               title:
- *                 type: string
- *                 example: "Paiement février"
- *               datePaiement:
- *                 type: string
- *                 format: date
- *                 example: "2026-02-16"
- *     responses:
- *       200:
- *         description: Paiement effectué avec succès
- */
 const pay = async (req, res) => {
   try {
     const { loyerId } = req.params;
-    let { montant, modePaiement, title, datePaiement } = req.body;
-
-    if (!montant) {
-      throw new Error('Le montant du paiement est requis');
-    }
-
-    // Générer un title si non fourni
-    if (!title) {
-      const today = new Date();
-      title = `Paiement ${today.toLocaleDateString()}`;
-    }
-
-    // Mettre la date du paiement à aujourd'hui si non fournie
-    if (!datePaiement) {
-      datePaiement = new Date();
-    } else {
-      datePaiement = new Date(datePaiement);
-    }
-
-    const paiementData = { montant, modePaiement, title, datePaiement };
-
-    const loyer = await payLoyer(loyerId, paiementData);
-
+    const loyer = await payLoyer(loyerId, req.body);
     return res.status(200).json({
       success: true,
-      message: 'Paiement enregistré avec succès',
+      message: 'Paiement enregistre avec succes',
       data: loyer
     });
-
   } catch (error) {
     return res.status(400).json({
       success: false,
@@ -192,68 +73,59 @@ const pay = async (req, res) => {
   }
 };
 
+const payMyBoutique = async (req, res) => {
+  try {
+    const boutiqueId = await resolveBoutiqueIdForUser(req);
+    const result = await payBoutiqueLoyer(boutiqueId, req.body);
+    return res.status(200).json({
+      success: true,
+      message: 'Paiement applique avec succes',
+      data: result
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
 
-/**
- * @swagger
- * /api/loyers:
- *   get:
- *     summary: Récupérer la liste des loyers
- *     tags: [Loyers]
- *     parameters:
- *       - in: query
- *         name: boutiqueId
- *         schema:
- *           type: string
- *         required: false
- *         description: Filtrer les loyers par boutique
- *     responses:
- *       200:
- *         description: Liste des loyers
- */
 const listLoyers = async (req, res) => {
   try {
-    const { boutiqueId } = req.query;
+    const role = req.user?.roleName;
+    const requestedBoutiqueId = req.query.boutiqueId;
+    let filter = {};
 
-    const filter = boutiqueId ? { boutiqueId } : {};
+    if (role === 'admin_boutique') {
+      const boutiqueId = await resolveBoutiqueIdForUser(req);
+      filter = { boutiqueId };
+    } else if (requestedBoutiqueId) {
+      filter = { boutiqueId: requestedBoutiqueId };
+    }
 
-    // populate pour récupérer les infos de la boutique
     const loyers = await Loyer.find(filter)
-      .populate('boutiqueId', 'nom adresse')
-      .sort({ periode: -1 });
+      .populate('boutiqueId', 'nom isActive isBlockedForLoyer loyerBlockedReason totalResteLoyer')
+      .sort({ periode: -1, createdAt: -1 });
 
     return res.status(200).json({
       success: true,
       data: loyers
     });
-
   } catch (error) {
-    return res.status(400).json({
+    return res.status(500).json({
       success: false,
       message: error.message
     });
   }
 };
 
-
-// ==========================================
-// 4️⃣ GENERATE MONTHLY (manual trigger)
-// ==========================================
-/**
- * @swagger
- * /api/loyers/generate-monthly:
- *   post:
- *     summary: Génération mensuelle des loyers (trigger manuel)
- *     tags: [Loyers]
- *     responses:
- *       200:
- *         description: Génération mensuelle effectuée
- */
 const generateMonthly = async (req, res) => {
   try {
-    await generateMonthlyLoyers();
+    const result = await generateMonthlyLoyers();
     return res.status(200).json({
       success: true,
-      message: 'Génération mensuelle effectuée'
+      message: 'Generation mensuelle effectuee',
+      data: result
     });
   } catch (error) {
     return res.status(500).json({
@@ -263,25 +135,13 @@ const generateMonthly = async (req, res) => {
   }
 };
 
-// ==========================================
-// 5️⃣ CHECK LATE LOYERS (manual trigger)
-// ==========================================
-/**
- * @swagger
- * /api/loyers/check-late:
- *   post:
- *     summary: Vérifie les loyers en retard (trigger manuel)
- *     tags: [Loyers]
- *     responses:
- *       200:
- *         description: Vérification des retards effectuée
- */
 const checkLate = async (req, res) => {
   try {
-    await checkLateLoyers();
+    const result = await checkLateLoyers();
     return res.status(200).json({
       success: true,
-      message: 'Vérification des retards effectuée'
+      message: 'Verification des retards effectuee',
+      data: result
     });
   } catch (error) {
     return res.status(500).json({
@@ -290,33 +150,93 @@ const checkLate = async (req, res) => {
     });
   }
 };
-// Créer un loyer
+
+// Compatibilite CRUD admin: creation basee sur la generation.
 const createLoyer = async (req, res) => {
   try {
-    const loyer = new Loyer(req.body);
-    await loyer.save();
-    res.status(201).json({ success: true, data: loyer });
-  } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
+    const { boutiqueId, periode } = req.body;
+    const loyer = await generateLoyer(boutiqueId, periode);
+    return res.status(201).json({ success: true, data: loyer });
+  } catch (error) {
+    return res.status(400).json({ success: false, message: error.message });
   }
 };
 
-// Mettre à jour un loyer
 const updateLoyer = async (req, res) => {
   try {
-    const loyer = await Loyer.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    res.json({ success: true, data: loyer });
-  } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
+    const { statut, commentaire } = req.body;
+    const loyer = await Loyer.findById(req.params.id);
+    if (!loyer) {
+      return res.status(404).json({ success: false, message: 'Loyer introuvable' });
+    }
+
+    if (statut) {
+      await setLoyerStatus(loyer._id, statut);
+    }
+
+    if (commentaire !== undefined) {
+      loyer.commentaire = commentaire || null;
+      await loyer.save();
+    }
+
+    await syncBoutiqueDebtState(loyer.boutiqueId);
+    const refreshed = await Loyer.findById(loyer._id).populate('boutiqueId', 'nom');
+    return res.status(200).json({ success: true, data: refreshed });
+  } catch (error) {
+    return res.status(400).json({ success: false, message: error.message });
   }
 };
 
-// Supprimer un loyer
 const deleteLoyer = async (req, res) => {
   try {
+    const loyer = await Loyer.findById(req.params.id);
+    if (!loyer) {
+      return res.status(404).json({ success: false, message: 'Loyer introuvable' });
+    }
+
+    await Loyer.findByIdAndDelete(req.params.id);
+    await syncBoutiqueDebtState(loyer.boutiqueId);
+    return res.status(200).json({ success: true, message: 'Loyer supprime.' });
+  } catch (error) {
+    return res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+const getAllSummaries = async (_req, res) => {
+  try {
+    const data = await getAllBoutiquesLoyerSummary();
+    return res.status(200).json({ success: true, data });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getSummaryByBoutique = async (req, res) => {
+  try {
+    const boutiqueId = req.params.boutiqueId;
+    const data = await getBoutiqueLoyerSummary(boutiqueId);
+    return res.status(200).json({ success: true, data });
+  } catch (error) {
+    return res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+const getMySummary = async (req, res) => {
+  try {
+    const boutiqueId = await resolveBoutiqueIdForUser(req);
+    const data = await getBoutiqueLoyerSummary(boutiqueId);
+    return res.status(200).json({ success: true, data });
+  } catch (error) {
+    return res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+const updateStatus = async (req, res) => {
+  try {
     const { loyerId } = req.params;
-    await Loyer.findByIdAndDelete(loyerId);
-    return res.status(200).json({ success: true, message: 'Loyer supprimé.' });
+    const { statut } = req.body;
+    const data = await setLoyerStatus(loyerId, statut);
+    return res.status(200).json({ success: true, data });
   } catch (error) {
     return res.status(400).json({ success: false, message: error.message });
   }
@@ -326,10 +246,15 @@ module.exports = {
   calculate,
   generate,
   pay,
+  payMyBoutique,
   generateMonthly,
   checkLate,
   listLoyers,
   createLoyer,
   updateLoyer,
-  deleteLoyer
+  deleteLoyer,
+  getAllSummaries,
+  getSummaryByBoutique,
+  getMySummary,
+  updateStatus
 };

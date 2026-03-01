@@ -23,6 +23,7 @@ export class BoxesDisponiblesComponent implements OnInit {
   loading = false;
   loadingBoutique = false;
   creating = false;
+  showOnboardingNotice = false;
 
   boxes: AvailableBox[] = [];
   selectedBox: AvailableBox | null = null;
@@ -75,6 +76,7 @@ export class BoxesDisponiblesComponent implements OnInit {
     }
 
     this.isChangingBox = this.route.snapshot.queryParamMap.get('mode') === 'change';
+    this.showOnboardingNotice = this.route.snapshot.queryParamMap.get('onboard') === '1';
     this.loadStateAndBoxes();
   }
 
@@ -175,6 +177,17 @@ export class BoxesDisponiblesComponent implements OnInit {
       return;
     }
 
+    const oneDayMs = 24 * 60 * 60 * 1000;
+    const dureeJours = Math.ceil((dateFin.getTime() - dateDebut.getTime()) / oneDayMs);
+    const minDays = this.getSelectedBoxMinDays();
+    if (dureeJours < minDays) {
+      this.notificationService.warning(
+        'Duree insuffisante',
+        `La duree minimale de location pour cette box est ${minDays} jours.`
+      );
+      return;
+    }
+
     this.creating = true;
 
     const jLocation: JLocation = {
@@ -224,7 +237,7 @@ export class BoxesDisponiblesComponent implements OnInit {
         } else {
           this.notificationService.info(
             'Boutique creee',
-            'Votre boutique est en attente de la premiere activation par l\'admin du centre.'
+            'Veuillez fournir a la direction du centre la photocopie CIN du proprietaire, NIF, STAT de votre entreprise et 2 photos pour completer le dossier. Apres reception des dossiers, votre boutique sera activee.'
           );
           this.router.navigate(['/boutique/informations']);
         }
@@ -246,6 +259,12 @@ export class BoxesDisponiblesComponent implements OnInit {
 
   trackByBoxId(_: number, box: AvailableBox): string {
     return box._id;
+  }
+
+  getSelectedBoxMinDays(): number {
+    if (!this.selectedBox) return 1;
+    const minDays = Number(this.selectedBox.typeBoxId?.minOccupationDays || this.selectedBox.typeBoxId?.periode || 1);
+    return minDays > 0 ? minDays : 1;
   }
 
   private toInputDate(date: Date): string {

@@ -69,7 +69,7 @@ const typeBoxRoutes = require('./routes/typeBoxRoutes');
 const boxRoutes = require('./routes/boxRoutes');
 const boutiqueRoutes = require('./routes/boutiqueRoutes');
 
-const loyers =require('./routes/loyer.routes');
+const loyers = require('./routes/loyer.routes');
 const histoPrixRoutes = require('./routes/histoPrixCateg.routes');
 const adminStatsRoutes = require("./routes/adminStats.routes");
 
@@ -81,7 +81,6 @@ const livraisonRoutes = require('./routes/livraisonRoutes');
 const favorisRoutes = require('./routes/favorisRoutes');
 const promotionRoutes = require('./routes/promotionRoutes');
 const commandeBoutiqueRoutes = require('./routes/commandeBoutiqueRoutes');
-const loyerRoutes = require('./routes/loyerRoutes');
 
 
 // Routes API
@@ -104,7 +103,6 @@ app.use('/api/livraison', livraisonRoutes);
 app.use('/api/favoris', favorisRoutes);
 app.use('/api/promotions', promotionRoutes);
 app.use('/api/commandes-boutique', commandeBoutiqueRoutes);
-app.use('/api/loyers', loyerRoutes);
 
 
 

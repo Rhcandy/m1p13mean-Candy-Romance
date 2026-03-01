@@ -204,20 +204,29 @@ export class BoutiqueProduitsComponent implements OnInit {
 
   // â”€â”€ Suppression â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  deleteProduit(id: string): void {
-    if (confirm('ÃŠtes-vous sÃ»r de vouloir supprimer ce produit ?')) {
-      this.boutiqueProduitService.deleteMyBoutiqueProduit(id).subscribe({
-        next: (response) => {
-          if (response.success) {
-            this.notificationService.success('Produit supprimÃ© avec succÃ¨s');
-            this.loadProduits();
-          } else {
-            this.notificationService.error('Erreur', response.message || 'Erreur lors de la suppression');
-          }
-        },
-        error: () => { this.notificationService.error('Erreur', 'Erreur lors de la suppression'); }
-      });
-    }
+  async deleteProduit(id: string): Promise<void> {
+    const confirmed = await this.notificationService.confirm({
+      title: 'Suppression produit',
+      message: 'Etes-vous sur de vouloir supprimer ce produit ?',
+      confirmLabel: 'Supprimer',
+      cancelLabel: 'Annuler',
+      confirmStyle: 'danger'
+    });
+    if (!confirmed) return;
+
+    this.boutiqueProduitService.deleteMyBoutiqueProduit(id).subscribe({
+      next: (response) => {
+        if (response.success) {
+          this.notificationService.success('Produit supprimÃ© avec succÃ¨s');
+          this.loadProduits();
+        } else {
+          this.notificationService.error('Erreur', response.message || 'Erreur lors de la suppression');
+        }
+      },
+      error: () => {
+        this.notificationService.error('Erreur', 'Erreur lors de la suppression');
+      }
+    });
   }
 
   // â”€â”€ Helpers affichage â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

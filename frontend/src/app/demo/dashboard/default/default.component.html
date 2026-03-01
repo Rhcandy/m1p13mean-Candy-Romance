@@ -3,6 +3,7 @@
     <div class="spinner-border text-primary"></div>
   </div>
 
+  <app-admin-dashboard *ngIf="!loading && showAdminCenterDashboard"></app-admin-dashboard>
   <app-boutique-dashboard *ngIf="!loading && showBoutiqueDashboard"></app-boutique-dashboard>
   <app-user-dashboard *ngIf="!loading && showUserDashboard"></app-user-dashboard>
 </div>

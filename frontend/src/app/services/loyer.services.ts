@@ -1,50 +1,53 @@
-// src/app/services/loyer.services.ts
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { ApiService } from './api.service';
 import { Loyer } from '../models/loyer.model';
+
+export interface LoyerPaymentPayload {
+  montant: number;
+  reference: string;
+  title?: string;
+  libelle?: string;
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class LoyerService {
-  private apiUrl = 'http://localhost:3000/api/loyers';
-  boutiques: any[] = []; // pour getBoutiqueNameFromLoyer
+  private readonly endpoint = '/loyers';
 
-  constructor(private http: HttpClient) {}
+  constructor(private readonly apiService: ApiService) {}
 
   getAll(boutiqueId?: string): Observable<{ success: boolean; data: Loyer[] }> {
-    let params = new HttpParams();
-    if (boutiqueId) params = params.set('boutiqueId', boutiqueId);
-    return this.http.get<{ success: boolean; data: Loyer[] }>(this.apiUrl, { params });
+    const suffix = boutiqueId ? `?boutiqueId=${encodeURIComponent(boutiqueId)}` : '';
+    return this.apiService.get<{ success: boolean; data: Loyer[] }>(`${this.endpoint}${suffix}`);
   }
 
-  create(data: any) {
-    return this.http.post(`${this.apiUrl}`, data);
+  getSummaryAll(): Observable<{ success: boolean; data: any[] }> {
+    return this.apiService.get<{ success: boolean; data: any[] }>(`${this.endpoint}/summary`);
   }
 
-  update(id: string, data: any) {
-    return this.http.put(`${this.apiUrl}/${id}`, data);
+  getSummaryByBoutique(boutiqueId: string): Observable<{ success: boolean; data: any }> {
+    return this.apiService.get<{ success: boolean; data: any }>(`${this.endpoint}/summary/${boutiqueId}`);
   }
 
-  delete(id: string) {
-    return this.http.delete(`${this.apiUrl}/${id}`);
+  getMySummary(): Observable<{ success: boolean; data: any }> {
+    return this.apiService.get<{ success: boolean; data: any }>(`${this.endpoint}/my-summary`);
   }
 
-  // Helper functions
-  getBoutiqueNameFromLoyer(loyer: any): string {
-    if (loyer.boutiqueId && typeof loyer.boutiqueId === 'object') return loyer.boutiqueId.nom;
-    const b = this.boutiques.find(x => x._id === loyer.boutiqueId);
-    return b ? b.nom : '—';
+  generateLoyer(boutiqueId: string, periode: string): Observable<any> {
+    return this.apiService.post<any>(`${this.endpoint}/generate`, { boutiqueId, periode });
   }
 
-  getTotalMontantPaye(loyer: any): number {
-    if (!loyer.details) return 0;
-    return loyer.details.reduce((t, d) => t + (d.montantPaye || 0), 0);
+  runMonthlyGeneration(): Observable<any> {
+    return this.apiService.post<any>(`${this.endpoint}/generate-monthly`, {});
   }
 
-  getTotalRestePaye(loyer: any): number {
-    if (!loyer.details) return 0;
-    return loyer.details.reduce((t, d) => t + (d.restePaye || 0), 0);
+  payMyBoutique(payload: LoyerPaymentPayload): Observable<any> {
+    return this.apiService.post<any>(`${this.endpoint}/my-boutique/pay`, payload);
+  }
+
+  setStatus(loyerId: string, statut: 'IMPAYE' | 'PARTIEL' | 'PAYE' | 'RETARD'): Observable<any> {
+    return this.apiService.patch<any>(`${this.endpoint}/status/${loyerId}`, { statut });
   }
 }

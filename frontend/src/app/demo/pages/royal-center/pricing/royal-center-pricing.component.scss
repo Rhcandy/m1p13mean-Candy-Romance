@@ -1,0 +1,29 @@
+.royal-pricing-page {
+  .card {
+    border-radius: 0.85rem;
+  }
+
+  .table th {
+    font-size: 0.74rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: #667085;
+    white-space: nowrap;
+  }
+
+  .table td {
+    vertical-align: middle;
+  }
+
+  .filter-select {
+    min-width: 180px;
+  }
+
+  .form-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #475467;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+}

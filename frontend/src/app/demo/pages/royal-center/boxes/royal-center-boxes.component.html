@@ -133,7 +133,7 @@
             <select class="form-select" [(ngModel)]="form.typeBoxId" [disabled]="saving">
               <option value="">Selectionner</option>
               <option *ngFor="let type of typeBoxes" [value]="type._id">
-                {{ type.nom }} ({{ type.periode }}m | {{ type.remuneration }}%)
+                {{ type.nom }} (min {{ type.minOccupationDays || type.periode }} j)
               </option>
             </select>
           </div>
@@ -147,15 +147,6 @@
               <option [ngValue]="true">Disponible</option>
               <option [ngValue]="false">Occupee</option>
             </select>
-          </div>
-          <div class="col-12">
-            <label class="form-label">Coordonnees (GeoJSON Polygon)</label>
-            <textarea
-              rows="8"
-              class="form-control font-monospace"
-              [(ngModel)]="form.coordonneesText"
-              [disabled]="saving"
-            ></textarea>
           </div>
         </div>
       </div>

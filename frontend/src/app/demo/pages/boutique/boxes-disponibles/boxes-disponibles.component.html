@@ -15,6 +15,13 @@
     }
   </section>
 
+  @if (showOnboardingNotice && !isChangingBox) {
+    <div class="alert alert-info border-0 shadow-sm mt-3 mb-0">
+      <strong>Inscription boutique enregistree.</strong>
+      Veuillez fournir a la direction du centre la photocopie CIN du proprietaire, NIF, STAT de votre entreprise et 2 photos pour completer le dossier. Apres reception des dossiers, votre boutique sera activee.
+    </div>
+  }
+
   @if (loading || loadingBoutique) {
     <div class="loading-state">
       <div class="spinner-border text-primary" role="status"></div>

@@ -62,9 +62,17 @@ export class RoyalCenterBoutiquesComponent implements OnInit {
     this.loadBoutiques();
   }
 
-  confirmBoutiqueCreation(boutique: BoutiqueModel): void {
+  async confirmBoutiqueCreation(boutique: BoutiqueModel): Promise<void> {
     if (!boutique.isPendingFirstActivation) return;
-    if (!confirm(`Confirmer la creation de la boutique "${boutique.nom}" ?`)) return;
+
+    const confirmed = await this.notificationService.confirm({
+      title: 'Confirmation boutique',
+      message: `Confirmer la creation de la boutique "${boutique.nom}" ?`,
+      confirmLabel: 'Confirmer',
+      cancelLabel: 'Annuler',
+      confirmStyle: 'primary'
+    });
+    if (!confirmed) return;
 
     this.busyIds.add(boutique._id);
     this.adminCenterService.activateBoutique(boutique._id).subscribe({
@@ -83,8 +91,15 @@ export class RoyalCenterBoutiquesComponent implements OnInit {
     });
   }
 
-  deleteBoutique(boutique: BoutiqueModel): void {
-    if (!confirm(`Supprimer la boutique "${boutique.nom}" ?`)) return;
+  async deleteBoutique(boutique: BoutiqueModel): Promise<void> {
+    const confirmed = await this.notificationService.confirm({
+      title: 'Suppression boutique',
+      message: `Supprimer la boutique "${boutique.nom}" ?`,
+      confirmLabel: 'Supprimer',
+      cancelLabel: 'Annuler',
+      confirmStyle: 'danger'
+    });
+    if (!confirmed) return;
 
     this.busyIds.add(boutique._id);
     this.adminCenterService.deleteBoutique(boutique._id).subscribe({

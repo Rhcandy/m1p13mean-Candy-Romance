@@ -130,6 +130,13 @@ const routes: Routes = [
         path: 'royal-center',
         children: [
           {
+            path: 'tarification',
+            loadComponent: () =>
+              import('./demo/pages/royal-center/pricing/royal-center-pricing.component').then(
+                (c) => c.RoyalCenterPricingComponent
+              )
+          },
+          {
             path: 'loyers',
             loadComponent: () =>
               import('./demo/pages/royal-center/loyers/royal-center-loyers.component').then(

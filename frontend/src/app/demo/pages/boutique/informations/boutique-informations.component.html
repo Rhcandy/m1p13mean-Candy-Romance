@@ -1,8 +1,8 @@
-<div class="container-fluid">
+<div class="container-fluid boutique-info-page">
   <div class="row">
     <div class="col-12">
       <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-        <h4 class="mb-sm-0">Informations de ma Boutique</h4>
+        <h4 class="mb-sm-0">Informations de ma boutique</h4>
       </div>
     </div>
   </div>
@@ -12,101 +12,96 @@
     <button type="button" class="btn-close" (click)="success = null"></button>
   </div>
 
-  <!-- Loading -->
   <div *ngIf="loading" class="text-center py-5">
     <div class="spinner-border text-primary" role="status">
       <span class="visually-hidden">Chargement...</span>
     </div>
   </div>
 
-  <!-- Aucune boutique -->
   <div *ngIf="!loading && !boutique" class="row">
     <div class="col-12">
       <div class="card">
         <div class="card-body text-center py-5">
           <div class="mb-4">
-            <i class="ri-store-2-line text-primary" style="font-size: 4rem;"></i>
+            <i class="ri-store-2-line text-primary" style="font-size: 4rem"></i>
           </div>
           <h5 class="card-title mb-3">Vous n'avez pas encore de boutique</h5>
-          <p class="text-muted mb-4">
-            Cr??ez votre boutique pour commencer ?? vendre vos produits sur la plateforme, chercher votre Box.
-          </p>
-          <button type="button" class="btn btn-primary" (click)="goToBoxesList()">
-            Voir les boxes disponibles
-          </button>
+          <p class="text-muted mb-4">Creez votre boutique et selectionnez une box pour commencer.</p>
+          <button type="button" class="btn btn-primary" (click)="goToBoxesList()">Voir les boxes disponibles</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Contenu principal -->
   <div *ngIf="!loading && boutique" class="row g-4">
+    <div class="col-12" *ngIf="boutique.isBlockedForLoyer">
+      <div class="alert alert-danger mb-0">
+        <strong>Boutique desactivee pour impayes.</strong>
+        {{ boutique.loyerBlockedReason || 'Veuillez regler votre loyer pour reactiver la boutique.' }}
+        <span class="d-block mt-1">Reste actuel: {{ boutique.totalResteLoyer || 0 | number }} Ar</span>
+      </div>
+    </div>
 
-    <!-- Colonne gauche : Infos + Formulaire -->
     <div class="col-xl-8">
-
-      <!-- Carte : Infos de localisation (lecture seule) -->
       <div class="card mb-4">
         <div class="card-header">
-          <h5 class="card-title mb-0">
-            <i class="ri-map-pin-line me-2 text-primary"></i>Localisation dans le centre
-          </h5>
+          <h5 class="card-title mb-0"><i class="ri-map-pin-line me-2 text-primary"></i>Localisation dans le centre</h5>
         </div>
         <div class="card-body">
           <div class="row g-3" *ngIf="boutique.contratlocation?.boxes?.[0] as box">
             <div class="col-sm-4">
               <div class="info-block">
-                <span class="info-label"><i class="ri-hashtag me-1"></i>Numero Box</span>
+                <span class="info-label"><i class="ri-hashtag me-1"></i>Numero box</span>
                 <span class="info-value fw-semibold text-primary fs-5">{{ box.numRef }}</span>
               </div>
             </div>
             <div class="col-sm-4">
               <div class="info-block">
-                <span class="info-label"><i class="ri-building-line me-1"></i>éage</span>
+                <span class="info-label"><i class="ri-building-line me-1"></i>Etage</span>
                 <span class="info-value fw-semibold">{{ box.etage }}</span>
               </div>
             </div>
             <div class="col-sm-4">
               <div class="info-block">
                 <span class="info-label"><i class="ri-ruler-line me-1"></i>Superficie</span>
-                <span class="info-value fw-semibold">{{ box.Superficie }} m²</span>
+                <span class="info-value fw-semibold">{{ box.Superficie }} m2</span>
               </div>
             </div>
           </div>
 
-          <hr class="my-3">
+          <hr class="my-3" />
 
-          <!-- Dates de location -->
           <div class="row g-3" *ngIf="boutique.contratlocation">
             <div class="col-sm-4">
               <div class="info-block">
-                <span class="info-label"><i class="ri-calendar-line me-1"></i>Début de location</span>
-                <span class="info-value">{{ boutique.contratlocation.dateDebutLocation | date:'dd/MM/yyyy' }}</span>
+                <span class="info-label"><i class="ri-calendar-line me-1"></i>Debut de location</span>
+                <span class="info-value">{{ boutique.contratlocation.dateDebutLocation | date: 'dd/MM/yyyy' }}</span>
               </div>
             </div>
             <div class="col-sm-4">
               <div class="info-block">
                 <span class="info-label"><i class="ri-calendar-check-line me-1"></i>Fin de location</span>
-                <span class="info-value">{{ boutique.contratlocation.dateFinLocation | date:'dd/MM/yyyy' }}</span>
+                <span class="info-value">{{ boutique.contratlocation.dateFinLocation | date: 'dd/MM/yyyy' }}</span>
               </div>
             </div>
             <div class="col-sm-4">
               <div class="info-block">
-                <span class="info-label"><i class="ri-time-line me-1"></i>Créé le</span>
-                <span class="info-value">{{ boutique.createdAt | date:'dd/MM/yyyy' }}</span>
+                <span class="info-label"><i class="ri-time-line me-1"></i>Cree le</span>
+                <span class="info-value">{{ boutique.createdAt | date: 'dd/MM/yyyy' }}</span>
               </div>
             </div>
           </div>
 
-          <hr class="my-3">
+          <hr class="my-3" />
 
-          <!-- Jours d'ouverture -->
           <div *ngIf="boutique.contratlocation?.jLocation">
             <span class="info-label d-block mb-2"><i class="ri-door-open-line me-1"></i>Jours d'ouverture</span>
             <div class="d-flex flex-wrap gap-2">
-              <span *ngFor="let jour of joursOuverture" 
-                    class="badge rounded-pill px-3 py-2"
-                    [ngClass]="boutique.contratlocation.jLocation[jour.key] ? 'badge-jour-ouvert' : 'badge-jour-ferme'">
+              <span
+                *ngFor="let jour of joursOuverture"
+                class="badge rounded-pill px-3 py-2"
+                [ngClass]="boutique.contratlocation.jLocation[jour.key] ? 'badge-jour-ouvert' : 'badge-jour-ferme'"
+              >
                 {{ jour.label }}
               </span>
             </div>
@@ -114,12 +109,9 @@
         </div>
       </div>
 
-      <!-- Carte : Formulaire modification -->
       <div class="card">
         <div class="card-header">
-          <h5 class="card-title mb-0">
-            <i class="ri-edit-line me-2 text-primary"></i>Modifier les informations
-          </h5>
+          <h5 class="card-title mb-0"><i class="ri-edit-line me-2 text-primary"></i>Modifier les informations</h5>
         </div>
         <div class="card-body">
           <form [formGroup]="boutiqueForm" (ngSubmit)="onSubmit()">
@@ -127,15 +119,17 @@
               <div class="col-md-6">
                 <div class="mb-3">
                   <label for="nom" class="form-label">Nom de la boutique</label>
-                  <input type="text" 
-                         class="form-control" 
-                         id="nom" 
-                         formControlName="nom"
-                         [ngClass]="{ 'is-invalid': nom?.invalid && nom?.touched }"
-                         placeholder="Entrez le nom de votre boutique">
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="nom"
+                    formControlName="nom"
+                    [ngClass]="{ 'is-invalid': nom?.invalid && nom?.touched }"
+                    placeholder="Entrez le nom de votre boutique"
+                  />
                   <div *ngIf="nom?.invalid && nom?.touched" class="invalid-feedback">
                     <div *ngIf="nom?.errors?.['required']">Le nom est requis</div>
-                    <div *ngIf="nom?.errors?.['maxlength']">Le nom ne doit pas dépasser 100 caractères</div>
+                    <div *ngIf="nom?.errors?.['maxlength']">Le nom ne doit pas depasser 100 caracteres</div>
                   </div>
                 </div>
               </div>
@@ -144,9 +138,7 @@
             <div class="row mt-3">
               <div class="col-12">
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                  <button type="submit" 
-                          class="btn btn-primary" 
-                          [disabled]="saving || boutiqueForm.invalid">
+                  <button type="submit" class="btn btn-primary" [disabled]="saving || boutiqueForm.invalid">
                     <span *ngIf="!saving" class="d-flex align-items-center">
                       <i class="ri-save-line me-2"></i>
                       Enregistrer les modifications
@@ -157,15 +149,16 @@
                     </span>
                   </button>
 
-                  <button type="button" 
-                          class="btn" 
-                          [ngClass]="boutique.isActive ? 'btn-danger' : 'btn-success'"
-                          [disabled]="saving"
-                          (click)="toggleBoutiqueStatus()">
+                  <button
+                    type="button"
+                    class="btn"
+                    [ngClass]="boutique.isActive ? 'btn-danger' : 'btn-success'"
+                    [disabled]="saving"
+                    (click)="toggleBoutiqueStatus()"
+                  >
                     <span *ngIf="!saving" class="d-flex align-items-center">
-                      <i [ngClass]="boutique.isActive ? 'ri-pause-circle-line' : 'ri-play-circle-line'" 
-                         class="me-2"></i>
-                      {{ boutique.isActive ? 'Désactiver la boutique' : 'Activer la boutique' }}
+                      <i [ngClass]="boutique.isActive ? 'ri-pause-circle-line' : 'ri-play-circle-line'" class="me-2"></i>
+                      {{ boutique.isActive ? 'Desactiver la boutique' : 'Activer la boutique' }}
                     </span>
                     <span *ngIf="saving" class="d-flex align-items-center">
                       <span class="spinner-border spinner-border-sm me-2" role="status"></span>
@@ -173,18 +166,12 @@
                     </span>
                   </button>
 
-                  <button type="button"
-                          class="btn btn-outline-primary"
-                          [disabled]="saving"
-                          (click)="goToChangeBox()">
+                  <button type="button" class="btn btn-outline-primary" [disabled]="saving" (click)="goToChangeBox()">
                     <i class="ri-shape-line me-2"></i>
                     Changer de box
                   </button>
 
-                  <button type="button"
-                          class="btn btn-outline-danger"
-                          [disabled]="saving"
-                          (click)="quitterCentre()">
+                  <button type="button" class="btn btn-outline-danger" [disabled]="saving" (click)="quitterCentre()">
                     <i class="ri-logout-box-r-line me-2"></i>
                     Quitter le centre
                   </button>
@@ -196,49 +183,162 @@
       </div>
     </div>
 
-    <!-- Colonne droite : Logo + Statut -->
     <div class="col-xl-4">
-      <div class="card">
+      <div class="card mb-4">
         <div class="card-header">
           <h5 class="card-title mb-0">Logo de la boutique</h5>
         </div>
         <div class="card-body text-center">
-          @if (boutique.logo) {
-            <img [src]="boutique.logo" [alt]="boutique.nom" class="boutique-logo mb-3">
-          } @else {
-            <div class="boutique-logo-placeholder mb-3">
-              <i class="ti ti-building-store"></i>
-            </div>
-          }
+          <img *ngIf="boutique.logo" [src]="boutique.logo" [alt]="boutique.nom" class="boutique-logo mb-3" />
+          <div *ngIf="!boutique.logo" class="boutique-logo-placeholder mb-3">
+            <i class="ti ti-building-store"></i>
+          </div>
 
           <div class="mb-3">
-            <span class="badge fs-6 px-3 py-2" 
-                  [ngClass]="boutique.isActive ? 'bg-success' : 'bg-danger'">
+            <span class="badge fs-6 px-3 py-2" [ngClass]="boutique.isActive ? 'bg-success' : 'bg-danger'">
               <i [class]="boutique.isActive ? 'ri-checkbox-circle-line' : 'ri-close-circle-line'" class="me-1"></i>
               {{ boutique.isActive ? 'Active' : 'Inactive' }}
             </span>
           </div>
 
-          @if (boutique.isPendingFirstActivation) {
-            <div class="alert alert-warning text-start py-2 px-3 small mb-3">
-              Votre boutique est en attente de la premiere activation par admin centre.
-            </div>
-          }
+          <div *ngIf="boutique.isPendingFirstActivation" class="alert alert-warning text-start py-2 px-3 small mb-3">
+            Votre boutique est en attente de la premiere activation par admin centre.
+          </div>
 
-          <input type="file" 
-                 #logoInput
-                 class="d-none" 
-                 accept="image/*" 
-                 (change)="onLogoUpload($event)">
-          <button type="button" 
-                  class="btn btn-soft-primary w-100" 
-                  (click)="logoInput.click()">
+          <input type="file" #logoInput class="d-none" accept="image/*" (change)="onLogoUpload($event)" />
+          <button type="button" class="btn btn-soft-primary w-100" (click)="logoInput.click()">
             <i class="ri-image-line me-2"></i>
             Changer le logo
           </button>
         </div>
       </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h5 class="card-title mb-0">Renouveler le contrat</h5>
+        </div>
+        <div class="card-body">
+          <p class="text-muted small mb-3">
+            La nouvelle fin de contrat doit etre au minimum a <strong>{{ minRenewDays }} jours</strong> d'aujourd'hui.
+          </p>
+
+          <form [formGroup]="renewForm" (ngSubmit)="submitRenewContract()">
+            <div class="mb-3">
+              <label class="form-label">Nouvelle date de fin</label>
+              <input type="date" class="form-control" formControlName="dateFinLocation" [min]="minRenewDate" />
+            </div>
+            <button type="submit" class="btn btn-outline-primary w-100" [disabled]="renewLoading">
+              <span *ngIf="!renewLoading">Renouveler</span>
+              <span *ngIf="renewLoading"><span class="spinner-border spinner-border-sm me-2"></span>Traitement...</span>
+            </button>
+          </form>
+        </div>
+      </div>
     </div>
 
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+          <h5 class="card-title mb-0">Paiement des loyers</h5>
+          <button class="btn btn-sm btn-outline-primary" (click)="loadLoyerSummary()" [disabled]="loyerLoading">
+            Rafraichir
+          </button>
+        </div>
+
+        <div class="card-body" *ngIf="loyerLoading">
+          <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status"></div>
+          </div>
+        </div>
+
+        <div class="card-body" *ngIf="!loyerLoading && loyerSummary as summary">
+          <div class="row g-2 mb-3">
+            <div class="col-md-4">
+              <div class="loyer-stat">
+                <span>Total facture</span>
+                <strong>{{ summary.total | number }} Ar</strong>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="loyer-stat">
+                <span>Total paye</span>
+                <strong class="text-success">{{ summary.totalPaye | number }} Ar</strong>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="loyer-stat">
+                <span>Reste a regler</span>
+                <strong class="text-danger">{{ summary.totalReste | number }} Ar</strong>
+              </div>
+            </div>
+          </div>
+
+          <form [formGroup]="loyerPaymentForm" (ngSubmit)="submitLoyerPayment()" class="payment-form mb-4">
+            <div class="row g-2 align-items-end">
+              <div class="col-md-3">
+                <label class="form-label">Montant (Ar)</label>
+                <input type="number" min="1" class="form-control" formControlName="montant" />
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">Reference virement</label>
+                <input type="text" class="form-control" formControlName="reference" />
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Libelle (optionnel)</label>
+                <input type="text" class="form-control" formControlName="libelle" />
+              </div>
+              <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100" [disabled]="paymentLoading || loyerPaymentForm.invalid">
+                  <span *ngIf="!paymentLoading">Payer</span>
+                  <span *ngIf="paymentLoading"><span class="spinner-border spinner-border-sm me-2"></span>...</span>
+                </button>
+              </div>
+            </div>
+          </form>
+
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Periode</th>
+                  <th>Total</th>
+                  <th>Paye</th>
+                  <th>Reste</th>
+                  <th>Echeance</th>
+                  <th>References</th>
+                  <th>Statut</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let loyer of summary.loyers">
+                  <td class="fw-semibold">{{ loyer.periode }}</td>
+                  <td>{{ loyer.total | number }} Ar</td>
+                  <td class="text-success">{{ getLoyerPaidAmount(loyer) | number }} Ar</td>
+                  <td class="text-danger">{{ loyer.reste | number }} Ar</td>
+                  <td>{{ loyer.dateEcheance | date: 'dd/MM/yyyy' }}</td>
+                  <td>
+                    <div *ngIf="!loyer.paiements?.length" class="text-muted">-</div>
+                    <div *ngFor="let p of loyer.paiements" class="payment-line">
+                      <span>{{ p.reference || 'Sans ref' }}</span>
+                      <small>{{ p.montant | number }} Ar</small>
+                    </div>
+                  </td>
+                  <td>
+                    <span class="badge" [ngClass]="getStatusClass(loyer.statut)">{{ getStatusLabel(loyer.statut) }}</span>
+                  </td>
+                </tr>
+                <tr *ngIf="!summary.loyers?.length">
+                  <td colspan="7" class="text-center text-muted py-4">Aucun loyer genere pour votre boutique.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card-body" *ngIf="!loyerLoading && !loyerSummary">
+          <p class="text-muted mb-0">Aucune donnee de loyer disponible pour le moment.</p>
+        </div>
+      </div>
+    </div>
   </div>
 </div>

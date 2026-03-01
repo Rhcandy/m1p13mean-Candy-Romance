@@ -1,0 +1,194 @@
+<div class="container-fluid royal-pricing-page">
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+        <div>
+          <h4 class="mb-1">Tarification des boxes</h4>
+          <p class="text-muted mb-0">
+            Gestion du minimum de jours par type de box et historique des prix au m2.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status"></div>
+  </div>
+
+  <div *ngIf="!loading" class="row g-3">
+    <div class="col-xl-5">
+      <div class="card h-100">
+        <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+          <h5 class="mb-0">Types de box</h5>
+        </div>
+
+        <div class="card-body border-bottom">
+          <div class="row g-2">
+            <div class="col-12">
+              <label class="form-label">Nom</label>
+              <input type="text" class="form-control" [(ngModel)]="typeForm.nom" [disabled]="savingType" />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Min jours occupation</label>
+              <input
+                type="number"
+                min="1"
+                class="form-control"
+                [(ngModel)]="typeForm.minOccupationDays"
+                [disabled]="savingType"
+              />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Remuneration</label>
+              <input
+                type="number"
+                min="0"
+                class="form-control"
+                [(ngModel)]="typeForm.remuneration"
+                [disabled]="savingType"
+              />
+            </div>
+            <div class="col-12">
+              <label class="form-label">Description</label>
+              <textarea
+                class="form-control"
+                rows="2"
+                [(ngModel)]="typeForm.description"
+                [disabled]="savingType"
+              ></textarea>
+            </div>
+            <div class="col-12 d-flex gap-2 justify-content-end">
+              <button type="button" class="btn btn-light" (click)="openCreateType()" [disabled]="savingType">
+                Annuler
+              </button>
+              <button type="button" class="btn btn-primary" (click)="saveType()" [disabled]="savingType">
+                <span *ngIf="!savingType">{{ editingTypeId ? 'Mettre a jour' : 'Creer le type' }}</span>
+                <span *ngIf="savingType"><span class="spinner-border spinner-border-sm me-2"></span>Enregistrement...</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Min j</th>
+                  <th>Rem.</th>
+                  <th class="text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let typeBox of typeBoxes">
+                  <td>
+                    <div class="fw-semibold">{{ typeBox.nom }}</div>
+                    <small class="text-muted">{{ typeBox.description || '-' }}</small>
+                  </td>
+                  <td>{{ typeBox.minOccupationDays || typeBox.periode }} jours</td>
+                  <td>{{ typeBox.remuneration | number }}</td>
+                  <td class="text-center">
+                    <button class="btn btn-sm btn-outline-primary me-1" (click)="openEditType(typeBox)">
+                      <i class="ti ti-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" (click)="deleteType(typeBox)">
+                      <i class="ti ti-trash"></i>
+                    </button>
+                  </td>
+                </tr>
+                <tr *ngIf="typeBoxes.length === 0">
+                  <td colspan="4" class="text-center text-muted py-4">Aucun type de box.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-7">
+      <div class="card h-100">
+        <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+          <h5 class="mb-0">Historique prix au m2</h5>
+          <div class="d-flex align-items-center gap-2">
+            <select class="form-select form-select-sm filter-select" [(ngModel)]="selectedTypeFilter">
+              <option value="all">Tous les types</option>
+              <option *ngFor="let typeBox of typeBoxes" [value]="typeBox._id">{{ typeBox.nom }}</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card-body border-bottom">
+          <div class="row g-2">
+            <div class="col-md-4">
+              <label class="form-label">Type box</label>
+              <select class="form-select" [(ngModel)]="historyForm.typeboxId" [disabled]="savingHistory">
+                <option value="">Selectionner</option>
+                <option *ngFor="let typeBox of typeBoxes" [value]="typeBox._id">{{ typeBox.nom }}</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Prix m2</label>
+              <input
+                type="number"
+                min="1"
+                class="form-control"
+                [(ngModel)]="historyForm.prixParM2"
+                [disabled]="savingHistory"
+              />
+            </div>
+            <div class="col-md-2 d-flex align-items-end justify-content-end">
+              <button type="button" class="btn btn-light w-100" (click)="openCreateHistory()" [disabled]="savingHistory">
+                X
+              </button>
+            </div>
+            <div class="col-12 d-flex justify-content-end">
+              <button type="button" class="btn btn-primary" (click)="saveHistory()" [disabled]="savingHistory">
+                <span *ngIf="!savingHistory">{{ editingHistoryId ? 'Mettre a jour' : 'Ajouter' }}</span>
+                <span *ngIf="savingHistory"><span class="spinner-border spinner-border-sm me-2"></span>Enregistrement...</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Prix m2</th>
+                  <th>Date creation</th>
+                  <th class="text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let history of filteredHistories">
+                  <td>
+                    <div class="fw-semibold">{{ getTypeLabel(history.typeboxId) }}</div>
+                    <small class="text-muted">Min {{ getTypeMinDays(history.typeboxId) }} jours</small>
+                  </td>
+                  <td>{{ history.prixParM2 | number }} Ar</td>
+                  <td>{{ history.createdAt ? (history.createdAt | date: 'dd/MM/yyyy HH:mm') : '-' }}</td>
+                  <td class="text-center">
+                    <button class="btn btn-sm btn-outline-primary me-1" (click)="openEditHistory(history)">
+                      <i class="ti ti-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" (click)="deleteHistory(history)">
+                      <i class="ti ti-trash"></i>
+                    </button>
+                  </td>
+                </tr>
+                <tr *ngIf="filteredHistories.length === 0">
+                  <td colspan="4" class="text-center text-muted py-4">Aucun historique de prix.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

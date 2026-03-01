@@ -1,62 +1,221 @@
-<div class="container-fluid royal-section">
-
+<div class="container-fluid royal-loyers-page">
   <div class="row mb-4">
     <div class="col-12">
       <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-        <h4 class="mb-sm-0">Loyers - Royal Center</h4>
-        <button type="button" class="btn btn-primary" (click)="openCreateModal()">
-          + Ajouter un loyer
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Loader -->
-  <div *ngIf="loading" class="text-center py-5">
-    <div class="spinner-border text-primary" role="status"></div>
-  </div>
-
-  <!-- Tableau des loyers -->
-  <div *ngIf="!loading">
-    <div *ngIf="loyers.length === 0" class="text-center text-muted py-4">
-      Aucun loyer enregistré.
-    </div>
-
-    <div *ngIf="loyers.length > 0" class="card">
-      <div class="card-body p-0">
-        <div class="table-responsive">
-          <table class="table table-centered mb-0">
-            <thead>
-              <tr>
-                <th>Boutique</th>
-                <th>Lignes</th>
-                <th>Montant payé</th>
-                <th>Reste à payer</th>
-                <th>Maj</th>
-                <th class="text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let loyer of loyers">
-                <td>{{ getBoutiqueName(loyer) }}</td>
-                <td>{{ loyer.lignes }}</td>
-                <td>{{ getTotalMontantPaye(loyer) | number }} Ar</td>
-                <td>{{ getTotalRestePaye(loyer) | number }} Ar</td>
-                <td>{{ loyer.updatedAt | date: 'dd/MM/yyyy HH:mm' }}</td>
-                <td class="text-center">
-                  <button class="btn btn-sm btn-outline-primary me-1" (click)="openEditModal(loyer)">
-                    <i class="ti ti-pencil"></i>
-                  </button>
-                  <button class="btn btn-sm btn-outline-danger" (click)="deleteLoyer(loyer)">
-                    <i class="ti ti-trash"></i>
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <div>
+          <h4 class="mb-1">Gestion des loyers</h4>
+          <p class="text-muted mb-0">
+            Vue globale des soldes des boutiques, detail mensuel et mise a jour des statuts.
+          </p>
+        </div>
+        <div class="d-flex gap-2 mt-3 mt-sm-0">
+          <button class="btn btn-outline-primary" (click)="refreshCurrent()">
+            <i class="ti ti-refresh me-1"></i>Rafraichir
+          </button>
+          <button class="btn btn-primary" (click)="runMonthlyGeneration()" [disabled]="generating">
+            <span *ngIf="!generating"><i class="ti ti-calendar-plus me-1"></i>Generer les loyers du mois</span>
+            <span *ngIf="generating"><span class="spinner-border spinner-border-sm me-2"></span>Generation...</span>
+          </button>
         </div>
       </div>
     </div>
   </div>
 
+  <div class="row g-3 mb-3">
+    <div class="col-lg-3 col-md-6">
+      <div class="card summary-card summary-count">
+        <div class="card-body">
+          <p class="summary-label mb-1">Boutiques suivies</p>
+          <h4 class="summary-value mb-0">{{ summaries.length }}</h4>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+      <div class="card summary-card summary-total">
+        <div class="card-body">
+          <p class="summary-label mb-1">Montant total</p>
+          <h4 class="summary-value mb-0">{{ getGlobalTotal() | number }} Ar</h4>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+      <div class="card summary-card summary-paid">
+        <div class="card-body">
+          <p class="summary-label mb-1">Total paye</p>
+          <h4 class="summary-value mb-0">{{ getGlobalTotalPaye() | number }} Ar</h4>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+      <div class="card summary-card summary-rest">
+        <div class="card-body">
+          <p class="summary-label mb-1">Reste global</p>
+          <h4 class="summary-value mb-0">{{ getGlobalTotalReste() | number }} Ar</h4>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="loadingSummaries" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status"></div>
+  </div>
+
+  <div *ngIf="!loadingSummaries && summaries.length === 0" class="card empty-card">
+    <div class="card-body py-5 text-center">
+      <i class="ti ti-receipt-off text-muted f-36 d-block mb-2"></i>
+      <h5 class="mb-1">Aucune donnee de loyer</h5>
+      <p class="text-muted mb-0">Aucune boutique n'a encore de facture de loyer generee.</p>
+    </div>
+  </div>
+
+  <div *ngIf="!loadingSummaries && summaries.length > 0" class="row g-3">
+    <div class="col-xl-4">
+      <div class="card h-100">
+        <div class="card-header">
+          <h5 class="mb-0">Boutiques et reste a regler</h5>
+        </div>
+        <div class="card-body p-0">
+          <div class="boutique-list">
+            <button
+              type="button"
+              class="boutique-item"
+              *ngFor="let summary of summaries"
+              [class.active]="isSelected(summary)"
+              (click)="selectBoutique(summary)"
+            >
+              <div class="d-flex align-items-start justify-content-between">
+                <div>
+                  <h6 class="mb-1">{{ summary.boutiqueNom }}</h6>
+                  <div class="d-flex gap-1 flex-wrap">
+                    <span class="badge bg-success-subtle text-success" *ngIf="summary.isActive">Active</span>
+                    <span class="badge bg-secondary-subtle text-secondary" *ngIf="!summary.isActive">Inactive</span>
+                    <span class="badge bg-danger-subtle text-danger" *ngIf="summary.isBlockedForLoyer">Bloquee loyer</span>
+                  </div>
+                </div>
+                <div class="text-end">
+                  <div class="item-reste">{{ summary.totalReste | number }} Ar</div>
+                  <small class="text-muted">Reste</small>
+                </div>
+              </div>
+              <div class="progress mt-2">
+                <div
+                  class="progress-bar bg-primary"
+                  [style.width.%]="summary.total > 0 ? ((summary.totalPaye / summary.total) * 100) : 0"
+                ></div>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-8">
+      <div class="card h-100">
+        <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+          <h5 class="mb-0">
+            Detail boutique:
+            <span class="text-primary">{{ selectedSummary?.boutiqueNom || '-' }}</span>
+          </h5>
+        </div>
+
+        <div class="card-body" *ngIf="selectedSummary?.isBlockedForLoyer || (selectedSummary?.totalReste || 0) > loyerBlockThreshold">
+          <div class="alert alert-danger mb-0">
+            Cette boutique est bloquee car son reste a regler depasse le seuil autorise (1 000 000 Ar).
+          </div>
+        </div>
+
+        <div class="card-body pt-0" *ngIf="loadingDetail">
+          <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status"></div>
+          </div>
+        </div>
+
+        <div class="card-body pt-0" *ngIf="!loadingDetail && boutiqueDetail as detail">
+          <div class="row g-2 mb-3 mt-1">
+            <div class="col-md-4">
+              <div class="mini-stat">
+                <span>Total facture</span>
+                <strong>{{ detail.total | number }} Ar</strong>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="mini-stat">
+                <span>Total paye</span>
+                <strong class="text-success">{{ detail.totalPaye | number }} Ar</strong>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="mini-stat">
+                <span>Reste a regler</span>
+                <strong class="text-danger">{{ detail.totalReste | number }} Ar</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-hover align-middle">
+              <thead>
+                <tr>
+                  <th>Periode</th>
+                  <th>Occupation</th>
+                  <th>Total</th>
+                  <th>Paye</th>
+                  <th>Reste</th>
+                  <th>Echeance</th>
+                  <th>Paiements</th>
+                  <th>Statut</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let loyer of detail.loyers">
+                  <td class="fw-semibold">{{ loyer.periode }}</td>
+                  <td>
+                    <div>{{ loyer.dateDebutPeriode | date: 'dd/MM/yyyy' }}</div>
+                    <small class="text-muted">au {{ loyer.dateFinPeriode | date: 'dd/MM/yyyy' }}</small>
+                  </td>
+                  <td>{{ loyer.total | number }} Ar</td>
+                  <td class="text-success">{{ getTotalPaye(loyer) | number }} Ar</td>
+                  <td class="text-danger">{{ loyer.reste | number }} Ar</td>
+                  <td>
+                    <div>{{ loyer.dateEcheance | date: 'dd/MM/yyyy' }}</div>
+                    <small class="text-muted">Paiement 1ere semaine</small>
+                  </td>
+                  <td>
+                    <div *ngIf="!loyer.paiements?.length" class="text-muted">-</div>
+                    <div class="payment-line" *ngFor="let paiement of loyer.paiements">
+                      <span class="fw-semibold">{{ getReferenceLabel(paiement.reference) }}</span>
+                      <small>{{ paiement.montant | number }} Ar</small>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="d-flex flex-column gap-1">
+                      <span class="badge status-badge" [ngClass]="getStatusClass(loyer.statut)">
+                        {{ getStatusLabel(loyer.statut) }}
+                      </span>
+                      <div class="status-actions">
+                        <button
+                          type="button"
+                          *ngFor="let status of statusOrder"
+                          class="btn btn-xs"
+                          [class.btn-primary]="(loyer.statut || '').toUpperCase() === status"
+                          [class.btn-outline-secondary]="(loyer.statut || '').toUpperCase() !== status"
+                          (click)="updateStatus(loyer, status)"
+                          [disabled]="isUpdatingStatus(loyer._id)"
+                        >
+                          {{ getStatusLabel(status) }}
+                        </button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                <tr *ngIf="!detail.loyers?.length">
+                  <td colspan="8" class="text-center text-muted py-4">Aucun loyer pour cette boutique.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>

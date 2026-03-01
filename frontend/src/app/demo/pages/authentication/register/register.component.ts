@@ -148,6 +148,15 @@ export class RegisterComponent {
         }
 
         this.notificationService.success('Succes', 'Compte cree avec succes.');
+        if (this.selectedRole === 'admin_boutique') {
+          this.notificationService.show({
+            type: 'info',
+            title: 'Dossier boutique',
+            message:
+              'Veuillez fournir a la direction du centre la photocopie CIN du proprietaire, NIF, STAT de votre entreprise et 2 photos pour completer le dossier. Apres reception des dossiers, votre boutique sera activee.',
+            duration: 12000
+          });
+        }
         this.redirectAfterRegister();
       },
       error: (err) => {
@@ -179,7 +188,7 @@ export class RegisterComponent {
       this.boutiqueService.refreshMyBoutiqueStatus().subscribe({
         next: (status) => {
           if (!status.hasBoutique) {
-            this.router.navigate(['/boutique/boxes']);
+            this.router.navigate(['/boutique/boxes'], { queryParams: { onboard: '1' } });
           } else if (!status.isActive) {
             this.router.navigate(['/boutique/informations']);
           } else {
