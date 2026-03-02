@@ -11,8 +11,8 @@
 
             <div class="d-flex justify-content-center">
               <div class="auth-header text-center">
-                <h2 class="text-secondary mt-5"><b>Sign up</b></h2>
-                <p class="fs-4 mt-2">Enter your credentials to continue</p>
+                <h2 class="text-secondary mt-5"><b>Inscription</b></h2>
+                <p class="fs-4 mt-2">Entrez vos identifiants pour continuer</p>
               </div>
             </div>
 
@@ -136,11 +136,11 @@
                 id="email"
                 formControlName="email"
                 [class.is-invalid]="submitted && registerForm.get('email')?.invalid"
-                placeholder="Email"
+                placeholder="Adresse e-mail"
               />
-              <label for="email">Email</label>
+              <label for="email">Adresse e-mail</label>
               <div *ngIf="submitted && registerForm.get('email')?.invalid" class="invalid-feedback">
-                Email valide requis
+                Adresse e-mail valide requise
               </div>
             </div>
 
@@ -208,7 +208,7 @@
             <div class="d-grid mt-4">
               <button type="submit" class="btn btn-secondary p-2" [disabled]="loading">
                 <span *ngIf="loading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                Sign Up
+                S'inscrire
               </button>
             </div>
           </form>
@@ -216,7 +216,7 @@
           <hr />
 
           <h5 class="d-flex justify-content-center">
-            <a [routerLink]="['/login']">Already have an account?</a>
+            <a [routerLink]="['/login']">Vous avez deja un compte ?</a>
           </h5>
         </div>
       </div>

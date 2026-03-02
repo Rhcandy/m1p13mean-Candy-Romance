@@ -12,8 +12,8 @@
   <div class="row">
     <div class="d-flex justify-content-center">
       <div class="auth-header">
-        <h2 class="text-secondary mt-5"><b>Hi, Welcome Back</b></h2>
-        <p class="fs-4 mt-2">Enter your credentials to continue</p>
+        <h2 class="text-secondary mt-5"><b>Bonjour, bon retour</b></h2>
+        <p class="fs-4 mt-2">Entrez vos identifiants pour continuer</p>
       </div>
     </div>
   </div>
@@ -26,16 +26,16 @@
       name="email"
       [(ngModel)]="model.email"
       [class.is-invalid]="submitted && !model.email"
-      placeholder="Email Address"
+      placeholder="Adresse e-mail"
     />
-    <label for="floatingInput">Email address / Username</label>
+    <label for="floatingInput">Adresse e-mail / Nom d'utilisateur</label>
     <div *ngIf="submitted && !model.email" class="invalid-feedback">
-      Email is required
+      L'adresse e-mail est obligatoire
     </div>
   </div>
 
   <div class="mb-3">
-    <label for="password" class="form-label">Password</label>
+    <label for="password" class="form-label">Mot de passe</label>
     <div class="input-group">
       <input
         [type]="showPassword ? 'text' : 'password'"
@@ -44,29 +44,29 @@
         name="password"
         [(ngModel)]="model.password"
         [class.is-invalid]="submitted && !model.password"
-        placeholder="Password"
+        placeholder="Mot de passe"
       />
       <button
         type="button"
         class="btn btn-outline-secondary"
         (click)="togglePasswordVisibility()"
-        [attr.aria-label]="showPassword ? 'Hide password' : 'Show password'"
+        [attr.aria-label]="showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'"
       >
         <i class="ti" [ngClass]="showPassword ? 'ti-eye-off' : 'ti-eye'"></i>
       </button>
     </div>
     <div *ngIf="submitted && !model.password" class="invalid-feedback d-block">
-      Password is required
+      Le mot de passe est obligatoire
     </div>
   </div>
 
   <div class="d-flex mt-1 justify-content-between">
     <div class="form-check">
       <input class="form-check-input input-primary" type="checkbox" id="customCheckc1" />
-      <label class="form-check-label text-muted" for="customCheckc1">Remember me</label>
+      <label class="form-check-label text-muted" for="customCheckc1">Se souvenir de moi</label>
     </div>
     <h5 class="text-secondary">
-      <a [routerLink]="['/forgot-password']">Forgot Password?</a>
+      <a [routerLink]="['/forgot-password']">Mot de passe oublie ?</a>
     </h5>
   </div>
 
@@ -77,13 +77,37 @@
   <div class="d-grid mt-4">
     <button type="submit" class="btn btn-secondary" [disabled]="loading">
       <span *ngIf="loading" class="spinner-border spinner-border-sm me-2"></span>
-      Sign In
+      Se connecter
+    </button>
+  </div>
+
+  <div class="auth-divider mt-4 mb-3" aria-hidden="true">
+    <span>ou</span>
+  </div>
+
+  <div class="quick-login-actions mb-4">
+    <button
+      type="button"
+      class="btn quick-login-btn quick-login-admin"
+      [disabled]="loading"
+      (click)="quickLogin('admin')"
+    >
+      <span class="quick-login-title">Se connecter en admin</span>
+    </button>
+
+    <button
+      type="button"
+      class="btn quick-login-btn quick-login-boutique"
+      [disabled]="loading"
+      (click)="quickLogin('boutique')"
+    >
+      <span class="quick-login-title">Se connecter en boutique</span>
     </button>
   </div>
 
   <hr />
   <h5 class="d-flex justify-content-center">
-    <a [routerLink]="['/register']">Don't have an account?</a>
+    <a [routerLink]="['/register']">Vous n'avez pas de compte ?</a>
   </h5>
 </form>
 

@@ -28,17 +28,94 @@
   object-fit: contain;
   border-radius: 50%;
 }
-  .brand-text {
-    color: var(--grenat-700);
-  }
-  .brand-script {
-    font-family: 'Brush Script MT', 'Segoe Script', 'Lucida Handwriting', cursive;
-    font-size: 2rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    line-height: 1;
-    background: linear-gradient(135deg, var(--grenat-500), var(--gold-500));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
+
+.brand-text {
+  color: var(--grenat-700);
+}
+
+.brand-script {
+  font-family: 'Brush Script MT', 'Segoe Script', 'Lucida Handwriting', cursive;
+  font-size: 2rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  background: linear-gradient(135deg, var(--grenat-500), var(--gold-500));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(138, 39, 72, 0.35), transparent);
+}
+
+.auth-divider span {
+  padding: 0 0.85rem;
+}
+
+.quick-login-actions {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.quick-login-btn {
+  width: 100%;
+  border: 1px solid var(--beige-300);
+  border-left-width: 4px;
+  border-radius: 14px;
+  padding: 0.85rem 1rem;
+  text-align: left;
+  background: linear-gradient(145deg, #fffefb, #f9f1e4);
+  box-shadow: 0 5px 14px rgba(109, 24, 53, 0.09);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.quick-login-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 9px 18px rgba(109, 24, 53, 0.16);
+}
+
+.quick-login-btn:disabled {
+  opacity: 0.75;
+  cursor: not-allowed;
+}
+
+.quick-login-admin {
+  border-left-color: var(--grenat-500);
+}
+
+.quick-login-boutique {
+  border-left-color: var(--gold-500);
+}
+
+.quick-login-title {
+  display: block;
+  color: var(--grenat-700);
+  font-size: 0.98rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.quick-login-credentials {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.2;
+  word-break: break-word;
+}
