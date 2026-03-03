@@ -2,23 +2,35 @@ const SibApiV3Sdk = require("sib-api-v3-sdk");
 require("dotenv").config();
 
 const defaultClient = SibApiV3Sdk.ApiClient.instance;
-const transactionalApi = new SibApiV3Sdk.TransactionalEmailsApi();
-const campaignsApi = new SibApiV3Sdk.EmailCampaignsApi();
+
+const sanitizeEnvValue = (value) => String(value ?? "").trim().replace(/^['"]|['"]$/g, "");
+
+const maskSecret = (value) => {
+  if (!value) return "undefined";
+  if (value.length <= 12) return `${value.slice(0, 4)}...`;
+  return `${value.slice(0, 8)}...${value.slice(-6)}`;
+};
 
 const configureBrevoClient = () => {
-  const apiKeyValue = process.env.BREVO_API_KEY;
+  const apiKeyValue = sanitizeEnvValue(process.env.BREVO_API_KEY || process.env.BREVO_API_V3_KEY);
 
   if (!apiKeyValue) {
     throw new Error("BREVO_API_KEY manquant dans les variables d'environnement");
   }
 
+  if (!apiKeyValue.startsWith("xkeysib-")) {
+    console.warn("[Brevo] Format de cle inattendu. Verifie que c'est bien une cle API v3.");
+  }
+
   const apiKey = defaultClient.authentications["api-key"];
   apiKey.apiKey = apiKeyValue;
+
+  return apiKeyValue;
 };
 
 const getSender = () => {
-  const senderEmail = process.env.EMAIL_USER ;
-  const senderName =  process.env.APP_NAME || "No Reply";
+  const senderEmail = sanitizeEnvValue(process.env.EMAIL_USER || process.env.BREVO_SENDER_EMAIL);
+  const senderName = sanitizeEnvValue(process.env.APP_NAME) || "No Reply";
 
   if (!senderEmail) {
     throw new Error("BREVO_SENDER_EMAIL (ou EMAIL_USER) manquant");
@@ -145,6 +157,7 @@ const generateEmailTemplate = (type, params) => {
 const sendEmail = async (type, params) => {
   try {
     configureBrevoClient();
+    const transactionalApi = new SibApiV3Sdk.TransactionalEmailsApi();
 
     const template = generateEmailTemplate(type, params);
 
@@ -162,6 +175,13 @@ const sendEmail = async (type, params) => {
       data: response
     };
   } catch (error) {
+    const brevoError = error?.response?.body;
+    if (brevoError?.code === "unauthorized") {
+      console.error(
+        `[Brevo] unauthorized avec la cle ${maskSecret(sanitizeEnvValue(process.env.BREVO_API_KEY || process.env.BREVO_API_V3_KEY))}. ` +
+        "Verifie la cle active dans l'environnement courant (local vs serveur), ses permissions et l'eventuelle presence d'une ancienne valeur en cache."
+      );
+    }
     console.error("Erreur envoi email Brevo:", error?.response?.body || error.message || error);
     throw error;
   }
@@ -178,6 +198,7 @@ const createEmailCampaign = async ({
   senderEmail
 }) => {
   configureBrevoClient();
+  const campaignsApi = new SibApiV3Sdk.EmailCampaignsApi();
 
   if (!Array.isArray(listIds) || listIds.length === 0) {
     throw new Error("listIds est requis pour creer une campagne Brevo");

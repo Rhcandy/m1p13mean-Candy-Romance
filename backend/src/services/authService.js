@@ -172,6 +172,7 @@ class AuthService {
         email: user.email,
         confirmPassword: code
       });
+      console.log(email);
       return { message: 'Code de réinitialisation envoyé par email' };
     } catch (error) {
       throw new Error(`Erreur lors de la demande de réinitialisation: ${error.message}`);
