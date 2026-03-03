@@ -37,6 +37,7 @@ interface AvisItem {
 })
 export class AvisComponent implements OnInit {
   private readonly cdr = inject(ChangeDetectorRef);
+  readonly reviewStars = [1, 2, 3, 4, 5];
   @Input() produitId = '';
   @Input() currentUserId = '';
   @Input() currentUserName = '';
@@ -213,7 +214,36 @@ export class AvisComponent implements OnInit {
       this.notificationService.warning('Vous avez déjà laissé un avis pour ce produit.');
       return;
     }
+    this.reviewError = '';
     this.showReviewForm = true;
+  }
+
+  closeReviewForm(): void {
+    this.showReviewForm = false;
+    this.reviewError = '';
+    this.reviewNote = 0;
+    this.reviewComment = '';
+  }
+
+  setReviewNote(note: number): void {
+    this.reviewNote = note;
+  }
+
+  getReviewRatingLabel(): string {
+    switch (this.reviewNote) {
+      case 5:
+        return 'Excellent';
+      case 4:
+        return 'Tres bien';
+      case 3:
+        return 'Bien';
+      case 2:
+        return 'Moyen';
+      case 1:
+        return 'Mauvais';
+      default:
+        return 'Selectionnez une note';
+    }
   }
 
   submitReview(): void {

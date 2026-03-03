@@ -45,9 +45,9 @@
               }
             </div>
             <div class="commande-status">
-              <span class="status-badge {{ getStatutClass(commande.statut) }}">
-                <i class="{{ getStatutIcon(commande.statut) }}"></i>
-                {{ panierService.getStatutLibelle(commande.statut) }}
+              <span class="status-badge {{ getStatutClass(getStatutAffiche(commande)) }}">
+                <i class="{{ getStatutIcon(getStatutAffiche(commande)) }}"></i>
+                {{ panierService.getStatutLibelle(getStatutAffiche(commande)) }}
               </span>
             </div>
           </div>

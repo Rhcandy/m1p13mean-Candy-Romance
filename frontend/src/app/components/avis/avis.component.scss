@@ -616,8 +616,242 @@ $star-color: #fbbf24;
 // Write review section
 .write-review-section {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  width: min(100%, 760px);
+  margin-inline: auto;
+  gap: 0.875rem;
   margin-top: 2rem;
+
+  &.form-open {
+    align-items: stretch;
+  }
+}
+
+.review-feedback {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+
+  i {
+    font-size: 1.125rem;
+  }
+
+  &.warning {
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    color: color.adjust($warning-color, $lightness: -18%);
+  }
+
+  &.checking {
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    color: $primary-dark;
+  }
+}
+
+.spinner-icon {
+  display: inline-block;
+  animation: spin 0.8s linear infinite;
+}
+
+.review-cta-card {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: linear-gradient(135deg, #ffffff 0%, #f6f7ff 100%);
+  border: 2px solid rgba(99, 102, 241, 0.2);
+  border-radius: 1rem;
+  box-shadow: 0 10px 24px rgba(99, 102, 241, 0.1);
+}
+
+.cta-content {
+  h4 {
+    margin: 0 0 0.25rem 0;
+    color: $text-primary;
+    font-size: 1.0625rem;
+    font-weight: 700;
+  }
+
+  p {
+    margin: 0;
+    color: $text-secondary;
+    font-size: 0.9375rem;
+  }
+}
+
+.review-form-card {
+  width: 100%;
+  padding: 1.5rem;
+  background: $bg-white;
+  border: 2px solid rgba(99, 102, 241, 0.25);
+  border-radius: 1rem;
+  box-shadow: 0 14px 30px rgba(31, 41, 55, 0.08);
+}
+
+.form-head {
+  margin-bottom: 1.25rem;
+
+  h4 {
+    margin: 0;
+    color: $text-primary;
+    font-size: 1.125rem;
+    font-weight: 800;
+  }
+
+  p {
+    margin: 0.375rem 0 0;
+    color: $text-secondary;
+    font-size: 0.9rem;
+  }
+}
+
+.review-form {
+  .form-group {
+    margin-bottom: 1rem;
+
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: $text-primary;
+      font-size: 0.875rem;
+      font-weight: 700;
+    }
+  }
+
+  .form-control {
+    width: 100%;
+    border: 2px solid $border-color;
+    border-radius: 0.75rem;
+    padding: 0.75rem 0.875rem;
+    color: $text-primary;
+    font-size: 0.9375rem;
+    transition: all 0.2s ease;
+
+    &:focus {
+      outline: none;
+      border-color: $primary-color;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+    }
+  }
+
+  textarea.form-control {
+    resize: vertical;
+    min-height: 110px;
+  }
+}
+
+.rating-group {
+  .rating-picker {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+}
+
+.rating-option {
+  width: 2.25rem;
+  height: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  border: 2px solid $border-color;
+  background: $bg-light;
+  color: color.adjust($border-color, $lightness: -10%);
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  i {
+    font-size: 1.125rem;
+  }
+
+  &:hover {
+    border-color: color.adjust($star-color, $lightness: -8%);
+    color: color.adjust($star-color, $lightness: -12%);
+    transform: translateY(-1px);
+  }
+
+  &.active {
+    background: rgba(251, 191, 36, 0.15);
+    border-color: rgba(251, 191, 36, 0.75);
+    color: color.adjust($star-color, $lightness: -8%);
+  }
+}
+
+.rating-caption,
+.comment-count {
+  display: block;
+  margin-top: 0.375rem;
+  color: $text-muted;
+  font-size: 0.8125rem;
+}
+
+.comment-count {
+  text-align: right;
+}
+
+.review-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.submit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-inline: 1.25rem;
+
+  i {
+    font-size: 1rem;
+  }
+}
+
+.cancel-btn {
+  min-width: 110px;
+}
+
+.review-status-card {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.875rem 1rem;
+  border-radius: 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+
+  i {
+    font-size: 1.125rem;
+  }
+
+  &.success {
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    color: color.adjust($success-color, $lightness: -20%);
+  }
+
+  &.info {
+    background: rgba(59, 130, 246, 0.12);
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    color: #1d4ed8;
+  }
+
+  &.neutral {
+    background: $bg-light;
+    border: 1px solid $border-color;
+    color: $text-secondary;
+  }
 }
 
 .btn-write-review,
@@ -625,6 +859,7 @@ $star-color: #fbbf24;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 0.5rem;
   padding: 1rem 2rem;
   background: linear-gradient(135deg, $primary-color 0%, $primary-dark 100%);
   border: none;
@@ -693,6 +928,21 @@ $star-color: #fbbf24;
       justify-content: center;
     }
   }
+
+  .review-cta-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .review-actions-row {
+    flex-wrap: wrap;
+  }
+
+  .submit-btn,
+  .cancel-btn {
+    flex: 1;
+    justify-content: center;
+  }
 }
 
 @media (max-width: 576px) {
@@ -702,5 +952,19 @@ $star-color: #fbbf24;
       justify-content: center;
       min-width: calc(50% - 0.5rem);
     }
+  }
+
+  .review-form-card {
+    padding: 1rem;
+  }
+
+  .rating-option {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .review-actions-row {
+    flex-direction: column;
+    align-items: stretch;
   }
 }

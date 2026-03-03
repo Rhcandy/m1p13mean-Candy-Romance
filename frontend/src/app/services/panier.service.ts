@@ -321,6 +321,35 @@ export class PanierService {
   }
 
   /**
+   * Obtenir le statut affiche selon la date de livraison.
+   * Si une commande est encore "confirmee" mais que sa date de livraison
+   * est passee, on l'affiche comme "livre".
+   */
+  getStatutAffiche(statut: string, dateLivraison?: Date | string | null): string {
+    if (statut === 'confirmee' && this.isDateLivraisonPassee(dateLivraison)) {
+      return 'livre';
+    }
+
+    return statut;
+  }
+
+  isDateLivraisonPassee(dateLivraison?: Date | string | null): boolean {
+    if (!dateLivraison) {
+      return false;
+    }
+
+    const livraison = new Date(dateLivraison);
+    if (Number.isNaN(livraison.getTime())) {
+      return false;
+    }
+
+    const endOfDeliveryDay = new Date(livraison);
+    endOfDeliveryDay.setHours(23, 59, 59, 999);
+
+    return Date.now() > endOfDeliveryDay.getTime();
+  }
+
+  /**
    * Obtenir le libellé de la méthode de paiement en français
    */
   getMethodePaiementLibelle(methode: string): string {

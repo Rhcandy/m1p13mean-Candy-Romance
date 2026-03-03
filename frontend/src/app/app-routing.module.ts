@@ -3,8 +3,6 @@ import { RouterModule, Routes } from '@angular/router';
 import { AdminComponent } from './theme/layout/admin/admin.component';
 import { GuestComponent } from './theme/layout/guest/guest.component';
 import { AuthGuard } from './guards/auth.guard';
-import { RoleGuard } from './guards/role.guard';
-import { AuthService } from './services/auth.service';
 
 const routes: Routes = [
   {
@@ -47,11 +45,6 @@ const routes: Routes = [
         path: '',
         redirectTo: '/landing',
         pathMatch: 'full'
-      },
-      {
-        path: 'landing',
-        loadComponent: () => import('./demo/pages/landing/landing.component').then((c) => c.LandingComponent),
-        canActivate: [RoleGuard]
       },
       {
         path: 'default',
@@ -158,28 +151,6 @@ const routes: Routes = [
               )
           }
         ]
-      }
-    ]
-  },
-  {
-    path: '',
-    component: GuestComponent,
-    children: [
-      {
-        path: 'login',
-        loadComponent: () => import('./demo/pages/authentication/login/login.component').then((c) => c.LoginComponent)
-      },
-      {
-        path: 'register',
-        loadComponent: () => import('./demo/pages/authentication/register/register.component').then((c) => c.RegisterComponent)
-      },
-      {
-        path: 'forgot-password',
-        loadComponent: () => import('./demo/pages/authentication/forgot-password/forgot-password.component').then((c) => c.ForgotPasswordComponent)
-      },
-      {
-        path: 'reset-password',
-        loadComponent: () => import('./demo/pages/authentication/reset-password/reset-password.component').then((c) => c.ResetPasswordComponent)
       }
     ]
   },

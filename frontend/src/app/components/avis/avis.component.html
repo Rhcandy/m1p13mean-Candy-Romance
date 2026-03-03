@@ -89,59 +89,104 @@
       }
     }
 
-    <div class="write-review-section">
+    <div class="write-review-section" [class.form-open]="showReviewForm">
       @if (reviewError) {
-        <div class="alert alert-warning mb-3">{{ reviewError }}</div>
+        <div class="review-feedback warning">
+          <i class="ti ti-alert-circle"></i>
+          <span>{{ reviewError }}</span>
+        </div>
       }
+
       @if (checkingEligibility) {
-        <div class="text-muted small mb-2">Verification des conditions...</div>
+        <div class="review-feedback checking">
+          <i class="ti ti-loader-2 spinner-icon"></i>
+          <span>Verification des conditions...</span>
+        </div>
       }
 
       @if (canReview && !hasReviewed) {
         @if (!showReviewForm) {
-          <button class="btn-write-review" (click)="openReviewForm()">
-            <i class="ti ti-pencil"></i>
-            <span>Ajouter un avis</span>
-          </button>
+          @if (avis && avis.length > 0) {
+            <div class="review-cta-card">
+              <div class="cta-content">
+                <h4>Partagez votre experience</h4>
+                <p>Votre retour aide les autres clients a choisir.</p>
+              </div>
+              <button class="btn-write-review" (click)="openReviewForm()">
+                <i class="ti ti-pencil"></i>
+                <span>Ecrire un avis</span>
+              </button>
+            </div>
+          }
         } @else {
-          <div class="review-form">
-            <div class="form-group mb-3">
-              <label for="reviewNote">Note *</label>
-              <select id="reviewNote" name="reviewNote" class="form-control" [(ngModel)]="reviewNote">
-                <option [ngValue]="0">Selectionner une note</option>
-                <option [ngValue]="5">5 - Excellent</option>
-                <option [ngValue]="4">4 - Tres bien</option>
-                <option [ngValue]="3">3 - Bien</option>
-                <option [ngValue]="2">2 - Moyen</option>
-                <option [ngValue]="1">1 - Mauvais</option>
-              </select>
+          <div class="review-form-card">
+            <div class="form-head">
+              <h4>Votre avis sur ce produit</h4>
+              <p>Donnez une note et ajoutez un commentaire.</p>
             </div>
-            <div class="form-group mb-3">
-              <label for="reviewComment">Commentaire *</label>
-              <textarea
-                id="reviewComment"
-                name="reviewComment"
-                class="form-control"
-                rows="4"
-                [(ngModel)]="reviewComment"
-                placeholder="Partagez votre experience..."></textarea>
-            </div>
-            <div class="d-flex gap-2">
-              <button class="btn btn-primary" (click)="submitReview()" [disabled]="submittingReview">
-                {{ submittingReview ? 'Envoi...' : 'Publier l\'avis' }}
-              </button>
-              <button class="btn btn-outline-secondary" (click)="showReviewForm = false" [disabled]="submittingReview">
-                Annuler
-              </button>
+
+            <div class="review-form">
+              <div class="form-group rating-group">
+                <label>Note *</label>
+                <div class="rating-picker" role="radiogroup" aria-label="Choisir une note">
+                  @for (star of reviewStars; track star) {
+                    <button
+                      type="button"
+                      class="rating-option"
+                      [class.active]="star <= reviewNote"
+                      (click)="setReviewNote(star)"
+                      [attr.aria-label]="star + ' etoile' + (star > 1 ? 's' : '')">
+                      <i class="ti ti-star-filled"></i>
+                    </button>
+                  }
+                </div>
+                <small class="rating-caption">{{ getReviewRatingLabel() }}</small>
+              </div>
+
+              <div class="form-group">
+                <label for="reviewComment">Commentaire *</label>
+                <textarea
+                  id="reviewComment"
+                  name="reviewComment"
+                  class="form-control"
+                  rows="4"
+                  maxlength="500"
+                  [(ngModel)]="reviewComment"
+                  placeholder="Partagez votre experience..."></textarea>
+                <small class="comment-count">{{ reviewComment.length }}/500</small>
+              </div>
+
+              <div class="review-actions-row">
+                <button class="btn btn-primary submit-btn" (click)="submitReview()" [disabled]="submittingReview">
+                  @if (submittingReview) {
+                    <i class="ti ti-loader-2 spinner-icon"></i>
+                  } @else {
+                    <i class="ti ti-send"></i>
+                  }
+                  <span>{{ submittingReview ? 'Envoi...' : 'Publier l\'avis' }}</span>
+                </button>
+                <button class="btn btn-outline-secondary cancel-btn" (click)="closeReviewForm()" [disabled]="submittingReview">
+                  Annuler
+                </button>
+              </div>
             </div>
           </div>
         }
       } @else if (hasReviewed) {
-        <div class="text-muted">Vous avez deja laisse un avis pour ce produit.</div>
+        <div class="review-status-card success">
+          <i class="ti ti-circle-check"></i>
+          <span>Vous avez deja laisse un avis pour ce produit.</span>
+        </div>
       } @else if (currentUserId) {
-        <div class="text-muted">Vous devez avoir commande ce produit pour laisser un avis.</div>
+        <div class="review-status-card info">
+          <i class="ti ti-lock"></i>
+          <span>Vous devez avoir commande ce produit pour laisser un avis.</span>
+        </div>
       } @else {
-        <div class="text-muted">Connectez-vous pour laisser un avis.</div>
+        <div class="review-status-card neutral">
+          <i class="ti ti-user"></i>
+          <span>Connectez-vous pour laisser un avis.</span>
+        </div>
       }
     </div>
   </div>

@@ -566,26 +566,21 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     });
   }
 
-  async cancelOrder(): Promise<void> {
-    const confirmed = await this.notificationService.confirm({
-      title: 'Annulation commande',
-      message: 'Etes-vous sur de vouloir annuler cette commande ?',
-      confirmLabel: 'Annuler la commande',
-      cancelLabel: 'Retour',
-      confirmStyle: 'danger'
-    });
-    if (!confirmed || !this.panier) return;
-
-    this.panierService.annulerCommande('Annulation par le client').pipe(takeUntil(this.destroy$)).subscribe({
-      next: () => {
-        this.notificationService.success('Commande annulee avec succes');
-        this.router.navigate(['/panier']);
-      },
-      error: (error) => {
-        console.error('Erreur annulation:', error);
-        this.notificationService.error('Erreur lors de l\'annulation');
+  cancelOrder(): void {
+    if (confirm('Etes-vous sur de vouloir annuler cette commande ?')) {
+      if (this.panier) {
+        this.panierService.annulerCommande('Annulation par le client').pipe(takeUntil(this.destroy$)).subscribe({
+          next: () => {
+            this.notificationService.success('Commande annulee avec succes');
+            this.router.navigate(['/panier']);
+          },
+          error: (error) => {
+            console.error('Erreur annulation:', error);
+            this.notificationService.error('Erreur lors de l\'annulation');
+          }
+        });
       }
-    });
+    }
   }
 
   formatPrice(price: number): string {

@@ -296,6 +296,10 @@ export class MesCommandesComponent implements OnInit, OnDestroy {
     return this.panierService.formatMontant(price);
   }
 
+  getStatutAffiche(commande: Panier): string {
+    return this.panierService.getStatutAffiche(commande.statut, commande.dateLivraison);
+  }
+
   getStatutClass(statut: string): string {
     switch (statut) {
       case 'confirmee':
